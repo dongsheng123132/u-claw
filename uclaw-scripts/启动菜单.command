@@ -201,7 +201,7 @@ do_run() {
             echo "  接下来可以选 [17] 打开网页控制台。"
         fi
     else
-        "$NODE_BIN" openclaw.mjs dashboard || "$NODE_BIN" openclaw.mjs
+        "$NODE_BIN" openclaw.mjs dashboard
     fi
 }
 
@@ -215,7 +215,7 @@ do_dashboard() {
         echo -e "  ${YELLOW}你还没有完成 U 盘便携配置。请先选 [4] 从 U 盘运行。${NC}"
         return
     fi
-    "$NODE_BIN" openclaw.mjs dashboard || "$NODE_BIN" openclaw.mjs
+    "$NODE_BIN" openclaw.mjs dashboard
 }
 
 # [5] 配置国产模型

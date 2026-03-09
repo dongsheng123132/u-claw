@@ -132,7 +132,7 @@ if [ ! -f "$PORTABLE_CONFIG_PATH" ]; then
         echo "  已跳过首次配置。"
     fi
 else
-    "$NODE_BIN" openclaw.mjs dashboard || "$NODE_BIN" openclaw.mjs
+    "$NODE_BIN" openclaw.mjs dashboard
 fi
 
 echo ""
