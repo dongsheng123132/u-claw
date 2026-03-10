@@ -22,14 +22,15 @@
 - ❌ Node.js download slow / Node.js 下载慢
 - ❌ Dependencies fail / 依赖装不上
 
-**U-Claw solves all of this.** Node.js runtime, OpenClaw source, all npm dependencies, 52 pre-installed skills — everything bundled on a USB drive. Plug in, double-click, done.
+**U-Claw solves all of this.** Node.js runtime, OpenClaw source, all npm dependencies, 52 pre-installed skills — everything bundled on a USB drive. Plug in, double-click, done. For teams and schools, it is often lower-cost than cloud deployment for onboarding and day-to-day use.
 
-**U-Claw 解决所有这些问题。** Node.js + OpenClaw + 所有依赖 + 52个技能，全部打包。插上 U 盘，双击即用。
+**U-Claw 解决所有这些问题。** Node.js + OpenClaw + 所有依赖 + 52个技能，全部打包。插上 U 盘，双击即用。对团队和学校场景，部署和培训成本通常也比云端部署更低。
 
 ## Features / 特性
 
 - 🚀 **Easy startup / 快速启动** — macOS + Linux + Windows, ready to run from USB
 - 📦 **Fully offline / 完全离线** — No internet needed for installation
+- 💸 **Lower TCO / 总成本更低** — For repeated deployments, often cheaper than cloud-only rollout
 - 🇨🇳 **China-optimized / 中国优化** — 8 Chinese AI models (DeepSeek, Kimi, Qwen, GLM, MiniMax, Doubao, Qianfan, Mimo)
 - 💬 **Multi-platform / 多平台** — QQ (official) / Feishu / WeChat / Telegram / Discord / WhatsApp / Slack
 - 🔧 **Maintenance tools / 维护工具** — Diagnose, backup, restore, reset
