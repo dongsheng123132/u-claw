@@ -84,19 +84,11 @@ echo.
 
 cd /d "%CORE_DIR%"
 
-REM Check if model is configured - open Config.html for first time, dashboard for returning users
-set "HAS_MODEL=no"
-if exist "%STATE_DIR%\openclaw.json" (
-    findstr /c:"agent" "%STATE_DIR%\openclaw.json" >nul 2>&1 && set "HAS_MODEL=yes"
-)
-
-if "%HAS_MODEL%"=="yes" (
-    echo   Opening dashboard...
-    start "" http://127.0.0.1:%PORT%/#token=uclaw
-) else (
-    echo   First time - opening Config page...
-    start "" "%UCLAW_DIR%Config.html?port=%PORT%"
-)
+REM Always open dashboard - it will guide first-time setup
+echo   正在打开控制台...
+echo   Opening dashboard at http://127.0.0.1:%PORT%
+timeout /t 2 /nobreak >nul
+start "" http://127.0.0.1:%PORT%/#token=uclaw
 
 set "OPENCLAW_MJS=%CORE_DIR%\node_modules\openclaw\openclaw.mjs"
 "%NODE_BIN%" "%OPENCLAW_MJS%" gateway run --allow-unconfigured --force --port %PORT%
