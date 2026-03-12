@@ -143,9 +143,26 @@ bash Mac-Start.command   # Mac
 
 ```bash
 cd u-claw-app
-npm install --registry=https://registry.npmmirror.com
-npm start        # 开发模式运行
-npm run build:mac   # 打包
+
+# Mac / Linux 一键安装（自动下载 Node.js runtime + 依赖，全部国内镜像）
+bash setup.sh
+
+# Windows 一键安装
+setup.bat
+```
+
+`setup.sh` / `setup.bat` 会自动：
+1. 检查或下载 Node.js v22（国内镜像 npmmirror.com）
+2. 安装 npm 依赖 + Electron（国内镜像）
+3. 下载打包用 Node.js runtime
+4. 询问是否立即启动
+
+安装完成后：
+```bash
+npm run dev              # 开发模式运行
+npm run build:mac-arm64  # 打包 Mac ARM64 DMG
+npm run build:mac-x64    # 打包 Mac Intel DMG
+npm run build:win        # 打包 Windows EXE（需在 Windows 上）
 ```
 
 ### 提交代码
