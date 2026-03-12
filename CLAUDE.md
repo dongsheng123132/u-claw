@@ -89,5 +89,5 @@ Release artifacts go to GitHub Releases, not the repo.
 
 - Mac Apple Silicon (ARM64): ✅ Working
 - Windows x64: 🚧 In development
-- Mac Intel (x64): ❌ Not yet
+- Mac Intel (x64): ✅ Working（portable 需先运行 setup.sh 下载 node-mac-x64）
 - Linux: ❌ Not yet
