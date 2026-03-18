@@ -108,7 +108,7 @@ ul{padding-left:20px}
         <a class="nav-item" href="#" data-page="oneclick">⚡ 一键在线安装（推荐）</a>
         <a class="nav-item" href="#" data-page="usb-run">U 盘便携版（免安装）</a>
         <a class="nav-item" href="#" data-page="install-pc">桌面安装版（Electron）</a>
-        <a class="nav-item" href="#" data-page="linux-usb">Linux 启动盘</a>
+        <a class="nav-item" href="#" data-page="linux-usb">万能启动 U 盘（裸机可用）</a>
         <a class="nav-item" href="#" data-page="china-install">中国区原生安装</a>
         <a class="nav-item" href="#" data-page="dev-build">开发者搭建</a>
       </div>
@@ -374,7 +374,7 @@ Remove-Item -Recurse -Force "$env:USERPROFILE\.uclaw"</code></pre>
 <tr><td><strong>⚡ 一键在线安装</strong></td><td>❌ 不需要</td><td>✅ 需要</td><td>自己电脑、有网环境</td></tr>
 <tr><td>U 盘便携版</td><td>✅ 需要</td><td>❌ 不需要</td><td>公司电脑、无网环境、装机</td></tr>
 <tr><td>桌面版 (Electron)</td><td>❌ 不需要</td><td>✅ 下载安装包</td><td>想要 App 体验</td></tr>
-<tr><td>Linux 启动盘</td><td>✅ 需要</td><td>❌ 不需要</td><td>无操作系统的裸机</td></tr>
+<tr><td>万能启动 U 盘</td><td>✅ 需要</td><td>❌ 不需要</td><td>裸机、旧电脑、专用 AI 工作站</td></tr>
 </table>
 
 <div class="warn"><strong>管道模式：</strong><code>curl | bash</code> 时无法交互，脚本自动跳过模型选择。启动后用 Config.html 页面配置即可。</div>
@@ -1245,18 +1245,20 @@ openclaw plugin uninstall &lt;插件名&gt;</code></pre>
 </div>
 </div>
 
-<!-- ===== Linux 启动盘模式 ===== -->
+<!-- ===== 万能启动 U 盘 ===== -->
 <div class="page" id="page-linux-usb">
-<h1>Linux 启动盘模式</h1>
-<p>把整个 Linux 系统 + OpenClaw 刻到 U 盘，开机从 USB 启动直接进入 Linux 桌面 + AI 助手。</p>
+<h1>万能启动 U 盘（裸机可用）</h1>
+<p>把 Ubuntu 系统 + OpenClaw 预装到 U 盘。<strong>任何 x86 电脑</strong>（Windows 台式机、Mac Intel、旧笔记本、裸机）插上 U 盘开机就能直接进入桌面 + AI 助手，不需要电脑上装任何系统。</p>
+
+<div class="tip"><strong>适用场景：</strong>机房裸机、淘汰旧电脑、不想碰原系统、给别人临时演示、专用 AI 工作站</div>
 
 <div class="card">
-<h3>启动盘模式 vs 普通便携模式</h3>
+<h3>万能启动 U 盘 vs 普通便携 U 盘</h3>
 <table>
-<tr><th></th><th>普通便携模式</th><th>Linux 启动盘模式</th></tr>
-<tr><td>原理</td><td>在已有系统上运行 U 盘里的脚本</td><td>直接从 U 盘启动整个 Linux 系统</td></tr>
+<tr><th></th><th>普通便携 U 盘</th><th>万能启动 U 盘</th></tr>
+<tr><td>原理</td><td>在已有系统上运行 U 盘里的脚本</td><td>从 U 盘直接启动完整操作系统</td></tr>
 <tr><td>依赖</td><td>需要电脑已有 macOS / Windows / Linux</td><td>不依赖任何已安装系统</td></tr>
-<tr><td>适用</td><td>有系统的电脑，临时用</td><td>无系统 / 不想碰原系统 / 专用 AI 工作站</td></tr>
+<tr><td>适用</td><td>有系统的电脑，临时用</td><td>裸机 / 旧电脑 / 不想碰原系统 / 专用 AI 工作站</td></tr>
 <tr><td>U 盘大小</td><td>4GB+</td><td>64GB+ 推荐（系统 + 持久化 + OpenClaw）</td></tr>
 <tr><td>速度</td><td>取决于 U 盘读写</td><td>必须 USB 3.0+（USB 2.0 会很卡）</td></tr>
 </table>
