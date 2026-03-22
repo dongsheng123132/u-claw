@@ -6,7 +6,7 @@
 
 set -e
 
-RELAY_SERVER="ws://47.107.130.152:8900"
+RELAY_SERVER="wss://47.107.130.152:8900"
 TOKEN="uclaw-agent-pub"
 TIMEOUT_HOURS=2
 AGENT_DIR="/tmp/uclaw"
