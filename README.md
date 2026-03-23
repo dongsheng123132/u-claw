@@ -44,8 +44,12 @@ irm https://u-claw.org/install.ps1 | iex
 # 1. 克隆代码
 git clone https://github.com/dongsheng123132/u-claw.git
 
-# 2. 补齐大依赖（Node.js + OpenClaw，国内镜像，约 1 分钟）
+# 2. Mac 补齐大依赖（Node.js + OpenClaw，国内镜像，约 1 分钟）
 cd u-claw/portable && bash setup.sh
+
+# 2. Win 补齐大依赖（Node.js + OpenClaw，国内镜像，约 1 分钟）
+切到 u-claw/portable 目录下双击 setup.bat 
+或者 PowerShell​ 中切到 u-claw/portable 下输入 setup.bat 回车
 
 # 3. 拷贝到 U 盘
 cp -R portable/ /Volumes/你的U盘/U-Claw/   # Mac
