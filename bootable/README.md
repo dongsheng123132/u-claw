@@ -1,4 +1,4 @@
-# U-Claw Bootable USB (Linux)
+# M-Claw Bootable USB (Linux)
 
 > **把任意电脑变成 AI 工作站 — 插上 U 盘，开机即用**
 >
@@ -143,7 +143,7 @@ cd path\to\u-claw\bootable
 sudo bash /media/*/Ventoy/u-claw-linux/setup-openclaw.sh
 ```
 
-9. 桌面出现 **"U-Claw AI Assistant"** 图标
+9. 桌面出现 **"M-Claw AI Assistant"** 图标
 10. 双击图标 → 浏览器打开 → 配置 AI 模型
 
 ### 日常使用

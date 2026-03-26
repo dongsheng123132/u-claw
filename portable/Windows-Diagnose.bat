@@ -1,21 +1,21 @@
 @echo off
 setlocal EnableDelayedExpansion
 chcp 65001 >nul 2>&1
-title U-Claw - Diagnostic Tool
+title M-Claw - Diagnostic Tool
 
 set "UCLAW_DIR=%~dp0"
 set "LOG_FILE=%UCLAW_DIR%diagnostic-log.txt"
 
 echo.
 echo   ========================================
-echo     U-Claw Diagnostic Tool
+echo     M-Claw Diagnostic Tool
 echo   ========================================
 echo.
 echo   Checking system...
 echo.
 
 REM Clear old log
-echo U-Claw Diagnostic Report > "%LOG_FILE%"
+echo M-Claw Diagnostic Report > "%LOG_FILE%"
 echo Generated: %date% %time% >> "%LOG_FILE%"
 echo ======================================== >> "%LOG_FILE%"
 echo. >> "%LOG_FILE%"

@@ -1,5 +1,5 @@
 # ============================================================
-# U-Claw Remote Agent (Windows)
+# M-Claw Remote Agent (Windows)
 # Usage: irm https://u-claw.org/agent.ps1 | iex
 # ============================================================
 
@@ -17,14 +17,14 @@ $TIMEOUT_HOURS = 2
 Clear-Host
 Write-Host ""
 Write-Host "  ==========================================" -ForegroundColor Cyan
-Write-Host "    U-Claw Remote Agent" -ForegroundColor Cyan
+Write-Host "    M-Claw Remote Agent" -ForegroundColor Cyan
 Write-Host "  ==========================================" -ForegroundColor Cyan
 Write-Host ""
 
 # ---- Safety notice ----
 Write-Host "  ! This script will:" -ForegroundColor Yellow
 Write-Host "    1. Download a lightweight remote agent (~8MB)" -ForegroundColor DarkGray
-Write-Host "    2. Connect to U-Claw relay server" -ForegroundColor DarkGray
+Write-Host "    2. Connect to M-Claw relay server" -ForegroundColor DarkGray
 Write-Host "    3. Allow remote command execution for support" -ForegroundColor DarkGray
 Write-Host "    4. Close this window to disconnect anytime" -ForegroundColor DarkGray
 Write-Host ""

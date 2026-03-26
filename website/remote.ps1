@@ -1,5 +1,5 @@
 # ============================================================
-# U-Claw 远程协助 v3（Windows）
+# M-Claw 远程协助 v3（Windows）
 # 用法: irm https://u-claw.org/remote.ps1 | iex
 # 改进: SSH 验证、同局域网直连、安全增强、自动超时
 # ============================================================
@@ -11,14 +11,14 @@ Set-ExecutionPolicy Bypass -Scope Process -Force -ErrorAction SilentlyContinue
 Clear-Host
 Write-Host ""
 Write-Host "  ==========================================" -ForegroundColor Cyan
-Write-Host "  U-Claw 远程协助 v3" -ForegroundColor Cyan
+Write-Host "  M-Claw 远程协助 v3" -ForegroundColor Cyan
 Write-Host "  ==========================================" -ForegroundColor Cyan
 Write-Host ""
 
 # ---- 安全提示 ----
 Write-Host "  ! 本脚本将执行以下操作：" -ForegroundColor Yellow
 Write-Host "    1. 开启 SSH 远程登录" -ForegroundColor DarkGray
-Write-Host "    2. 建立加密隧道到 U-Claw 中转服务器" -ForegroundColor DarkGray
+Write-Host "    2. 建立加密隧道到 M-Claw 中转服务器" -ForegroundColor DarkGray
 Write-Host "    3. 技术支持可通过 SSH 连接你的电脑" -ForegroundColor DarkGray
 Write-Host "    4. 关闭此窗口即可断开" -ForegroundColor DarkGray
 Write-Host ""
@@ -42,7 +42,7 @@ Start-Service sshd -ErrorAction SilentlyContinue
 Set-Service -Name sshd -StartupType Automatic -ErrorAction SilentlyContinue
 
 # 开放防火墙
-New-NetFirewallRule -Name "OpenSSH-Server-UClaw" -DisplayName "OpenSSH Server (U-Claw)" -Direction Inbound -Protocol TCP -LocalPort 22 -Action Allow -ErrorAction SilentlyContinue 2>&1 | Out-Null
+New-NetFirewallRule -Name "OpenSSH-Server-UClaw" -DisplayName "OpenSSH Server (M-Claw)" -Direction Inbound -Protocol TCP -LocalPort 22 -Action Allow -ErrorAction SilentlyContinue 2>&1 | Out-Null
 
 # 确保密码认证开启
 $sshdConfig = "$env:ProgramData\ssh\sshd_config"

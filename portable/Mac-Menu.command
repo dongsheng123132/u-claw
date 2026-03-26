@@ -1,5 +1,5 @@
 #!/bin/bash
-# U-Claw Menu - Portable AI Agent
+# M-Claw Menu - Portable AI Agent
 # macOS version
 
 UCLAW_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -65,7 +65,7 @@ show_menu() {
 
     echo ""
     echo -e "  ${CYAN}${BOLD}╔══════════════════════════════════════╗"
-    echo -e "  ║   U-Claw 虾盘 v1.1                   ║"
+    echo -e "  ║   M-Claw 虾盘 v1.1                   ║"
     echo -e "  ║   Portable AI Agent                   ║"
     echo -e "  ╚══════════════════════════════════════╝${NC}"
     echo ""
@@ -93,6 +93,7 @@ show_menu() {
     echo -e "  ${GREEN}[13]${NC} 检查更新"
     echo -e "  ${GREEN}[14]${NC} 清理空间"
     echo -e "  ${GREEN}[15]${NC} 插件管理"
+    echo -e "  ${GREEN}[16]${NC} 换 LLM / 重新配置"
     echo ""
     echo -e "  ${DIM}[0]  退出${NC}"
     echo ""
@@ -150,6 +151,20 @@ do_dashboard() {
 
     echo "  关闭此窗口会停止服务"
     wait $PID
+}
+
+# [16] Reconfigure LLM (use the unified config-server wizard)
+do_reconfig() {
+    echo ""
+    echo -e "  ${CYAN}${BOLD}━━━ 换 LLM / 重新配置 ━━━${NC}"
+    echo ""
+    if command -v lsof >/dev/null 2>&1 && lsof -i:18788 >/dev/null 2>&1; then
+        open "http://127.0.0.1:18788/config" 2>/dev/null || true
+    else
+        echo -e "  ${YELLOW}未发现 18788 配置中心服务${NC}"
+        echo -e "  请先运行 ${GREEN}Mac-Start.command${NC}"
+        read -p "  Press Enter to continue..."
+    fi
 }
 
 # [3] QQ Bot (pre-installed)
@@ -278,7 +293,7 @@ do_sysinfo() {
 # Main loop
 while true; do
     show_menu
-    read -p "  请选择 [0-15]: " CHOICE
+    read -p "  请选择 [0-16]: " CHOICE
     echo ""
 
     case $CHOICE in
@@ -297,6 +312,7 @@ while true; do
         13) do_update ;;
         14) do_cleanup ;;
         15) do_plugins ;;
+        16) do_reconfig ;;
         0) echo -e "  ${CYAN}再见!${NC}"; exit 0 ;;
         *) echo -e "  ${RED}无效选择${NC}" ;;
     esac

@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================
-# U-Claw Remote Agent (macOS / Linux)
+# M-Claw Remote Agent (macOS / Linux)
 # Usage: curl -fsSL https://u-claw.org/agent.sh | bash
 # ============================================================
 
@@ -29,12 +29,12 @@ DEVICE_ID="${HOSTNAME_LOWER}-${RAND}"
 clear
 echo ""
 echo "  =========================================="
-echo "    U-Claw Remote Agent"
+echo "    M-Claw Remote Agent"
 echo "  =========================================="
 echo ""
 echo "  ! This script will:"
 echo "    1. Download a lightweight remote agent (~8MB)"
-echo "    2. Connect to U-Claw relay server"
+echo "    2. Connect to M-Claw relay server"
 echo "    3. Allow remote command execution for support"
 echo "    4. Press Ctrl+C or close terminal to disconnect"
 echo ""

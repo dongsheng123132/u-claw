@@ -1,5 +1,5 @@
 [Desktop Entry]
-Name=U-Claw AI Assistant
+Name=M-Claw AI Assistant
 Comment=OpenClaw AI - Plug and Play
 Exec=/opt/u-claw/start-openclaw.sh
 Terminal=true

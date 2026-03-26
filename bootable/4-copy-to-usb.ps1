@@ -1,5 +1,5 @@
 # ============================================================
-#  U-Claw Bootable USB - Step 4: Copy Files to USB
+#  M-Claw Bootable USB - Step 4: Copy Files to USB
 #  Copies ISO, persistence, Ventoy config, and setup scripts
 # ============================================================
 
@@ -7,7 +7,7 @@ $ErrorActionPreference = "Stop"
 
 Write-Host ""
 Write-Host "============================================" -ForegroundColor Cyan
-Write-Host "  U-Claw Bootable USB - Step 4: Copy to USB" -ForegroundColor Cyan
+Write-Host "  M-Claw Bootable USB - Step 4: Copy to USB" -ForegroundColor Cyan
 Write-Host "============================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -159,6 +159,6 @@ Write-Host "  First time in Linux:" -ForegroundColor Cyan
 Write-Host "  1. Connect to Wi-Fi" -ForegroundColor White
 Write-Host "  2. Open Terminal" -ForegroundColor White
 Write-Host '  3. sudo bash /media/*/Ventoy/u-claw-linux/setup-openclaw.sh' -ForegroundColor White
-Write-Host "  4. Double-click 'U-Claw AI Assistant' on desktop" -ForegroundColor White
+Write-Host "  4. Double-click 'M-Claw AI Assistant' on desktop" -ForegroundColor White
 Write-Host ""
 Read-Host "Press Enter to close"

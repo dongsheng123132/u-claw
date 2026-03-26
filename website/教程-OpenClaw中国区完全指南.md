@@ -1,13 +1,13 @@
 # OpenClaw 中国区完全指南
 
-> U-Claw 出品 · 综合整理自 OpenClaw 官方文档及社区资源
+> M-Claw 出品 · 综合整理自 OpenClaw 官方文档及社区资源
 
 ---
 
 ## 目录
 
 1. [什么是 OpenClaw？](#1-什么是-openclaw)
-2. [安装（使用 U-Claw 一键安装）](#2-安装使用-u-claw-一键安装)
+2. [安装（使用 M-Claw 一键安装）](#2-安装使用-u-claw-一键安装)
 3. [首次配置](#3-首次配置)
 4. [选择 AI 模型](#4-选择-ai-模型)
 5. [接入聊天平台](#5-接入聊天平台)
@@ -44,12 +44,12 @@ OpenClaw 是一个**开源 AI 助手框架**，你可以把它理解为：
 
 ---
 
-## 2. 安装（使用 U-Claw 一键安装）
+## 2. 安装（使用 M-Claw 一键安装）
 
-### 方式一：U-Claw U 盘安装（推荐，免翻墙）
+### 方式一：M-Claw U 盘安装（推荐，免翻墙）
 
 ```
-1. 插入 U-Claw U 盘
+1. 插入 M-Claw U 盘
 2. Mac: 双击「启动菜单.command」
    Linux: 运行 `bash ./运行.sh`
    Win: 双击「启动菜单.bat」
@@ -296,7 +296,7 @@ openclaw doctor --repair   # 诊断修复
 }
 ```
 
-> 💡 **U-Claw 用户**：如果你是通过 U-Claw 安装的，配置文件在 `U-Claw/data/.openclaw/openclaw.json`，首次配置通过浏览器打开的 Config.html 页面完成，更加直观。
+> 💡 **M-Claw 用户**：如果你是通过 M-Claw 安装的，配置文件在 `M-Claw/data/.openclaw/openclaw.json`，首次配置通过浏览器打开的 Config.html 页面完成，更加直观。
 
 ---
 
@@ -508,7 +508,7 @@ AI: [通过 github 技能搜索]
 
 ### 已预装的 52 个技能
 
-U-Claw 已预装所有官方技能，无需联网下载。在启动菜单选 [13] 可以浏览完整列表。
+M-Claw 已预装所有官方技能，无需联网下载。在启动菜单选 [13] 可以浏览完整列表。
 
 ### 常用技能速查
 
@@ -591,7 +591,7 @@ openclaw cron add "0 18 * * *" "总结今天的工作进度"
 ### Q: 启动报错 "Node.js v22+ is required"
 
 ```bash
-# 使用 U-Claw 自带的 Node.js
+# 使用 M-Claw 自带的 Node.js
 # Mac: 运行 "启动菜单.command" 而不是直接运行 openclaw
 # 或安装到电脑后重新打开终端
 ```
@@ -673,12 +673,12 @@ docker compose up -d
 
 ## 12. 社区资源
 
-### U-Claw（本项目）
+### M-Claw（本项目）
 
 | 项目 | 说明 |
 |------|------|
-| [U-Claw 官网](https://u-claw.org) | 下载、文档、技能市场 |
-| [U-Claw GitHub](https://github.com/dongsheng123132/u-claw) | 源码、Issue、Release |
+| [M-Claw 官网](https://u-claw.org) | 下载、文档、技能市场 |
+| [M-Claw GitHub](https://github.com/dongsheng123132/u-claw) | 源码、Issue、Release |
 
 ### 上游 & 官方
 
@@ -704,4 +704,4 @@ docker compose up -d
 
 ---
 
-*本教程由 U-Claw 社区维护，欢迎 PR 完善内容。*
+*本教程由 M-Claw 社区维护，欢迎 PR 完善内容。*

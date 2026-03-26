@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ============================================================
-#  U-Claw OpenClaw Startup Script (Linux)
+#  M-Claw OpenClaw Startup Script (Linux)
 #  Completely self-contained — no external file dependencies
 # ============================================================
 
@@ -54,7 +54,7 @@ if [[ -z "$PORT" ]]; then
 fi
 
 echo "============================================"
-echo "  U-Claw AI Assistant"
+echo "  M-Claw AI Assistant"
 echo "  Starting on port $PORT ..."
 echo "============================================"
 

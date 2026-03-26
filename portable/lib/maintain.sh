@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================
-# U-Claw Maintenance Functions (shared by Mac menus)
+# M-Claw Maintenance Functions (shared by Mac menus)
 # Requires caller to set: $UCLAW_DIR, $DATA_DIR, $STATE_DIR,
 #   $CONFIG_PATH, $NODE_BIN, $NPM_BIN, $CORE_DIR,
 #   color vars ($RED $GREEN $YELLOW $CYAN $WHITE $NC $BOLD $DIM),
@@ -216,7 +216,7 @@ CFGEOF
 
 do_uninstall() {
     echo ""
-    echo -e "  ${RED}${BOLD}━━━ 卸载 U-Claw ━━━${NC}"
+    echo -e "  ${RED}${BOLD}━━━ 卸载 M-Claw ━━━${NC}"
     echo ""
 
     local MODE=$(detect_install_mode)
@@ -244,7 +244,7 @@ do_uninstall() {
             echo "  检测到: U 盘模式"
             echo ""
             echo "  便携版不需要卸载 —— 只需:"
-            echo "    1. 关闭所有 U-Claw 窗口"
+            echo "    1. 关闭所有 M-Claw 窗口"
             echo "    2. 安全弹出 U 盘"
             echo "    3. 如需清理电脑上的数据，删除 ~/.uclaw/ (如果存在)"
             echo ""
@@ -275,7 +275,7 @@ do_uninstall() {
             fi
             echo ""
             echo "  Electron 桌面版卸载:"
-            echo "    macOS: 将 U-Claw.app 从「应用程序」拖到废纸篓"
+            echo "    macOS: 将 M-Claw.app 从「应用程序」拖到废纸篓"
             ;;
     esac
 }

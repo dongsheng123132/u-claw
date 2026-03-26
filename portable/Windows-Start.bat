@@ -1,10 +1,10 @@
 @echo off
 chcp 65001 >nul 2>&1
-title U-Claw - Portable AI Agent
+title M-Claw - Portable AI Agent
 
 echo.
 echo   ========================================
-echo     U-Claw v1.1 - Portable AI Agent
+echo     M-Claw v1.1 - Portable AI Agent
 echo   ========================================
 echo.
 
@@ -92,23 +92,18 @@ echo.
 REM Start Config Server in background
 echo   Starting Config Center on port 18788...
 set "CONFIG_SERVER=%UCLAW_DIR%config-server"
+set "GATEWAY_PORT=%PORT%"
 start /B "" "%NODE_BIN%" "%CONFIG_SERVER%\server.js" >nul 2>&1
+
+REM Wait for gateway, then open the unified entry (config or chat)
+start "" powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+  "$ok=$false; for($i=0;$i -lt 60;$i++){ try{ Invoke-WebRequest -UseBasicParsing -TimeoutSec 1 http://127.0.0.1:%PORT%/ | Out-Null; $ok=$true; break } catch { Start-Sleep -Milliseconds 500 } }; if($ok){ Start-Process 'http://127.0.0.1:18788/?gatewayPort=%PORT%' }"
 
 REM Wait for config server to start
 timeout /t 2 /nobreak >nul
 
-REM Open both Dashboard and Config Center
-echo   Opening Dashboard and Config Center...
-timeout /t 1 /nobreak >nul
-
-REM Open OpenClaw Dashboard first
-start "" http://127.0.0.1:%PORT%/#token=uclaw
-
-REM Open Config Center (Node.js web UI) second
-start "" http://127.0.0.1:18788/
-
 echo   Browsers opened. Starting OpenClaw Gateway on port %PORT%...
-echo   DO NOT close this window while using U-Claw!
+echo   DO NOT close this window while using M-Claw!
 echo.
 
 cd /d "%CORE_DIR%"

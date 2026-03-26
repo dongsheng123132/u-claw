@@ -5,7 +5,7 @@ const fs = require('fs');
 const http = require('http');
 
 // ── Constants ──
-const APP_NAME = 'U-Claw';
+const APP_NAME = 'M-Claw';
 const DEFAULT_PORT = 18789;
 const MAX_PORT = 18799;
 const GATEWAY_STARTUP_TIMEOUT = 30000;

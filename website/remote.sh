@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================
-# U-Claw 远程协助 v3（Mac/Linux）
+# M-Claw 远程协助 v3（Mac/Linux）
 # 用法: curl -fsSL https://u-claw.org/remote.sh | bash
 # 改进: SSH 验证、同局域网直连、安全增强、自动超时
 # ============================================================
@@ -11,14 +11,14 @@ GREEN='\033[0;32m'; CYAN='\033[0;36m'; RED='\033[0;31m'; YELLOW='\033[1;33m'; DI
 clear
 echo ""
 echo -e "${CYAN}  ===========================================${NC}"
-echo -e "${CYAN}  U-Claw 远程协助 v3${NC}"
+echo -e "${CYAN}  M-Claw 远程协助 v3${NC}"
 echo -e "${CYAN}  ===========================================${NC}"
 echo ""
 
 # ---- 安全提示 ----
 echo -e "${YELLOW}  ⚠ 本脚本将执行以下操作：${NC}"
 echo -e "${DIM}    1. 开启 SSH 远程登录${NC}"
-echo -e "${DIM}    2. 建立加密隧道到 U-Claw 中转服务器${NC}"
+echo -e "${DIM}    2. 建立加密隧道到 M-Claw 中转服务器${NC}"
 echo -e "${DIM}    3. 技术支持可通过 SSH 连接你的电脑${NC}"
 echo -e "${DIM}    4. 关闭终端或 Ctrl+C 即可断开${NC}"
 echo ""

@@ -1,11 +1,11 @@
 @echo off
 setlocal EnableDelayedExpansion
 chcp 65001 >nul 2>&1
-title U-Claw - Install to Windows
+title M-Claw - Install to Windows
 
 echo.
 echo   ========================================
-echo     U-Claw 安装到 Windows
+echo     M-Claw 安装到 Windows
 echo     从 U 盘离线安装
 echo   ========================================
 echo.
@@ -146,14 +146,14 @@ if not exist "%INSTALL_TARGET%\data\.openclaw\openclaw.json" (
 
 REM ---- Copy HTML pages ----
 if exist "%UCLAW_DIR%Config.html" copy "%UCLAW_DIR%Config.html" "%INSTALL_TARGET%\" >nul
-if exist "%UCLAW_DIR%U-Claw.html" copy "%UCLAW_DIR%U-Claw.html" "%INSTALL_TARGET%\" >nul
+if exist "%UCLAW_DIR%M-Claw.html" copy "%UCLAW_DIR%M-Claw.html" "%INSTALL_TARGET%\" >nul
 
 REM ---- Create launch script ----
 (
 echo @echo off
 echo setlocal EnableDelayedExpansion
 echo chcp 65001 ^>nul 2^>^&1
-echo title U-Claw
+echo title M-Claw
 echo set "DIR=%%~dp0"
 echo set "NODE_BIN=%%DIR%%runtime\node-win-x64\node.exe"
 echo if not exist "%%NODE_BIN%%" set "NODE_BIN=node"

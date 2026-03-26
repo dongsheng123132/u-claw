@@ -1,9 +1,9 @@
 {
   "name": "u-claw",
   "version": "2.0.0",
-  "description": "U-Claw - AI 助手桌面版，插上 U 盘就能用",
+  "description": "M-Claw - AI 助手桌面版，插上 U 盘就能用",
   "main": "src/main.js",
-  "author": "U-Claw <hello@u-claw.org> (https://u-claw.org)",
+  "author": "M-Claw <hello@u-claw.org> (https://u-claw.org)",
   "license": "MIT",
   "homepage": "https://u-claw.org",
   "scripts": {
@@ -18,8 +18,8 @@
   },
   "build": {
     "appId": "org.u-claw.desktop",
-    "productName": "U-Claw",
-    "copyright": "Copyright © 2026 U-Claw",
+    "productName": "M-Claw",
+    "copyright": "Copyright © 2026 M-Claw",
     "directories": {
       "output": "release"
     },
@@ -62,7 +62,7 @@
       "gatekeeperAssess": false
     },
     "dmg": {
-      "title": "U-Claw",
+      "title": "M-Claw",
       "icon": "assets/icon.icns",
       "contents": [
         { "x": 130, "y": 220 },
@@ -91,7 +91,7 @@
       "installerHeaderIcon": "assets/icon.ico",
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "U-Claw"
+      "shortcutName": "M-Claw"
     },
     "linux": {
       "target": ["AppImage"],

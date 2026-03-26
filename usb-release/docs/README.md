@@ -1,11 +1,11 @@
-# U-Claw — 便携式 AI 助手
+# M-Claw — 便携式 AI 助手
 
 从 U 盘直接运行，无需安装。
 
 ## 快速开始
 
 ### Mac
-双击 `启动 U-Claw.command` 即可。
+双击 `启动 M-Claw.command` 即可。
 
 ### Windows
 双击 `Windows-Start.bat` 即可。
@@ -20,7 +20,7 @@
 ## 目录说明
 
 ```
-├── 启动 U-Claw.command   ← Mac 启动
+├── 启动 M-Claw.command   ← Mac 启动
 ├── 重新配置.command       ← Mac 重新配置
 ├── Windows-Start.bat     ← Windows 启动
 ├── Windows-Menu.bat      ← Windows 功能菜单

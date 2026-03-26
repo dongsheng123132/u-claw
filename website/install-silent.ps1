@@ -1,5 +1,5 @@
 # ============================================================
-# U-Claw Silent Installer (Windows PowerShell)
+# M-Claw Silent Installer (Windows PowerShell)
 # Non-interactive version for remote exec deployment
 #
 # Usage:
@@ -240,7 +240,7 @@ $startBat = @'
 @echo off
 setlocal EnableDelayedExpansion
 chcp 65001 >nul 2>&1
-title U-Claw
+title M-Claw
 
 set "DIR=%~dp0"
 set "NODE_BIN=%DIR%runtime\node-win-x64\node.exe"

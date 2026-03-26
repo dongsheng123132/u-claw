@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================
-# U-Claw - Install to Mac (从 U 盘安装到电脑)
+# M-Claw - Install to Mac (从 U 盘安装到电脑)
 # 优先使用 U 盘内的离线资源，缺失时从国内镜像下载
 # ============================================================
 
@@ -26,7 +26,7 @@ clear
 echo ""
 echo -e "${CYAN}${BOLD}"
 echo "  ╔══════════════════════════════════════╗"
-echo "  ║   U-Claw 安装到 Mac                  ║"
+echo "  ║   M-Claw 安装到 Mac                  ║"
 echo "  ║   从 U 盘离线安装                     ║"
 echo "  ╚══════════════════════════════════════╝"
 echo -e "${NC}"
@@ -191,7 +191,7 @@ CFGEOF
 fi
 
 # ---- Copy launch scripts ----
-for f in Config.html U-Claw.html; do
+for f in Config.html M-Claw.html; do
     [ -f "$UCLAW_DIR/$f" ] && cp "$UCLAW_DIR/$f" "$INSTALL_TARGET/"
 done
 

@@ -1,4 +1,4 @@
-# U-Claw 一键安装 / One-Line Install
+# M-Claw 一键安装 / One-Line Install
 
 > 一行命令安装 OpenClaw + 技能包 + 模型配置
 > One command to install OpenClaw + skills + model config

@@ -1,5 +1,5 @@
 # ============================================================
-# U-Claw 远程协助 (Windows)
+# M-Claw 远程协助 (Windows)
 # 用法: irm https://u-claw.org/remote-help.ps1 | iex
 # ============================================================
 
@@ -11,7 +11,7 @@ Set-ExecutionPolicy Bypass -Scope Process -Force -ErrorAction SilentlyContinue
 Clear-Host
 Write-Host ""
 Write-Host "  ============================================" -ForegroundColor Cyan
-Write-Host "  U-Claw 远程协助 - 一键开启" -ForegroundColor Cyan
+Write-Host "  M-Claw 远程协助 - 一键开启" -ForegroundColor Cyan
 Write-Host "  技术支持将通过 SSH 帮你安装/调试" -ForegroundColor Cyan
 Write-Host "  ============================================" -ForegroundColor Cyan
 Write-Host ""

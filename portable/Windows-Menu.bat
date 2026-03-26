@@ -1,7 +1,7 @@
 @echo off
 setlocal EnableDelayedExpansion
 chcp 65001 >nul 2>&1
-title U-Claw Menu
+title M-Claw Menu
 
 set "UCLAW_DIR=%~dp0"
 set "APP_DIR=%UCLAW_DIR%app"
@@ -34,7 +34,7 @@ if not exist "%LOG_DIR%" mkdir "%LOG_DIR%"
 cls
 echo.
 echo   ========================================
-echo     U-Claw v1.1 - Menu
+echo     M-Claw v1.1 - Menu
 echo     Portable AI Agent
 echo   ========================================
 echo.
@@ -68,10 +68,11 @@ echo   [12] Uninstall
 echo   [13] Check for updates
 echo   [14] Disk cleanup
 echo   [15] Plugin management
+echo   [16] Change LLM / Reconfigure
 echo.
 echo   [0] Exit
 echo.
-set /p choice="  Choose [0-15]: "
+set /p choice="  Choose [0-16]: "
 
 if "%choice%"=="1" goto :onboard
 if "%choice%"=="2" goto :dashboard
@@ -88,8 +89,17 @@ if "%choice%"=="12" goto :uninstall
 if "%choice%"=="13" goto :checkupdate
 if "%choice%"=="14" goto :diskcleanup
 if "%choice%"=="15" goto :plugins
+if "%choice%"=="16" goto :reconfig
 if "%choice%"=="0" exit /b 0
 echo   Invalid choice
+pause
+goto :menu
+
+:reconfig
+echo.
+echo   === Change LLM / Reconfigure ===
+echo.
+start "" http://127.0.0.1:18788/config
 pause
 goto :menu
 
@@ -433,7 +443,7 @@ goto :menu
 
 :uninstall
 echo.
-echo   === Uninstall U-Claw ===
+echo   === Uninstall M-Claw ===
 echo.
 if exist "%USERPROFILE%\.uclaw" (
     echo   Found installed version: %USERPROFILE%\.uclaw
@@ -452,7 +462,7 @@ if exist "%USERPROFILE%\.uclaw" (
     echo   Path: %UCLAW_DIR%
     echo.
     echo   For Electron desktop app:
-    echo     Open Settings - Apps - find U-Claw - Uninstall
+    echo     Open Settings - Apps - find M-Claw - Uninstall
 )
 pause
 goto :menu

@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================
-# U-Claw 一键安装脚本 (Mac/Linux)
+# M-Claw 一键安装脚本 (Mac/Linux)
 # 用法: curl -fsSL https://u-claw.org/install.sh | bash
 #       或: bash install.sh
 # ============================================================
@@ -34,7 +34,7 @@ echo ""
 echo -e "${CYAN}${BOLD}"
 cat << 'BANNER'
   ╔══════════════════════════════════════════╗
-  ║  🦞 U-Claw 一键安装                      ║
+  ║  🦞 M-Claw 一键安装                      ║
   ║  让 AI 助手一行命令装好                    ║
   ╚══════════════════════════════════════════╝
 BANNER
@@ -999,7 +999,7 @@ for i in $(seq 1 30); do
 done
 
 echo ""
-echo "  🦞 U-Claw 正在运行: http://127.0.0.1:$PORT/#token=uclaw"
+echo "  🦞 M-Claw 正在运行: http://127.0.0.1:$PORT/#token=uclaw"
 echo "  按 Ctrl+C 停止"
 echo ""
 
@@ -1039,7 +1039,7 @@ PID=$!
 
 sleep 2
 echo ""
-echo "  🦞 U-Claw 正在运行: http://127.0.0.1:$PORT/#token=uclaw"
+echo "  🦞 M-Claw 正在运行: http://127.0.0.1:$PORT/#token=uclaw"
 echo "  按 Ctrl+C 停止"
 echo ""
 
@@ -1100,7 +1100,7 @@ INSTALL_SIZE=$(du -sh "$UCLAW_DIR" 2>/dev/null | cut -f1)
 
 echo -e "${GREEN}${BOLD}"
 echo "  ╔══════════════════════════════════════════╗"
-echo "  ║   ✅ U-Claw 安装成功！                    ║"
+echo "  ║   ✅ M-Claw 安装成功！                    ║"
 echo "  ╚══════════════════════════════════════════╝"
 echo -e "${NC}"
 echo -e "  ${BOLD}安装位置:${NC} $UCLAW_DIR"

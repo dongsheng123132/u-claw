@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================
-#  U-Claw — 便携版启动器 (macOS)
+#  M-Claw — 便携版启动器 (macOS)
 #  双击此文件即可启动 OpenClaw
 # ============================================================
 DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -10,7 +10,7 @@ ARCH=$(uname -m)
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; NC='\033[0m'
 
 echo ""
-echo -e "${CYAN}  🦞 U-Claw — 便携版${NC}"
+echo -e "${CYAN}  🦞 M-Claw — 便携版${NC}"
 echo -e "  ════════════════════════════════"
 echo ""
 
@@ -172,12 +172,12 @@ done
 
 TOKEN=$("$NODE_BIN" -e "try{const c=JSON.parse(require('fs').readFileSync('$CONFIG_FILE','utf8'));console.log(c.gateway?.auth?.token||'uclaw')}catch(e){console.log('uclaw')}" 2>/dev/null)
 echo -e "  ${GREEN}════════════════════════════════${NC}"
-echo -e "  ${GREEN}🦞 U-Claw 正在运行！${NC}"
+echo -e "  ${GREEN}🦞 M-Claw 正在运行！${NC}"
 echo -e "  ${GREEN}   地址: http://127.0.0.1:$PORT/#token=$TOKEN${NC}"
 echo ""
 echo -e "  ${YELLOW}按 Ctrl+C 停止服务${NC}"
 echo -e "  ${GREEN}════════════════════════════════${NC}"
 echo ""
 
-trap "kill $GW_PID 2>/dev/null; echo ''; echo '  🦞 U-Claw 已停止'; exit 0" INT TERM
+trap "kill $GW_PID 2>/dev/null; echo ''; echo '  🦞 M-Claw 已停止'; exit 0" INT TERM
 wait $GW_PID

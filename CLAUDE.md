@@ -30,7 +30,7 @@ cd portable && bash setup.sh    # Downloads Node.js v22 + OpenClaw + QQ plugin t
 bash Mac-Start.command          # Launch (Mac ARM64 only currently)
 
 # Copy to USB drive
-cp -R portable/ /Volumes/YOUR_USB/U-Claw/
+cp -R portable/ /Volumes/YOUR_USB/M-Claw/
 
 # Electron desktop app
 cd u-claw-app && bash setup.sh  # One-click: Node.js + Electron + deps (China mirrors)

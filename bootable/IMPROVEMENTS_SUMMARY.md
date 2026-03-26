@@ -1,8 +1,8 @@
-# U-Claw Linux Bootable USB 改进总结
+# M-Claw Linux Bootable USB 改进总结
 
 ## 改进概述
 
-基于实际测试和用户反馈，对U-Claw Linux启动盘模式进行了以下改进，提高了稳定性、易用性和故障恢复能力。
+基于实际测试和用户反馈，对M-Claw Linux启动盘模式进行了以下改进，提高了稳定性、易用性和故障恢复能力。
 
 ## 主要改进
 
@@ -76,7 +76,7 @@ if grep -q "boot=casper" /proc/cmdline 2>/dev/null; then
     apt-get install -y -qq curl xdg-utils gvfs-bin libgtk-3-0 ...
     
     # 创建简化启动器
-    cat > "$HOME/Desktop/Start-U-Claw.sh" ...
+    cat > "$HOME/Desktop/Start-M-Claw.sh" ...
 fi
 ```
 
@@ -210,4 +210,4 @@ bash /opt/u-claw/test-installation.sh
 - 微信: hecare888
 - 邮件: [项目维护者]
 
-这些改进将使U-Claw Linux启动盘更加稳定可靠，为用户提供更好的AI助手体验。
+这些改进将使M-Claw Linux启动盘更加稳定可靠，为用户提供更好的AI助手体验。

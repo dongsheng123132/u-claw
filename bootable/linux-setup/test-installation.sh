@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # ============================================================
-#  U-Claw Installation Test Script
+#  M-Claw Installation Test Script
 #  测试OpenClaw安装是否成功
 # ============================================================
 
 set -euo pipefail
 
 echo "============================================"
-echo "  U-Claw Installation Test"
+echo "  M-Claw Installation Test"
 echo "============================================"
 echo ""
 
@@ -153,7 +153,7 @@ if [ $ERRORS -eq 0 ]; then
     echo "  启动命令:"
     echo "    bash /opt/u-claw/start-openclaw.sh"
     echo ""
-    echo "  或双击桌面上的 'U-Claw AI Assistant' 图标"
+    echo "  或双击桌面上的 'M-Claw AI Assistant' 图标"
 else
     echo -e "${RED}❌ 发现 $ERRORS 个错误${NC}"
     echo "  请检查上述失败的项目。"

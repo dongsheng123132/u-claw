@@ -1,5 +1,5 @@
 # ============================================================
-#  U-Claw Bootable USB - Step 3: Create Persistence Image
+#  M-Claw Bootable USB - Step 3: Create Persistence Image
 #  Creates persistence.dat for Ventoy
 # ============================================================
 
@@ -7,7 +7,7 @@ $ErrorActionPreference = "Stop"
 
 Write-Host ""
 Write-Host "============================================" -ForegroundColor Cyan
-Write-Host "  U-Claw Bootable USB - Step 3: Persistence" -ForegroundColor Cyan
+Write-Host "  M-Claw Bootable USB - Step 3: Persistence" -ForegroundColor Cyan
 Write-Host "============================================" -ForegroundColor Cyan
 Write-Host ""
 

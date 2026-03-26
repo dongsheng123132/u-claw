@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================
-# U-Claw Portable — 开发环境搭建脚本
+# M-Claw Portable — 开发环境搭建脚本
 # 用法: bash setup.sh
 # 作用: 下载 Node.js 运行时 + 安装 OpenClaw 到 app/ 目录
 # ============================================================
@@ -24,7 +24,7 @@ NC='\033[0m'
 
 echo ""
 echo -e "${CYAN}╔══════════════════════════════════════╗${NC}"
-echo -e "${CYAN}║  🦞 U-Claw Portable Setup           ║${NC}"
+echo -e "${CYAN}║  🦞 M-Claw Portable Setup           ║${NC}"
 echo -e "${CYAN}╚══════════════════════════════════════╝${NC}"
 echo ""
 

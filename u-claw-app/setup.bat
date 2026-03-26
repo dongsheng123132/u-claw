@@ -1,10 +1,10 @@
 @echo off
 chcp 65001 >nul 2>&1
-title U-Claw Desktop App Setup
+title M-Claw Desktop App Setup
 
 echo.
 echo   ========================================
-echo     U-Claw Desktop App Setup
+echo     M-Claw Desktop App Setup
 echo     一键安装开发环境
 echo   ========================================
 echo.
@@ -113,7 +113,7 @@ echo.
 set /p RUN="  现在启动开发版？(y/n): "
 if /i "%RUN%"=="y" (
     echo.
-    echo   启动 U-Claw...
+    echo   启动 M-Claw...
     npm run dev
 )
 

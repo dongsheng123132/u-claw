@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================
-# U-Claw Diagnostic Tool - macOS
+# M-Claw Diagnostic Tool - macOS
 # 诊断工具
 # ============================================================
 
@@ -15,7 +15,7 @@ NC='\033[0m'
 clear
 echo ""
 echo "  ========================================"
-echo "    U-Claw Diagnostic Tool"
+echo "    M-Claw Diagnostic Tool"
 echo "    诊断工具"
 echo "  ========================================"
 echo ""
@@ -24,7 +24,7 @@ echo ""
 
 # Clear old log
 cat > "$LOG_FILE" << EOF
-U-Claw Diagnostic Report
+M-Claw Diagnostic Report
 Generated: $(date)
 ========================================
 

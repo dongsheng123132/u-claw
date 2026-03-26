@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================
-# U-Claw - Portable AI Agent (macOS)
+# M-Claw - Portable AI Agent (macOS)
 # Double-click to start / 双击启动
 # ============================================================
 
@@ -25,7 +25,7 @@ NC='\033[0m'
 echo ""
 echo -e "${CYAN}"
 echo "  ╔══════════════════════════════════════╗"
-echo "  ║     🦞 U-Claw v1.1                  ║"
+echo "  ║     🦞 M-Claw v1.1                  ║"
 echo "  ║     Portable AI Agent               ║"
 echo "  ╚══════════════════════════════════════╝"
 echo -e "${NC}"
@@ -120,7 +120,7 @@ done
 # ---- 9. Start Config Server in background ----
 echo -e "  ${CYAN}Starting Config Center on port 18788...${NC}"
 CONFIG_SERVER="$UCLAW_DIR/config-server"
-"$NODE_BIN" "$CONFIG_SERVER/server.js" &
+GATEWAY_PORT="$PORT" "$NODE_BIN" "$CONFIG_SERVER/server.js" &
 CONFIG_PID=$!
 sleep 1
 
@@ -133,22 +133,19 @@ OPENCLAW_MJS="$CORE_DIR/node_modules/openclaw/openclaw.mjs"
 "$NODE_BIN" "$OPENCLAW_MJS" gateway run --allow-unconfigured --force --port $PORT &
 GW_PID=$!
 
-# ---- 11. Wait for gateway, then open browser ----
+# ---- 11. Wait for gateway, then open entry ----
 for i in $(seq 1 30); do
     sleep 0.5
     if curl -s -o /dev/null "http://127.0.0.1:$PORT/" 2>/dev/null; then
-        # Open Dashboard
-        open "http://127.0.0.1:$PORT/#token=uclaw" 2>/dev/null || true
-        # Open Config Center
-        open "http://127.0.0.1:18788/" 2>/dev/null || true
+        # Config Center will decide: config -> wizard; configured -> dashboard
+        open "http://127.0.0.1:18788/?gatewayPort=$PORT" 2>/dev/null || true
         break
     fi
 done
 
 echo -e "  ${GREEN}════════════════════════════════${NC}"
-echo -e "  ${GREEN}🦞 U-Claw is running!${NC}"
-echo -e "  ${GREEN}   Dashboard:     http://127.0.0.1:$PORT/#token=uclaw${NC}"
-echo -e "  ${GREEN}   Config Center: http://127.0.0.1:18788/${NC}"
+echo -e "  ${GREEN}🦞 M-Claw is running!${NC}"
+echo -e "  ${GREEN}   Entry:         http://127.0.0.1:18788/?gatewayPort=$PORT${NC}"
 echo ""
 echo -e "  ${YELLOW}Press Ctrl+C to stop${NC}"
 echo -e "  ${GREEN}════════════════════════════════${NC}"
@@ -159,7 +156,7 @@ cleanup() {
     kill $GW_PID 2>/dev/null
     kill $CONFIG_PID 2>/dev/null
     echo ""
-    echo -e "  🦞 U-Claw stopped."
+    echo -e "  🦞 M-Claw stopped."
     exit 0
 }
 trap cleanup INT TERM

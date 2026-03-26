@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================
-# U-Claw — 开发环境搭建脚本
+# M-Claw — 开发环境搭建脚本
 # 用法: bash setup.sh [--all-platforms] [--with-toolkit]
 # 作用: 下载 Node.js 运行时 + 安装 OpenClaw 到 core/
 # ============================================================
@@ -28,7 +28,7 @@ NC='\033[0m'
 
 echo ""
 echo -e "${CYAN}╔══════════════════════════════════════╗${NC}"
-echo -e "${CYAN}║  🦞 U-Claw Setup                    ║${NC}"
+echo -e "${CYAN}║  🦞 M-Claw Setup                    ║${NC}"
 echo -e "${CYAN}╚══════════════════════════════════════╝${NC}"
 echo ""
 
@@ -190,7 +190,7 @@ echo -e "${GREEN}═════════════════════
 echo -e "${GREEN}  ✅ 搭建完成！${NC}"
 echo ""
 echo -e "  启动方式:"
-echo -e "    Mac:     双击 ${CYAN}启动 U-Claw.command${NC}"
+echo -e "    Mac:     双击 ${CYAN}启动 M-Claw.command${NC}"
 echo -e "    Windows: 双击 ${CYAN}Windows-Start.bat${NC}"
 echo ""
 echo -e "  目录结构:"

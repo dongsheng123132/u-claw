@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ============================================================
-#  U-Claw OpenClaw One-Click Installer for Linux
+#  M-Claw OpenClaw One-Click Installer for Linux
 #  Completely self-contained — no external file dependencies
 # ============================================================
 
@@ -15,7 +15,7 @@ INSTALL_DIR="/opt/u-claw"
 NODE_ARCHIVE="node-${NODE_VERSION}-linux-x64.tar.xz"
 
 echo "============================================"
-echo "  U-Claw OpenClaw Installer for Linux"
+echo "  M-Claw OpenClaw Installer for Linux"
 echo "============================================"
 echo ""
 
@@ -91,7 +91,7 @@ cat > "$INSTALL_DIR/core/package.json" << 'PKGJSON'
   "name": "u-claw-linux",
   "version": "1.0.0",
   "private": true,
-  "description": "U-Claw OpenClaw Linux runtime"
+  "description": "M-Claw OpenClaw Linux runtime"
 }
 PKGJSON
 echo "      Done."
@@ -143,20 +143,20 @@ mkdir -p "$APPS_DIR"
 if grep -q "boot=casper" /proc/cmdline 2>/dev/null; then
     echo "      Live USB detected, creating simplified launcher..."
     # 创建直接启动脚本
-    cat > "$REAL_HOME/Desktop/Start-U-Claw.sh" << 'LAUNCHEREOF'
+    cat > "$REAL_HOME/Desktop/Start-M-Claw.sh" << 'LAUNCHEREOF'
 #!/bin/bash
-echo "Starting U-Claw AI Assistant..."
+echo "Starting M-Claw AI Assistant..."
 cd /opt/u-claw
 bash start-openclaw.sh
 LAUNCHEREOF
-    chmod +x "$REAL_HOME/Desktop/Start-U-Claw.sh"
-    chown "$REAL_USER:$REAL_USER" "$REAL_HOME/Desktop/Start-U-Claw.sh"
+    chmod +x "$REAL_HOME/Desktop/Start-M-Claw.sh"
+    chown "$REAL_USER:$REAL_USER" "$REAL_HOME/Desktop/Start-M-Claw.sh"
 fi
 
 # 仍然创建标准的.desktop文件
 cat > "$DESKTOP_FILE" << 'DESKTOPEOF'
 [Desktop Entry]
-Name=U-Claw AI Assistant
+Name=M-Claw AI Assistant
 Comment=OpenClaw AI - Plug and Play
 Exec=/opt/u-claw/start-openclaw.sh
 Terminal=true
@@ -214,7 +214,7 @@ echo "  Node.js:   $($NODE_BIN --version)"
 echo "  Install:   $INSTALL_DIR"
 echo "  Config:    $INSTALL_DIR/data/.openclaw/openclaw.json"
 echo ""
-echo "  To start:  Double-click 'U-Claw AI Assistant' on desktop"
+echo "  To start:  Double-click 'M-Claw AI Assistant' on desktop"
 echo "         or: bash $INSTALL_DIR/start-openclaw.sh"
 echo ""
 

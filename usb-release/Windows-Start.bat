@@ -1,11 +1,11 @@
 @echo off
 setlocal EnableDelayedExpansion
 chcp 65001 >nul 2>&1
-title U-Claw - Portable AI Agent
+title M-Claw - Portable AI Agent
 
 echo.
 echo   ========================================
-echo     U-Claw - Portable AI Agent
+echo     M-Claw - Portable AI Agent
 echo   ========================================
 echo.
 
@@ -84,7 +84,7 @@ if exist "%STATE_DIR%\openclaw.json" (
 )
 
 echo   Starting OpenClaw on port !PORT!...
-echo   DO NOT close this window while using U-Claw!
+echo   DO NOT close this window while using M-Claw!
 echo.
 
 cd /d "%CORE_DIR%"

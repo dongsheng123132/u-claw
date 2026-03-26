@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>U-Claw 配置中心</title>
+<title>M-Claw 配置中心</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background: #0a0a0a; color: #e0e0e0; min-height: 100vh; }
-.container { max-width: 720px; margin: 0 auto; padding: 28px 20px 60px; }
+.container { max-width: 1100px; margin: 0 auto; padding: 28px 24px 60px; }
 h1 { text-align: center; font-size: 1.8em; margin-bottom: 4px; }
 h1 .lobster { color: #ff6b35; }
 .subtitle { text-align: center; color: #888; margin-bottom: 24px; font-size: 0.92em; }
@@ -27,8 +27,9 @@ h1 .lobster { color: #ff6b35; }
 .section h2 { color: #ff6b35; font-size: 1.15em; margin-bottom: 6px; }
 .section .desc { color: #888; font-size: 0.88em; margin-bottom: 16px; }
 
-/* Model cards */
-.model-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+/* Model cards / Channel cards */
+/* Use multi-column grid to reduce vertical scrolling. */
+.model-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; margin-bottom: 16px; }
 .model-card { background: #222; border: 2px solid #333; border-radius: 10px; padding: 14px; cursor: pointer; transition: all 0.15s; position: relative; }
 .model-card:hover { border-color: #555; transform: translateY(-1px); }
 .model-card.selected { border-color: #ff6b35; background: rgba(255,107,53,0.06); }
@@ -120,11 +121,16 @@ input:focus { border-color: #ff6b35; }
 .skill-item .info h4 { color: #fff; font-size: 0.9em; }
 .skill-item .info p { color: #888; font-size: 0.78em; }
 .skill-item .status { font-size: 0.8em; color: #4caf50; }
+
+@media (max-width: 900px) {
+    .container { padding-left: 16px; padding-right: 16px; }
+    .model-grid { grid-template-columns: repeat(2, 1fr); }
+}
 </style>
 </head>
 <body>
 <div class="container">
-    <h1><span class="lobster">🦞</span> U-Claw 配置中心</h1>
+    <h1><span class="lobster">🦞</span> M-Claw 配置中心</h1>
     <p class="subtitle">选择模型，填入 API Key，一键启动</p>
 
     <!-- Connection status -->
@@ -260,7 +266,7 @@ input:focus { border-color: #ff6b35; }
             <div class="icon">🦞</div>
             <h2>配置完成！</h2>
             <p>模型和 API Key 已保存到本地</p>
-            <div class="url" id="gatewayUrl">http://127.0.0.1:18789</div>
+            <div class="url" id="gatewayUrl"></div>
 
             <div style="margin-top: 24px; text-align: left;">
                 <h3 style="color: #ff6b35; font-size: 0.95em; margin-bottom: 12px;">📱 接入聊天平台（可选）</h3>
@@ -370,6 +376,17 @@ input:focus { border-color: #ff6b35; }
 <div class="toast" id="toast"></div>
 
 <script>
+// Gateway info (passed from Mac/Windows start scripts)
+const GATEWAY_PORT = new URLSearchParams(window.location.search).get('gatewayPort') || '18789';
+const gatewayBase = 'http://127.0.0.1:' + GATEWAY_PORT;
+let gatewayToken = 'uclaw';
+
+// Update UI placeholder once DOM is ready enough
+(function initGatewayUI() {
+    const el = document.getElementById('gatewayUrl');
+    if (el) el.textContent = gatewayBase;
+})();
+
 // --- State ---
 let selectedProvider = null;
 let selectedBase = '';
@@ -552,7 +569,15 @@ async function saveChannelsAndOpen() {
         } catch(e) {}
     }
 
-    window.open('http://127.0.0.1:18789/#token=uclaw', '_blank');
+    // Use the token from openclaw.json (in case it's customized)
+    var token = gatewayToken;
+    try {
+        var cfgRes = await fetch('/api/config');
+        var cfg = cfgRes.ok ? await cfgRes.json() : null;
+        token = (cfg && cfg.gateway && cfg.gateway.auth && cfg.gateway.auth.token) ? cfg.gateway.auth.token : token;
+    } catch (e) {}
+
+    window.open(gatewayBase + '/#token=' + token, '_blank');
 }
 
 // --- View config ---
@@ -582,9 +607,18 @@ async function checkGateway() {
     var dot = document.getElementById('statusDot');
     var text = document.getElementById('statusText');
     try {
-        await fetch('http://127.0.0.1:18789/', { mode: 'no-cors' });
+        await fetch(gatewayBase + '/', { mode: 'no-cors' });
+        // Refresh token from local config (optional but keeps UI consistent)
+        try {
+            var cfgRes = await fetch('/api/config');
+            var cfg = cfgRes.ok ? await cfgRes.json() : null;
+            if (cfg && cfg.gateway && cfg.gateway.auth && cfg.gateway.auth.token) {
+                gatewayToken = cfg.gateway.auth.token;
+            }
+        } catch (e) {}
+
         dot.className = 'dot on';
-        text.innerHTML = 'Gateway 运行中 · <a href="http://127.0.0.1:18789/#token=uclaw" target="_blank">打开 Dashboard →</a>';
+        text.innerHTML = 'Gateway 运行中 · <a href="' + gatewayBase + '/#token=' + gatewayToken + '" target="_blank">打开 Dashboard →</a>';
     } catch(e) {
         dot.className = 'dot off';
         text.innerHTML = 'Gateway 未启动 · 请先运行 Windows-Start.bat 或 Mac-Start.command';
@@ -592,33 +626,70 @@ async function checkGateway() {
 }
 
 // --- Load existing config ---
-async function loadConfig() {
-    try {
-        var res = await fetch('/api/config');
-        var cfg = await res.json();
+function isLLMConfigured(cfg) {
+    if (!cfg || typeof cfg !== 'object') return false;
+    if (cfg.agents && cfg.agents.defaults && cfg.agents.defaults.model && cfg.agents.defaults.model.primary) return true;
+    if (cfg.env && typeof cfg.env === 'object') {
+        var keys = Object.keys(cfg.env);
+        if (keys.some(k => String(k).toUpperCase().includes('API_KEY'))) return true;
+    }
+    if (cfg.models && cfg.models.providers && typeof cfg.models.providers === 'object') {
+        if (Object.keys(cfg.models.providers).length > 0) return true;
+    }
+    if (cfg.agent && cfg.agent.model) return true;
+    return false;
+}
 
-        if (cfg.env && cfg.env.ZAI_API_KEY) {
-            var card = document.querySelector('#step1 .model-card[data-provider="zai"]');
-            if (card) card.click();
-            document.getElementById('apiKey').value = cfg.env.ZAI_API_KEY;
-            return;
+async function loadConfigAndSelect(cfgOverride) {
+    let cfg = cfgOverride || null;
+    try {
+        if (!cfg) {
+            var res = await fetch('/api/config');
+            cfg = await res.json();
         }
 
-        if (cfg.models && cfg.models.providers) {
+        // Select card + prefill API key for UX (only affects step1/2 inputs)
+        if (cfg && cfg.env && cfg.env.ZAI_API_KEY) {
+            var cardZai = document.querySelector('#step1 .model-card[data-provider="zai"]');
+            if (cardZai) cardZai.click();
+            var apiKeyInp = document.getElementById('apiKey');
+            if (apiKeyInp) apiKeyInp.value = cfg.env.ZAI_API_KEY;
+            return cfg;
+        }
+
+        if (cfg && cfg.models && cfg.models.providers) {
             var providerName = Object.keys(cfg.models.providers)[0];
             if (providerName) {
                 var p = cfg.models.providers[providerName];
                 var card = document.querySelector('#step1 .model-card[data-provider="' + providerName + '"]');
                 if (card) card.click();
-                if (p.apiKey) document.getElementById('apiKey').value = p.apiKey;
+                if (p && p.apiKey) {
+                    var apiKeyInp2 = document.getElementById('apiKey');
+                    if (apiKeyInp2) apiKeyInp2.value = p.apiKey;
+                }
             }
         }
-    } catch(e) {}
+    } catch (e) {}
+    return cfg;
 }
 
-loadConfig();
-checkGateway();
-setInterval(checkGateway, 10000);
+async function init() {
+    const pathname = window.location.pathname || '/';
+    const forceConfig = pathname === '/config';
+
+    // Load config once, then decide whether to jump to "chat entry" step.
+    const cfg = await loadConfigAndSelect(null);
+    if (!forceConfig && isLLMConfigured(cfg)) {
+        goStep(3); // show "配置完成 -> 打开 Dashboard" page
+    } else {
+        goStep(1); // show wizard selection
+    }
+
+    checkGateway();
+    setInterval(checkGateway, 10000);
+}
+
+init();
 </script>
 </body>
 </html>

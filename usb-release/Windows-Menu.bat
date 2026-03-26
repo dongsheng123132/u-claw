@@ -1,7 +1,7 @@
 @echo off
 setlocal EnableDelayedExpansion
 chcp 65001 >nul 2>&1
-title U-Claw Menu
+title M-Claw Menu
 
 set "UCLAW_DIR=%~dp0"
 set "CORE_DIR=%UCLAW_DIR%core"
@@ -29,7 +29,7 @@ if not exist "%LOG_DIR%" mkdir "%LOG_DIR%"
 cls
 echo.
 echo   ========================================
-echo     U-Claw - Menu
+echo     M-Claw - Menu
 echo     Portable AI Agent
 echo   ========================================
 echo.
@@ -424,7 +424,7 @@ goto :menu
 
 :uninstall
 echo.
-echo   === Uninstall U-Claw ===
+echo   === Uninstall M-Claw ===
 echo.
 if exist "%USERPROFILE%\.uclaw" (
     echo   Found installed version: %USERPROFILE%\.uclaw
@@ -443,7 +443,7 @@ if exist "%USERPROFILE%\.uclaw" (
     echo   Path: %UCLAW_DIR%
     echo.
     echo   For Electron desktop app:
-    echo     Open Settings - Apps - find U-Claw - Uninstall
+    echo     Open Settings - Apps - find M-Claw - Uninstall
 )
 pause
 goto :menu

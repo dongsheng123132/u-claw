@@ -1,4 +1,4 @@
-# U-Claw 快速完成安装（Node已装好，只需下载bundle+配置）
+# M-Claw 快速完成安装（Node已装好，只需下载bundle+配置）
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $ErrorActionPreference = "Continue"
 
@@ -50,7 +50,7 @@ $bat = @"
 @echo off
 setlocal EnableDelayedExpansion
 chcp 65001 >nul 2>&1
-title U-Claw
+title M-Claw
 set "DIR=%~dp0"
 set "NODE_BIN=%DIR%runtime\node-win-x64\node.exe"
 if not exist "%NODE_BIN%" set "NODE_BIN=node"

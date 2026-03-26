@@ -1,4 +1,4 @@
-# 🦞 U-Claw（虾盘）
+# 🦞 M-Claw（虾盘）
 
 > **虾盘 — 全球首个 U 盘里运行的 AI 助手 | The world's first AI assistant that runs from a USB drive**
 > **制作「插上就能用」的 AI 助手 U 盘 — 教程与源代码**
@@ -16,7 +16,7 @@
 
 ### 这是什么
 
-U-Claw（虾盘）是一个**制作教程 + 全套源代码**，教你把 [OpenClaw](https://github.com/openclaw/openclaw)（开源 AI 助手框架）做成 U 盘——插上任意电脑，双击就能用 AI。为什么叫虾盘？U-Claw = USB + Claw（虾钳），U 盘 + AI = 虾盘。
+M-Claw（虾盘）是一个**制作教程 + 全套源代码**，教你把 [OpenClaw](https://github.com/openclaw/openclaw)（开源 AI 助手框架）做成 U 盘——插上任意电脑，双击就能用 AI。为什么叫虾盘？M-Claw = USB + Claw（虾钳），U 盘 + AI = 虾盘。
 
 代码库本身就是 U 盘的文件骨架，运行 `setup.sh` 补齐大依赖后，整个 `portable/` 目录直接拷贝到 U 盘即可。
 
@@ -48,7 +48,7 @@ git clone https://github.com/dongsheng123132/u-claw.git
 cd u-claw/portable && bash setup.sh
 
 # 3. 拷贝到 U 盘
-cp -R portable/ /Volumes/你的U盘/U-Claw/   # Mac
+cp -R portable/ /Volumes/你的U盘/M-Claw/   # Mac
 # 或 Windows 资源管理器直接拖过去
 ```
 
@@ -66,7 +66,7 @@ cp -R portable/ /Volumes/你的U盘/U-Claw/   # Mac
 ### U 盘文件结构
 
 ```
-U-Claw/                          ← 整个拷到 U 盘
+M-Claw/                          ← 整个拷到 U 盘
 ├── Mac-Start.command             Mac 免安装运行
 ├── Mac-Menu.command              Mac 功能菜单
 ├── Mac-Install.command           安装到 Mac
@@ -165,7 +165,7 @@ bash Mac-Start.command   # Mac 测试
 
 ### 🦞 寻找技术伙伴
 
-U-Claw 是一个快速成长的开源项目，目前已有不少商业合作机会。
+M-Claw 是一个快速成长的开源项目，目前已有不少商业合作机会。
 
 我们正在寻找：
 - **技术伙伴** — 全栈 / Node.js / Electron / 脚本自动化
@@ -205,7 +205,7 @@ MIT 协议，随便复制分发。
 
 ### What is this
 
-U-Claw (aka "虾盘" / "Xia Pan" in Chinese, meaning "Claw Drive") is a **tutorial + complete source code** for building an [OpenClaw](https://github.com/openclaw/openclaw) (open-source AI assistant framework) USB drive — plug it into any computer, double-click, and start using AI.
+M-Claw (aka "虾盘" / "Xia Pan" in Chinese, meaning "Claw Drive") is a **tutorial + complete source code** for building an [OpenClaw](https://github.com/openclaw/openclaw) (open-source AI assistant framework) USB drive — plug it into any computer, double-click, and start using AI.
 
 The codebase itself is the USB file skeleton. Run `setup.sh` to download large dependencies, then copy the entire `portable/` directory to a USB drive.
 
@@ -237,7 +237,7 @@ git clone https://github.com/dongsheng123132/u-claw.git
 cd u-claw/portable && bash setup.sh
 
 # 3. Copy to USB drive
-cp -R portable/ /Volumes/YOUR_USB/U-Claw/   # Mac
+cp -R portable/ /Volumes/YOUR_USB/M-Claw/   # Mac
 # Or drag & drop on Windows
 ```
 
@@ -255,7 +255,7 @@ cp -R portable/ /Volumes/YOUR_USB/U-Claw/   # Mac
 ### File Structure
 
 ```
-U-Claw/                          ← Copy entire folder to USB
+M-Claw/                          ← Copy entire folder to USB
 ├── Mac-Start.command             Mac launcher
 ├── Mac-Menu.command              Mac menu
 ├── Mac-Install.command           Install to Mac
@@ -372,13 +372,13 @@ curl -fsSL https://u-claw.org/remote.sh | bash
 irm https://u-claw.org/remote.ps1 | iex
 ```
 
-WeChat: **hecare888** (备注「U-Claw 远程」优先处理)
+WeChat: **hecare888** (备注「M-Claw 远程」优先处理)
 
 👉 [View full service details / 查看完整服务详情](https://u-claw.org/guide.html#remote-support)
 
 ### 🦞 Looking for Partners
 
-U-Claw is a fast-growing open-source project with real commercial opportunities.
+M-Claw is a fast-growing open-source project with real commercial opportunities.
 
 We're looking for:
 - **Technical partners** — Full-stack / Node.js / Electron / scripting

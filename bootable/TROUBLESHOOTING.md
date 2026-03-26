@@ -1,4 +1,4 @@
-# U-Claw Bootable USB 故障排除指南
+# M-Claw Bootable USB 故障排除指南
 
 ## 常见问题与解决方案
 
