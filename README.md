@@ -26,7 +26,7 @@ U-Claw（虾盘）是一个**制作教程 + 全套源代码**，教你把 [OpenC
 
 > ⚠️ **新手提示：** 本仓库为开源 1.0 版本，构建需要一定的技术基础（Node.js / 命令行 / 脚本），不建议零基础用户贸然折腾。**想省事的话，推荐直接购买商业版（2.0）**，开箱即用。
 >
-> 🚀 **2.0 商业版** 包含 U 盘内运行的**本地模型**（离线可用，无需 API），正在重构中。我们也在探索端侧 AI 硬件方向，欢迎技术极客一起下场——📩 微信：**hecare888**
+> 🚀 **2.0 商业版** 包含 U 盘内运行的**本地模型**（离线可用，无需 API），现已正式销售，附赠 AI 陪跑服务。官网联系下单 👉 [u-claw.org](https://u-claw.org)，也可淘宝搜「虾盘」购买。📩 微信：**hecare888**
 
 ---
 
@@ -224,7 +224,7 @@ The codebase itself is the USB file skeleton. Run `setup.sh` to download large d
 
 > ⚠️ **Heads up for beginners:** This repo is the open-source 1.0 version. Building it requires technical knowledge (Node.js / CLI / scripting). If you just want something that works, **we recommend the commercial 2.0 edition** — no setup needed.
 >
-> 🚀 **Version 2.0** features **on-device local models** (offline, no API key needed), currently being rebuilt. We're also exploring edge AI hardware — if you want to build the next AI entry point, come join us. 📩 WeChat: **hecare888**
+> 🚀 **Version 2.0** features **on-device local models** (offline, no API key needed), now available for purchase — includes AI onboarding support. Order via 👉 [u-claw.org](https://u-claw.org) or Taobao (search "虾盘"). 📩 WeChat: **hecare888**
 
 ---
 
