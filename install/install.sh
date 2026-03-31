@@ -22,7 +22,7 @@ RUNTIME_DIR="$UCLAW_DIR/runtime"
 CORE_DIR="$UCLAW_DIR/core"
 DATA_DIR="$UCLAW_DIR/data"
 CONFIG_PATH="$DATA_DIR/.openclaw/openclaw.json"
-NODE_VERSION="v22.14.0"
+NODE_VERSION="v22.16.0"
 MIRROR="https://registry.npmmirror.com"
 NODE_MIRROR="https://npmmirror.com/mirrors/node"
 

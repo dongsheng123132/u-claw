@@ -78,7 +78,7 @@ New-Item -ItemType Directory -Force -Path "$DATA_DIR\backups" | Out-Null
 # ============================================================
 # Step 2: Node.js
 # ============================================================
-Write-Host "  [1/7] Install Node.js $NODE_VERSION ..." -ForegroundColor White
+Write-Host "  [1/6] Install Node.js $NODE_VERSION ..." -ForegroundColor White
 
 $NODE_INSTALL_DIR = "$RUNTIME_DIR\node-$PLATFORM"
 $INSTALL_NODE = ""
@@ -158,18 +158,18 @@ Write-Host ""
 # ============================================================
 # Step 3: OpenClaw + QQ plugin (pre-bundled download)
 # ============================================================
-Write-Host "  [2/7] Install OpenClaw + QQ plugin ..." -ForegroundColor White
+Write-Host "  [2/6] Install OpenClaw + QQ plugin ..." -ForegroundColor White
 
 if (Test-Path "$CORE_DIR\node_modules\openclaw") {
     Write-Green "  [OK] OpenClaw already installed, skip"
 } else {
     Write-Cyan "  Downloading pre-bundled package (no npm install needed)..."
-    $BUNDLE_URL = "https://github.com/dongsheng123132/u-claw/releases/download/v1.0.0-bundle/openclaw-bundle.zip"
+    $BUNDLE_GITHUB_URL = "https://github.com/dongsheng123132/u-claw/releases/download/v1.0.0-bundle/openclaw-bundle.zip"
     $BUNDLE_MIRRORS = @(
-        "https://ghfast.top/$BUNDLE_URL",
-        "https://gh-proxy.com/$BUNDLE_URL",
-        "https://mirror.ghproxy.com/$BUNDLE_URL",
-        $BUNDLE_URL
+        "https://ghfast.top/https://github.com/dongsheng123132/u-claw/releases/download/v1.0.0-bundle/openclaw-bundle.zip",
+        "https://ghproxy.net/https://github.com/dongsheng123132/u-claw/releases/download/v1.0.0-bundle/openclaw-bundle.zip",
+        "https://gh.idayer.com/https://github.com/dongsheng123132/u-claw/releases/download/v1.0.0-bundle/openclaw-bundle.zip",
+        $BUNDLE_GITHUB_URL
     )
     $bundleZip = "$env:TEMP\openclaw-bundle.zip"
     $downloaded = $false
@@ -179,26 +179,44 @@ if (Test-Path "$CORE_DIR\node_modules\openclaw") {
         try {
             [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
             $ProgressPreference = 'SilentlyContinue'
-            Invoke-WebRequest -Uri $mirrorUrl -OutFile $bundleZip -UseBasicParsing -TimeoutSec 60
-            if ((Get-Item $bundleZip).Length -gt 1MB) {
-                $downloaded = $true
-                break
+            Invoke-WebRequest -Uri $mirrorUrl -OutFile $bundleZip -UseBasicParsing -TimeoutSec 120
+            if (Test-Path $bundleZip) {
+                $fileSize = (Get-Item $bundleZip).Length
+                if ($fileSize -gt 1MB) {
+                    Write-Host "    Downloaded ($([math]::Round($fileSize/1MB,1)) MB)" -ForegroundColor DarkGray
+                    $downloaded = $true
+                    break
+                } else {
+                    Write-Host "    File too small ($fileSize bytes), trying next..." -ForegroundColor DarkGray
+                    Remove-Item -Force $bundleZip -ErrorAction SilentlyContinue
+                }
             }
         } catch {
-            Write-Host "    Failed, trying next..." -ForegroundColor DarkGray
+            Write-Host "    Failed: $($_.Exception.Message.Split([char]10)[0])" -ForegroundColor DarkGray
         }
     }
 
     if (-not $downloaded) {
-        Write-Host "    Trying curl..." -ForegroundColor DarkGray
-        try {
-            & curl.exe -sL "https://ghfast.top/$BUNDLE_URL" -o $bundleZip
-            if ((Get-Item $bundleZip).Length -gt 1MB) { $downloaded = $true }
-        } catch {}
+        Write-Host "    Trying curl fallback..." -ForegroundColor DarkGray
+        $curlMirrors = @(
+            "https://ghfast.top/https://github.com/dongsheng123132/u-claw/releases/download/v1.0.0-bundle/openclaw-bundle.zip",
+            "https://ghproxy.net/https://github.com/dongsheng123132/u-claw/releases/download/v1.0.0-bundle/openclaw-bundle.zip",
+            $BUNDLE_GITHUB_URL
+        )
+        foreach ($curlUrl in $curlMirrors) {
+            try {
+                & curl.exe -L --max-time 120 --retry 2 $curlUrl -o $bundleZip 2>$null
+                if (Test-Path $bundleZip) {
+                    if ((Get-Item $bundleZip).Length -gt 1MB) { $downloaded = $true; break }
+                }
+            } catch {}
+        }
     }
 
     if (-not $downloaded) {
         Write-Red "  [FAIL] Download failed! Check your network."
+        Write-Yellow "  Manual download: $BUNDLE_GITHUB_URL"
+        Write-Yellow "  Place file at: $bundleZip then re-run installer"
         exit 1
     }
 
@@ -232,7 +250,7 @@ Write-Host ""
 # ============================================================
 # Step 4: China-optimized skills (10 skills)
 # ============================================================
-Write-Host "  [4/7] Install China skills (10) ..." -ForegroundColor White
+Write-Host "  [3/6] Install China skills (10) ..." -ForegroundColor White
 
 $SKILLS_TARGET = "$CORE_DIR\node_modules\openclaw\skills"
 if (-not (Test-Path $SKILLS_TARGET)) { New-Item -ItemType Directory -Force -Path $SKILLS_TARGET | Out-Null }
@@ -440,7 +458,7 @@ Write-Host ""
 # ============================================================
 # Step 5: Model configuration
 # ============================================================
-Write-Host "  [5/7] Configure AI model ..." -ForegroundColor White
+Write-Host "  [4/6] Configure AI model ..." -ForegroundColor White
 Write-Host ""
 
 $hasConfig = (Test-Path $CONFIG_PATH) -and (Select-String -Path $CONFIG_PATH -Pattern "apiKey" -Quiet -ErrorAction SilentlyContinue)
@@ -540,7 +558,7 @@ Write-Host ""
 # ============================================================
 # Step 6: Generate start scripts
 # ============================================================
-Write-Host "  [6/7] Generate start scripts ..." -ForegroundColor White
+Write-Host "  [5/6] Generate start scripts ..." -ForegroundColor White
 
 $startBat = @'
 @echo off
@@ -620,7 +638,7 @@ Write-Host ""
 # ============================================================
 # Step 7: Verify
 # ============================================================
-Write-Host "  [7/7] Verify installation ..." -ForegroundColor White
+Write-Host "  [6/6] Verify installation ..." -ForegroundColor White
 Write-Host ""
 
 try {
