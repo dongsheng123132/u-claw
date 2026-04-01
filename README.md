@@ -26,7 +26,7 @@ U-Claw（虾盘）是一个**制作教程 + 全套源代码**，教你把 [OpenC
 
 > ⚠️ **新手提示：** 本仓库为开源 1.0 版本，构建需要一定的技术基础（Node.js / 命令行 / 脚本），不建议零基础用户贸然折腾。**想省事的话，推荐直接购买商业版（2.0）**，开箱即用。
 >
-> 🚀 **2.0 商业版** 包含 U 盘内运行的**本地模型**（离线可用，无需 API），现已正式销售，附赠 AI 陪跑服务。淘宝购买 👉 [虾盘 U 盘（作者出品）](https://item.taobao.com/item.htm?ft=t&id=1038993028562)，或淘宝搜索 `MF278` 直接打开。📩 微信：**hecare888**
+> 🚀 **2.0 商业版** 包含 U 盘内运行的**本地模型**（离线可用，无需 API），现已正式销售，附赠 AI 陪跑服务。淘宝 👉 [虾盘 U 盘（作者出品）](https://e.tb.cn/h.ij8LYYB0cZPkNHw?tk=FMo05XEJYk0)（口令 `HU293`）· 拼多多 👉 [点此购买](https://mobile.yangkeduo.com/goods1.html?ps=WaQeS00tDn)。📩 微信：**hecare888**
 
 ---
 
@@ -224,7 +224,7 @@ The codebase itself is the USB file skeleton. Run `setup.sh` to download large d
 
 > ⚠️ **Heads up for beginners:** This repo is the open-source 1.0 version. Building it requires technical knowledge (Node.js / CLI / scripting). If you just want something that works, **we recommend the commercial 2.0 edition** — no setup needed.
 >
-> 🚀 **Version 2.0** features **on-device local models** (offline, no API key needed), now available — includes AI onboarding support. Buy on Taobao 👉 [U-Claw USB Drive (by author)](https://item.taobao.com/item.htm?ft=t&id=1038993028562), or search `MF278` on Taobao. 📩 WeChat: **hecare888**
+> 🚀 **Version 2.0** features **on-device local models** (offline, no API key needed), now available — includes AI onboarding support. Taobao 👉 [U-Claw USB Drive (by author)](https://e.tb.cn/h.ij8LYYB0cZPkNHw?tk=FMo05XEJYk0) (code `HU293`) · Pinduoduo 👉 [Buy here](https://mobile.yangkeduo.com/goods1.html?ps=WaQeS00tDn). 📩 WeChat: **hecare888**
 
 ---
 
