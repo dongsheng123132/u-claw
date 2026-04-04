@@ -1,14 +1,14 @@
 {
   "latest": {
-    "date": "2026-04-03",
+    "date": "2026-04-04",
     "tip": {
       "title": {
-        "zh": "一键切换模型：快速找到最适合的AI助手",
-        "en": "One-Click Model Switching: Quickly Find the Best AI Assistant"
+        "zh": "一键切换模型：快速调用不同国产大模型",
+        "en": "One-Click Model Switching: Quickly Access Different Domestic LLMs"
       },
       "content": {
-        "zh": "在U-Claw主界面或聊天窗口中，点击模型名称（如DeepSeek）即可弹出模型选择菜单。无需进入复杂设置，即可在8大国产模型间无缝切换。例如，写代码时可切到智谱GLM，需要长上下文分析时则切换到Kimi。这个快捷操作让你能根据当前任务，灵活调用不同模型的专长，极大提升效率。",
-        "en": "On the U-Claw main interface or in the chat window, click the model name (e.g., DeepSeek) to pop up the model selection menu. You can seamlessly switch between the eight major domestic models without entering complex settings. For instance, switch to Zhipu GLM for coding, and to Kimi for long-context analysis. This shortcut allows you to flexibly leverage the expertise of different models based on your current task, significantly boosting efficiency."
+        "zh": "在 U-Claw 主界面或聊天窗口中，点击右上角的模型名称（如“DeepSeek”），会弹出所有 8 个预装国产模型的列表。无需进入复杂设置，直接点击即可瞬间切换。这个技巧特别适合对比不同模型对同一问题的回答风格和准确性，或在某个模型暂时响应缓慢时快速切换到备用模型，确保工作流不中断。",
+        "en": "In the U-Claw main interface or chat window, click the model name (e.g., 'DeepSeek') in the top-right corner to see a list of all 8 pre-installed domestic models. Switch instantly with a single click, no need for complex settings. This is perfect for comparing how different models answer the same question or for quickly switching to a backup model if one becomes slow, ensuring your workflow remains uninterrupted."
       },
       "tag": {
         "zh": "技巧",
@@ -17,12 +17,12 @@
     },
     "case": {
       "title": {
-        "zh": "离线环境下的紧急代码调试",
-        "en": "Emergency Code Debugging in an Offline Environment"
+        "zh": "离线环境下的紧急代码调试助手",
+        "en": "Emergency Code Debugging Assistant in Offline Environments"
       },
       "content": {
-        "zh": "程序员小王在客户现场进行部署，网络突然中断，但一个关键模块报错急需解决。他立即插入U-Claw虾盘，启动离线版的OpenClaw。通过内置的DeepSeek代码技能，他将错误日志和代码片段粘贴给AI。AI快速分析了堆栈信息，指出是一个空指针异常，并给出了具体的修复建议和修改后的代码。小王成功在断网环境下完成了调试，保障了项目进度。",
-        "en": "Programmer Xiao Wang was deploying at a client site when the network suddenly went down, but a critical module reported an error requiring immediate resolution. He promptly inserted the U-Claw USB drive and launched the offline OpenClaw. Using the built-in DeepSeek coding skill, he pasted the error log and code snippets to the AI. The AI quickly analyzed the stack trace, identified a null pointer exception, and provided specific fix suggestions along with corrected code. Xiao Wang successfully completed the debugging in the offline environment, ensuring the project timeline."
+        "zh": "程序员小李在客户现场进行部署，网络受限。遇到一段复杂的 Python 数据处理脚本报错，无法上网搜索。他立即插入 U-Claw 虾盘，在便携模式下启动 OpenClaw，将报错信息和代码片段粘贴给内置的 DeepSeek 模型。AI 不仅精准指出了 pandas 版本兼容性问题，还提供了修改后的代码和解释。小李快速修复了问题，全程离线，保障了客户数据安全，赢得了客户信任。",
+        "en": "Programmer Xiao Li was deploying a system at a client site with restricted internet access. A complex Python data processing script threw an error, and he couldn't search online. He immediately plugged in the U-Claw drive, launched OpenClaw in portable mode, and pasted the error message and code snippet to the built-in DeepSeek model. The AI precisely identified a pandas version compatibility issue, provided corrected code, and an explanation. Xiao Li fixed the problem quickly, entirely offline, ensuring client data security and earning their trust."
       },
       "tag": {
         "zh": "案例",
@@ -31,6 +31,37 @@
     }
   },
   "history": [
+    {
+      "date": "2026-04-03",
+      "tip": {
+        "title": {
+          "zh": "一键切换模型：快速找到最适合的AI助手",
+          "en": "One-Click Model Switching: Quickly Find the Best AI Assistant"
+        },
+        "content": {
+          "zh": "在U-Claw主界面或聊天窗口中，点击模型名称（如DeepSeek）即可弹出模型选择菜单。无需进入复杂设置，即可在8大国产模型间无缝切换。例如，写代码时可切到智谱GLM，需要长上下文分析时则切换到Kimi。这个快捷操作让你能根据当前任务，灵活调用不同模型的专长，极大提升效率。",
+          "en": "On the U-Claw main interface or in the chat window, click the model name (e.g., DeepSeek) to pop up the model selection menu. You can seamlessly switch between the eight major domestic models without entering complex settings. For instance, switch to Zhipu GLM for coding, and to Kimi for long-context analysis. This shortcut allows you to flexibly leverage the expertise of different models based on your current task, significantly boosting efficiency."
+        },
+        "tag": {
+          "zh": "技巧",
+          "en": "Tip"
+        }
+      },
+      "case": {
+        "title": {
+          "zh": "离线环境下的紧急代码调试",
+          "en": "Emergency Code Debugging in an Offline Environment"
+        },
+        "content": {
+          "zh": "程序员小王在客户现场进行部署，网络突然中断，但一个关键模块报错急需解决。他立即插入U-Claw虾盘，启动离线版的OpenClaw。通过内置的DeepSeek代码技能，他将错误日志和代码片段粘贴给AI。AI快速分析了堆栈信息，指出是一个空指针异常，并给出了具体的修复建议和修改后的代码。小王成功在断网环境下完成了调试，保障了项目进度。",
+          "en": "Programmer Xiao Wang was deploying at a client site when the network suddenly went down, but a critical module reported an error requiring immediate resolution. He promptly inserted the U-Claw USB drive and launched the offline OpenClaw. Using the built-in DeepSeek coding skill, he pasted the error log and code snippets to the AI. The AI quickly analyzed the stack trace, identified a null pointer exception, and provided specific fix suggestions along with corrected code. Xiao Wang successfully completed the debugging in the offline environment, ensuring the project timeline."
+        },
+        "tag": {
+          "zh": "案例",
+          "en": "Case"
+        }
+      }
+    },
     {
       "date": "2026-04-02",
       "tip": {
