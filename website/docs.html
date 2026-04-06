@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>虾盘云 API 开发文档</title>
+  <meta name="description" content="虾盘云 API 开发文档：接口说明、余额查询、充值流程、模型列表，适合 AI 开发者快速接入。">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦞</text></svg>">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #0a0a0f;
+      --surface: #12121a;
+      --surface2: #16161f;
+      --border: #1e1e2e;
+      --text: #e4e4e7;
+      --text-dim: #71717a;
+      --accent: #ef4444;
+      --green: #22c55e;
+      --blue: #3b82f6;
+      --yellow: #f59e0b;
+      --purple: #a855f7;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      display: flex;
+    }
+
+    /* SIDEBAR */
+    .sidebar {
+      width: 240px; flex-shrink: 0;
+      position: fixed; top: 0; left: 0; bottom: 0;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      overflow-y: auto; padding: 0 0 32px;
+    }
+    .sidebar-logo {
+      display: flex; align-items: center; gap: 10px;
+      padding: 18px 20px; border-bottom: 1px solid var(--border);
+      text-decoration: none;
+    }
+    .sidebar-logo span {
+      font-size: 16px; font-weight: 800;
+      background: linear-gradient(135deg, #ef4444, #f97316);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .sidebar-back {
+      display: flex; align-items: center; gap: 6px;
+      padding: 10px 20px; font-size: 13px; color: var(--text-dim);
+      text-decoration: none; border-bottom: 1px solid var(--border);
+      transition: color 0.2s;
+    }
+    .sidebar-back:hover { color: var(--text); }
+    .sidebar-section {
+      padding: 20px 20px 6px;
+      font-size: 11px; font-weight: 700; letter-spacing: 1.5px;
+      text-transform: uppercase; color: var(--text-dim);
+    }
+    .sidebar-link {
+      display: block; padding: 7px 20px;
+      font-size: 14px; color: var(--text-dim);
+      text-decoration: none; border-radius: 0;
+      transition: color 0.15s, background 0.15s;
+      border-left: 2px solid transparent;
+    }
+    .sidebar-link:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+    .sidebar-link.active { color: var(--accent); border-left-color: var(--accent); background: rgba(239,68,68,0.05); }
+
+    /* MAIN */
+    .main {
+      margin-left: 240px; flex: 1;
+      max-width: 860px; padding: 48px 56px;
+    }
+
+    /* HEADINGS */
+    h1 { font-size: 32px; font-weight: 800; letter-spacing: -1px; margin-bottom: 10px; }
+    h2 {
+      font-size: 22px; font-weight: 700; margin: 52px 0 16px;
+      padding-bottom: 10px; border-bottom: 1px solid var(--border);
+      scroll-margin-top: 32px;
+    }
+    h2:first-of-type { margin-top: 32px; }
+    h3 { font-size: 16px; font-weight: 700; margin: 28px 0 10px; color: var(--text); }
+    p { font-size: 15px; color: var(--text-dim); margin-bottom: 14px; line-height: 1.7; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* BADGE */
+    .page-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(34,197,94,0.12); border: 1px solid rgba(34,197,94,0.3);
+      color: var(--green); font-size: 12px; font-weight: 700;
+      padding: 4px 12px; border-radius: 20px; margin-bottom: 20px;
+    }
+    .dot-live { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+    /* INFO CARD */
+    .info-table {
+      width: 100%; border-collapse: collapse; margin: 16px 0 28px;
+      border: 1px solid var(--border); border-radius: 12px; overflow: hidden;
+    }
+    .info-table th {
+      background: var(--surface); padding: 10px 16px;
+      font-size: 12px; font-weight: 700; color: var(--text-dim);
+      text-align: left; border-bottom: 1px solid var(--border);
+    }
+    .info-table td {
+      padding: 11px 16px; font-size: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    .info-table tr:last-child td { border-bottom: none; }
+    .info-table td:first-child { color: var(--text-dim); width: 160px; }
+    .info-table code { font-family: 'Fira Code','Courier New',monospace; font-size: 13px; color: var(--accent); }
+
+    /* CODE BLOCK */
+    .code-wrap { position: relative; margin: 12px 0 24px; }
+    .code-label {
+      display: flex; align-items: center; justify-content: space-between;
+      background: #0d0d14; border: 1px solid var(--border);
+      border-bottom: none; border-radius: 10px 10px 0 0;
+      padding: 8px 14px;
+    }
+    .code-lang { font-size: 12px; color: var(--text-dim); font-family: monospace; }
+    .copy-code {
+      background: none; border: 1px solid var(--border);
+      color: var(--text-dim); border-radius: 6px; padding: 3px 10px;
+      font-size: 11px; cursor: pointer; transition: all 0.2s;
+    }
+    .copy-code:hover { border-color: var(--accent); color: var(--accent); }
+    pre {
+      background: #0d0d14; border: 1px solid var(--border);
+      border-radius: 0 0 10px 10px; padding: 18px 20px;
+      font-family: 'Fira Code','Courier New',monospace;
+      font-size: 13px; line-height: 1.75; overflow-x: auto;
+    }
+    .code-wrap pre { margin: 0; }
+    code {
+      font-family: 'Fira Code','Courier New',monospace;
+      font-size: 13px; background: rgba(239,68,68,0.08);
+      border: 1px solid rgba(239,68,68,0.15);
+      color: var(--accent); padding: 1px 6px; border-radius: 4px;
+    }
+    pre code { background: none; border: none; color: inherit; padding: 0; font-size: inherit; }
+
+    /* SYNTAX COLORS */
+    .t-comment { color: #4a5568; }
+    .t-key { color: #68d391; }
+    .t-str { color: #fbd38d; }
+    .t-url { color: #63b3ed; }
+    .t-num { color: #f6ad55; }
+    .t-kw { color: #b794f4; }
+    .t-fn { color: #63b3ed; }
+    .t-var { color: #e4e4e7; }
+
+    /* METHOD BADGE */
+    .method { display: inline-block; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 5px; margin-right: 8px; font-family: monospace; }
+    .method-get { background: rgba(34,197,94,0.15); color: var(--green); }
+    .method-post { background: rgba(59,130,246,0.15); color: var(--blue); }
+
+    /* ENDPOINT BOX */
+    .endpoint {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 14px 18px; margin: 12px 0;
+      font-family: 'Fira Code','Courier New',monospace; font-size: 14px;
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    }
+    .endpoint .path { color: var(--blue); }
+    .endpoint .query { color: var(--yellow); }
+
+    /* RESPONSE BOX */
+    .response-field {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; overflow: hidden; margin: 12px 0 24px;
+    }
+    .response-field table { width: 100%; border-collapse: collapse; }
+    .response-field th {
+      background: #0d0d14; padding: 8px 16px;
+      font-size: 11px; font-weight: 700; color: var(--text-dim);
+      text-align: left; border-bottom: 1px solid var(--border);
+    }
+    .response-field td {
+      padding: 9px 16px; font-size: 13px;
+      border-bottom: 1px solid var(--border); vertical-align: top;
+    }
+    .response-field tr:last-child td { border-bottom: none; }
+    .field-name { font-family: monospace; color: var(--green); }
+    .field-type { color: var(--purple); font-family: monospace; font-size: 12px; }
+    .field-desc { color: var(--text-dim); }
+
+    /* ALERT BOX */
+    .alert {
+      border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+      font-size: 14px; line-height: 1.6; display: flex; gap: 12px; align-items: flex-start;
+    }
+    .alert-warn { background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.25); color: var(--yellow); }
+    .alert-info { background: rgba(59,130,246,0.08); border: 1px solid rgba(59,130,246,0.25); color: var(--blue); }
+    .alert-ok { background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.25); color: var(--green); }
+    .alert-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+    .alert p { color: inherit; margin: 0; }
+
+    /* MODELS TABLE */
+    .models-table {
+      width: 100%; border-collapse: collapse; margin: 16px 0 24px;
+      border: 1px solid var(--border); border-radius: 12px; overflow: hidden;
+    }
+    .models-table th {
+      background: var(--surface); padding: 10px 16px;
+      font-size: 12px; font-weight: 700; color: var(--text-dim);
+      text-align: left; border-bottom: 1px solid var(--border);
+    }
+    .models-table td {
+      padding: 11px 16px; font-size: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    .models-table tr:last-child td { border-bottom: none; }
+    .models-table td:nth-child(1) { font-family: monospace; color: var(--accent); font-size: 13px; }
+
+    /* LIVE TEST */
+    .live-test {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; padding: 24px; margin: 20px 0;
+    }
+    .live-test h4 { font-size: 14px; font-weight: 700; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+    .test-input-row { display: flex; gap: 8px; margin-bottom: 12px; }
+    .test-input {
+      flex: 1; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px 12px;
+      font-size: 13px; font-family: 'Fira Code','Courier New',monospace;
+      color: var(--text); outline: none; transition: border-color 0.2s;
+    }
+    .test-input:focus { border-color: var(--accent); }
+    .test-input::placeholder { color: var(--text-dim); }
+    .btn-test {
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      color: #fff; border: none; border-radius: 8px;
+      padding: 10px 16px; font-size: 13px; font-weight: 600;
+      cursor: pointer; white-space: nowrap; transition: all 0.2s;
+    }
+    .btn-test:hover { box-shadow: 0 4px 14px rgba(59,130,246,0.35); }
+    .btn-test:disabled { opacity: 0.5; cursor: not-allowed; }
+    .test-result {
+      background: #0d0d14; border: 1px solid var(--border);
+      border-radius: 8px; padding: 14px 16px;
+      font-family: 'Fira Code','Courier New',monospace; font-size: 13px; line-height: 1.7;
+      min-height: 60px; color: var(--text-dim); white-space: pre-wrap; word-break: break-all;
+    }
+    .test-result.ok { color: var(--green); }
+    .test-result.err { color: var(--accent); }
+
+    /* QUOTA TABLE */
+    .quota-table {
+      width: 100%; border-collapse: collapse; margin: 12px 0 24px;
+      border: 1px solid var(--border); border-radius: 12px; overflow: hidden;
+    }
+    .quota-table th {
+      background: var(--surface); padding: 9px 16px;
+      font-size: 12px; font-weight: 700; color: var(--text-dim);
+      text-align: left; border-bottom: 1px solid var(--border);
+    }
+    .quota-table td {
+      padding: 10px 16px; font-size: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    .quota-table tr:last-child td { border-bottom: none; }
+    .quota-table td:nth-child(2) { font-family: monospace; color: var(--green); }
+
+    @media (max-width: 860px) {
+      .sidebar { display: none; }
+      .main { margin-left: 0; padding: 24px 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <a href="cloud.html" class="sidebar-logo">
+    <span>🦞 虾盘云</span>
+  </a>
+  <a href="cloud.html" class="sidebar-back">← 返回首页</a>
+
+  <div class="sidebar-section">开始</div>
+  <a href="#overview" class="sidebar-link active">基本信息</a>
+  <a href="#auth" class="sidebar-link">认证方式</a>
+  <a href="#models" class="sidebar-link">支持模型</a>
+
+  <div class="sidebar-section">接口</div>
+  <a href="#chat" class="sidebar-link">对话接口</a>
+  <a href="#balance" class="sidebar-link">余额查询</a>
+  <a href="#usage" class="sidebar-link">用量查询</a>
+
+  <div class="sidebar-section">充值</div>
+  <a href="#recharge-flow" class="sidebar-link">充值流程</a>
+  <a href="#quota-calc" class="sidebar-link">Quota 换算</a>
+
+  <div class="sidebar-section">Key 管理</div>
+  <a href="#key-format" class="sidebar-link">Key 格式</a>
+  <a href="#key-gen" class="sidebar-link">前端生成</a>
+
+  <div class="sidebar-section">在线测试</div>
+  <a href="#live-test" class="sidebar-link">实时查询余额</a>
+</nav>
+
+<!-- MAIN CONTENT -->
+<main class="main">
+
+  <div class="page-badge">
+    <div class="dot-live"></div>
+    API 服务正常运行
+  </div>
+
+  <h1>虾盘云 API 开发文档</h1>
+  <p>虾盘云提供 OpenAI 兼容接口，接入 DeepSeek、Qwen 等主流模型。本文档适合 AI 开发者快速接入，也方便 AI 自动读取。</p>
+  <p>更新时间：2026-04-06</p>
+
+  <!-- OVERVIEW -->
+  <h2 id="overview">基本信息</h2>
+  <table class="info-table">
+    <thead><tr><th>项目</th><th>值</th></tr></thead>
+    <tbody>
+      <tr><td>API 端点</td><td><code>https://api.u-claw.org/v1</code></td></tr>
+      <tr><td>接口格式</td><td>兼容 OpenAI（<code>/v1/chat/completions</code> 等）</td></tr>
+      <tr><td>认证方式</td><td><code>Authorization: Bearer &lt;your-key&gt;</code></td></tr>
+      <tr><td>Key 前缀</td><td><code>sk-xp-</code></td></tr>
+      <tr><td>计费单位</td><td>quota（500,000 quota = $1 = ¥7.2）</td></tr>
+      <tr><td>汇率</td><td>1 USD = 7.2 CNY（固定）</td></tr>
+      <tr><td>最低充值</td><td>¥10</td></tr>
+    </tbody>
+  </table>
+
+  <!-- AUTH -->
+  <h2 id="auth">认证方式</h2>
+  <p>所有请求需在 HTTP Header 中携带 API Key：</p>
+  <div class="code-wrap">
+    <div class="code-label"><span class="code-lang">http</span><button class="copy-code" onclick="copyCode(this)">复制</button></div>
+    <pre><code>Authorization: Bearer sk-xp-your-key-here</code></pre>
+  </div>
+
+  <div class="alert alert-warn">
+    <span class="alert-icon">⚠️</span>
+    <p><strong>注意：</strong>Key 需先充值激活才能使用。未激活的 Key 调用接口会返回「无效的令牌」错误。</p>
+  </div>
+
+  <!-- MODELS -->
+  <h2 id="models">支持模型</h2>
+  <table class="models-table">
+    <thead><tr><th>model ID</th><th>对应模型</th><th>输入价格</th><th>输出价格</th><th>特点</th></tr></thead>
+    <tbody>
+      <tr><td>deepseek-chat</td><td>DeepSeek V3</td><td>¥3 / 百万 token</td><td>¥9 / 百万 token</td><td>综合能力强，推荐首选</td></tr>
+      <tr><td>deepseek-reasoner</td><td>DeepSeek R1</td><td>¥12 / 百万 token</td><td>¥36 / 百万 token</td><td>深度推理，复杂逻辑</td></tr>
+      <tr><td>qwen-turbo</td><td>通义千问 Turbo</td><td>¥1.8 / 百万 token</td><td>¥5.4 / 百万 token</td><td>极速响应，高频场景</td></tr>
+      <tr><td>qwen-plus</td><td>通义千问 Plus</td><td>¥4 / 百万 token</td><td>¥12 / 百万 token</td><td>中文优化，长文档</td></tr>
+    </tbody>
+  </table>
+
+  <!-- CHAT -->
+  <h2 id="chat">对话接口</h2>
+  <div class="endpoint">
+    <span class="method method-post">POST</span>
+    <span class="path">https://api.u-claw.org/v1/chat/completions</span>
+  </div>
+  <p>完全兼容 OpenAI <code>chat/completions</code> 接口格式，直接替换 baseUrl 即可。</p>
+
+  <h3>请求示例</h3>
+  <div class="code-wrap">
+    <div class="code-label"><span class="code-lang">bash (curl)</span><button class="copy-code" onclick="copyCode(this)">复制</button></div>
+    <pre><code>curl https://api.u-claw.org/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer sk-xp-your-key-here" \
+  -d '{
+    "model": "deepseek-chat",
+    "messages": [{"role": "user", "content": "你好"}],
+    "stream": false
+  }'</code></pre>
+  </div>
+
+  <div class="code-wrap">
+    <div class="code-label"><span class="code-lang">javascript</span><button class="copy-code" onclick="copyCode(this)">复制</button></div>
+    <pre><code><span class="t-kw">const</span> <span class="t-var">res</span> = <span class="t-kw">await</span> <span class="t-fn">fetch</span>(<span class="t-str">'https://api.u-claw.org/v1/chat/completions'</span>, {
+  <span class="t-key">method</span>: <span class="t-str">'POST'</span>,
+  <span class="t-key">headers</span>: {
+    <span class="t-str">'Content-Type'</span>: <span class="t-str">'application/json'</span>,
+    <span class="t-str">'Authorization'</span>: <span class="t-str">'Bearer sk-xp-your-key-here'</span>
+  },
+  <span class="t-key">body</span>: <span class="t-fn">JSON.stringify</span>({
+    <span class="t-key">model</span>: <span class="t-str">'deepseek-chat'</span>,
+    <span class="t-key">messages</span>: [{ <span class="t-key">role</span>: <span class="t-str">'user'</span>, <span class="t-key">content</span>: <span class="t-str">'你好'</span> }]
+  })
+});
+<span class="t-kw">const</span> <span class="t-var">data</span> = <span class="t-kw">await</span> <span class="t-var">res</span>.<span class="t-fn">json</span>();
+<span class="t-fn">console</span>.<span class="t-fn">log</span>(<span class="t-var">data</span>.<span class="t-var">choices</span>[<span class="t-num">0</span>].<span class="t-var">message</span>.<span class="t-var">content</span>);</code></pre>
+  </div>
+
+  <div class="code-wrap">
+    <div class="code-label"><span class="code-lang">python</span><button class="copy-code" onclick="copyCode(this)">复制</button></div>
+    <pre><code><span class="t-kw">from</span> openai <span class="t-kw">import</span> OpenAI
+
+client = OpenAI(
+    api_key=<span class="t-str">"sk-xp-your-key-here"</span>,
+    base_url=<span class="t-str">"https://api.u-claw.org/v1"</span>
+)
+
+response = client.chat.completions.create(
+    model=<span class="t-str">"deepseek-chat"</span>,
+    messages=[{<span class="t-str">"role"</span>: <span class="t-str">"user"</span>, <span class="t-str">"content"</span>: <span class="t-str">"你好"</span>}]
+)
+<span class="t-fn">print</span>(response.choices[<span class="t-num">0</span>].message.content)</code></pre>
+  </div>
+
+  <!-- BALANCE -->
+  <h2 id="balance">余额查询接口</h2>
+  <div class="endpoint">
+    <span class="method method-get">GET</span>
+    <span class="path">https://api.u-claw.org/v1/dashboard/billing/subscription</span>
+  </div>
+  <p>返回该 Key 的总充值额度（USD）。</p>
+
+  <h3>返回字段</h3>
+  <div class="response-field">
+    <table>
+      <thead><tr><th>字段</th><th>类型</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td class="field-name">hard_limit_usd</td><td class="field-type">number</td><td class="field-desc">累计充值总额（USD）</td></tr>
+        <tr><td class="field-name">soft_limit_usd</td><td class="field-type">number</td><td class="field-desc">同上（兼容字段）</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>返回示例</h3>
+  <div class="code-wrap">
+    <div class="code-label"><span class="code-lang">json</span><button class="copy-code" onclick="copyCode(this)">复制</button></div>
+    <pre><code>{
+  <span class="t-key">"hard_limit_usd"</span>: <span class="t-num">10.2</span>,
+  <span class="t-key">"soft_limit_usd"</span>: <span class="t-num">10.2</span>
+}</code></pre>
+  </div>
+
+  <!-- USAGE -->
+  <h2 id="usage">用量查询接口</h2>
+  <div class="endpoint">
+    <span class="method method-get">GET</span>
+    <span class="path">https://api.u-claw.org/v1/dashboard/billing/usage</span>
+    <span class="query">?start_date=2020-01-01&amp;end_date=2026-04-06</span>
+  </div>
+  <p>返回该 Key 在指定时间范围内的消耗量。</p>
+
+  <h3>请求参数</h3>
+  <div class="response-field">
+    <table>
+      <thead><tr><th>参数</th><th>类型</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td class="field-name">start_date</td><td class="field-type">string</td><td class="field-desc">开始日期 YYYY-MM-DD，建议填 2020-01-01</td></tr>
+        <tr><td class="field-name">end_date</td><td class="field-type">string</td><td class="field-desc">结束日期 YYYY-MM-DD，建议填今天</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>返回字段</h3>
+  <div class="response-field">
+    <table>
+      <thead><tr><th>字段</th><th>类型</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td class="field-name">total_usage</td><td class="field-type">number</td><td class="field-desc">已消耗量，单位是 USD×100（分），<strong>除以100才是 USD</strong></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>余额计算公式</h3>
+  <div class="code-wrap">
+    <div class="code-label"><span class="code-lang">formula</span><button class="copy-code" onclick="copyCode(this)">复制</button></div>
+    <pre><code>已消耗 USD = total_usage / 100
+剩余 USD   = hard_limit_usd - 已消耗 USD
+剩余 CNY   = 剩余 USD × 7.2</code></pre>
+  </div>
+
+  <h3>完整余额查询示例（JavaScript）</h3>
+  <div class="code-wrap">
+    <div class="code-label"><span class="code-lang">javascript</span><button class="copy-code" onclick="copyCode(this)">复制</button></div>
+    <pre><code><span class="t-kw">const</span> <span class="t-var">API_BASE</span> = <span class="t-str">'https://api.u-claw.org/v1'</span>;
+
+<span class="t-kw">async function</span> <span class="t-fn">queryBalance</span>(apiKey) {
+  <span class="t-kw">const</span> <span class="t-var">headers</span> = { Authorization: <span class="t-str">'Bearer '</span> + apiKey };
+  <span class="t-kw">const</span> <span class="t-var">today</span> = <span class="t-kw">new</span> <span class="t-fn">Date</span>().<span class="t-fn">toISOString</span>().<span class="t-fn">slice</span>(<span class="t-num">0</span>, <span class="t-num">10</span>);
+
+  <span class="t-kw">const</span> [<span class="t-var">subRes</span>, <span class="t-var">usageRes</span>] = <span class="t-kw">await</span> Promise.<span class="t-fn">all</span>([
+    <span class="t-fn">fetch</span>(<span class="t-str">`${API_BASE}/dashboard/billing/subscription`</span>, { headers }),
+    <span class="t-fn">fetch</span>(<span class="t-str">`${API_BASE}/dashboard/billing/usage?start_date=2020-01-01&end_date=${today}`</span>, { headers })
+  ]);
+
+  <span class="t-kw">if</span> (!subRes.ok) <span class="t-kw">throw new</span> Error(<span class="t-str">'Key 无效或未激活'</span>);
+
+  <span class="t-kw">const</span> <span class="t-var">sub</span>   = <span class="t-kw">await</span> subRes.<span class="t-fn">json</span>();
+  <span class="t-kw">const</span> <span class="t-var">usage</span> = <span class="t-kw">await</span> usageRes.<span class="t-fn">json</span>();
+
+  <span class="t-kw">const</span> <span class="t-var">totalUsd</span>  = sub.hard_limit_usd || <span class="t-num">0</span>;
+  <span class="t-kw">const</span> <span class="t-var">usedUsd</span>   = (usage.total_usage || <span class="t-num">0</span>) / <span class="t-num">100</span>;
+  <span class="t-kw">const</span> <span class="t-var">remainUsd</span> = totalUsd - usedUsd;
+
+  <span class="t-kw">return</span> {
+    totalCny:   (totalUsd  * <span class="t-num">7.2</span>).<span class="t-fn">toFixed</span>(<span class="t-num">2</span>),  <span class="t-comment">// 累计充值（CNY）</span>
+    usedCny:    (usedUsd   * <span class="t-num">7.2</span>).<span class="t-fn">toFixed</span>(<span class="t-num">2</span>),  <span class="t-comment">// 已消耗（CNY）</span>
+    balanceCny: (remainUsd * <span class="t-num">7.2</span>).<span class="t-fn">toFixed</span>(<span class="t-num">2</span>),  <span class="t-comment">// 剩余余额（CNY）</span>
+  };
+}
+
+<span class="t-comment">// 使用示例</span>
+<span class="t-fn">queryBalance</span>(<span class="t-str">'sk-xp-your-key-here'</span>).<span class="t-fn">then</span>(console.log);
+<span class="t-comment">// { totalCny: '73.44', usedCny: '1.36', balanceCny: '72.08' }</span></code></pre>
+  </div>
+
+  <h3>curl 测试</h3>
+  <div class="code-wrap">
+    <div class="code-label"><span class="code-lang">bash</span><button class="copy-code" onclick="copyCode(this)">复制</button></div>
+    <pre><code>KEY="sk-xp-your-key-here"
+
+<span class="t-comment"># 查询总充值额</span>
+curl https://api.u-claw.org/v1/dashboard/billing/subscription \
+  -H "Authorization: Bearer $KEY"
+
+<span class="t-comment"># 查询已消耗</span>
+curl "https://api.u-claw.org/v1/dashboard/billing/usage?start_date=2020-01-01&end_date=$(date +%F)" \
+  -H "Authorization: Bearer $KEY"</code></pre>
+  </div>
+
+  <!-- LIVE TEST -->
+  <h2 id="live-test">在线测试：实时查询余额</h2>
+  <p>在这里直接输入你的 Key 测试接口是否正常返回数据。</p>
+  <div class="live-test">
+    <h4>🔬 余额查询测试</h4>
+    <div class="test-input-row">
+      <input type="text" id="testKey" class="test-input" placeholder="sk-xp-..." spellcheck="false">
+      <button class="btn-test" id="testBtn" onclick="runTest()">发送请求</button>
+    </div>
+    <div class="test-result" id="testResult">等待输入 Key...</div>
+  </div>
+
+  <!-- RECHARGE FLOW -->
+  <h2 id="recharge-flow">充值流程</h2>
+  <p>当前为<strong>手工充值</strong>模式，流程如下：</p>
+  <ol style="padding-left:20px;color:var(--text-dim);font-size:15px;line-height:2;">
+    <li>用户在网站生成或粘贴自己的 <code>sk-xp-</code> Key</li>
+    <li>支付宝扫码付款，<strong style="color:var(--text)">付款备注填写 Key</strong></li>
+    <li>管理员收到付款通知后，在 new-api 后台为该 Key 增加 quota</li>
+    <li>用户通过余额查询接口验证是否到账</li>
+  </ol>
+
+  <div class="alert alert-info">
+    <span class="alert-icon">ℹ️</span>
+    <p>工作时间 10 分钟内到账，非工作时间最长 2 小时。</p>
+  </div>
+
+  <!-- QUOTA CALC -->
+  <h2 id="quota-calc">Quota 换算</h2>
+  <p>换算公式：<code>quota = 充值CNY / 7.2 × 500,000</code></p>
+  <table class="quota-table">
+    <thead><tr><th>充值金额（CNY）</th><th>增加 quota</th><th>约等于（USD）</th></tr></thead>
+    <tbody>
+      <tr><td>¥10</td><td>694,444</td><td>$1.39</td></tr>
+      <tr><td>¥20</td><td>1,388,888</td><td>$2.78</td></tr>
+      <tr><td>¥50</td><td>3,472,222</td><td>$6.94</td></tr>
+      <tr><td>¥100</td><td>6,944,444</td><td>$13.89</td></tr>
+    </tbody>
+  </table>
+
+  <!-- KEY FORMAT -->
+  <h2 id="key-format">Key 格式</h2>
+  <p>虾盘云 Key 格式：<code>sk-xp-</code> + 32位十六进制随机字符串（共 38 字符）</p>
+  <div class="code-wrap">
+    <div class="code-label"><span class="code-lang">示例</span><button class="copy-code" onclick="copyCode(this)">复制</button></div>
+    <pre><code>sk-xp-fa3daa78e448871d6ccbffd1540cc07b</code></pre>
+  </div>
+
+  <div class="alert alert-warn">
+    <span class="alert-icon">⚠️</span>
+    <p><strong>重要：</strong>前端生成的 Key 仅是字符串，未在系统中注册。用户付款备注此 Key 后，管理员在 new-api 后台以此名创建 Token，Key 才真正激活生效。</p>
+  </div>
+
+  <!-- KEY GEN -->
+  <h2 id="key-gen">前端生成 Key（JavaScript）</h2>
+  <div class="code-wrap">
+    <div class="code-label"><span class="code-lang">javascript</span><button class="copy-code" onclick="copyCode(this)">复制</button></div>
+    <pre><code><span class="t-kw">function</span> <span class="t-fn">generateKey</span>() {
+  <span class="t-kw">const</span> <span class="t-var">hex</span> = Array.<span class="t-fn">from</span>(crypto.<span class="t-fn">getRandomValues</span>(<span class="t-kw">new</span> <span class="t-fn">Uint8Array</span>(<span class="t-num">16</span>)))
+    .<span class="t-fn">map</span>(b => b.<span class="t-fn">toString</span>(<span class="t-num">16</span>).<span class="t-fn">padStart</span>(<span class="t-num">2</span>, <span class="t-str">'0'</span>)).<span class="t-fn">join</span>(<span class="t-str">''</span>);
+  <span class="t-kw">return</span> <span class="t-str">'sk-xp-'</span> + hex;
+}
+
+<span class="t-fn">generateKey</span>();
+<span class="t-comment">// => "sk-xp-fa3daa78e448871d6ccbffd1540cc07b"</span></code></pre>
+  </div>
+
+  <div class="alert alert-ok">
+    <span class="alert-icon">✅</span>
+    <p>接口测试通过（2026-04-06）：余额查询接口实测返回正常，<code>hard_limit_usd</code> 和 <code>total_usage</code> 字段均可用。</p>
+  </div>
+
+  <p style="margin-top:48px;padding-top:24px;border-top:1px solid var(--border);color:var(--text-dim);font-size:13px;">
+    虾盘云 · <a href="cloud.html">首页</a> · <a href="mailto:hefangsheng@gmail.com">联系我们</a> · © 2026 api.u-claw.org
+  </p>
+</main>
+
+<script>
+// 复制代码
+function copyCode(btn) {
+  const pre = btn.closest('.code-label').nextElementSibling;
+  navigator.clipboard.writeText(pre.innerText).then(() => {
+    btn.textContent = '已复制 ✓';
+    setTimeout(() => btn.textContent = '复制', 2000);
+  });
+}
+
+// 侧边栏高亮
+const links = document.querySelectorAll('.sidebar-link');
+const sections = document.querySelectorAll('h2[id]');
+window.addEventListener('scroll', () => {
+  let cur = '';
+  sections.forEach(s => { if (window.scrollY >= s.offsetTop - 80) cur = s.id; });
+  links.forEach(l => {
+    const href = l.getAttribute('href').slice(1);
+    l.classList.toggle('active', href === cur);
+  });
+});
+
+// 在线测试
+async function runTest() {
+  const key = document.getElementById('testKey').value.trim();
+  const btn = document.getElementById('testBtn');
+  const out = document.getElementById('testResult');
+  if (!key || !key.startsWith('sk-')) {
+    out.className = 'test-result err';
+    out.textContent = '错误：请输入有效的 API Key（以 sk- 开头）';
+    return;
+  }
+  btn.disabled = true; btn.textContent = '请求中...';
+  out.className = 'test-result';
+  out.textContent = '发送请求中...';
+  try {
+    const headers = { Authorization: 'Bearer ' + key };
+    const today = new Date().toISOString().slice(0,10);
+    const [s, u] = await Promise.all([
+      fetch('https://api.u-claw.org/v1/dashboard/billing/subscription', {headers}),
+      fetch('https://api.u-claw.org/v1/dashboard/billing/usage?start_date=2020-01-01&end_date=' + today, {headers})
+    ]);
+    const sub = await s.json();
+    const usage = await u.json();
+    if (!s.ok) {
+      out.className = 'test-result err';
+      out.textContent = 'HTTP ' + s.status + '\n' + JSON.stringify(sub, null, 2);
+    } else {
+      const total = sub.hard_limit_usd || 0;
+      const used  = (usage.total_usage || 0) / 100;
+      const bal   = total - used;
+      out.className = 'test-result ok';
+      out.textContent = [
+        '// 接口返回正常 ✓',
+        '',
+        '// subscription',
+        JSON.stringify(sub, null, 2),
+        '',
+        '// usage',
+        JSON.stringify(usage, null, 2),
+        '',
+        '// 计算结果',
+        '累计充值：¥' + (total * 7.2).toFixed(2),
+        '已消耗：  ¥' + (used  * 7.2).toFixed(2),
+        '剩余余额：¥' + (bal   * 7.2).toFixed(2),
+      ].join('\n');
+    }
+  } catch(e) {
+    out.className = 'test-result err';
+    out.textContent = '网络错误：' + e.message;
+  } finally {
+    btn.disabled = false; btn.textContent = '发送请求';
+  }
+}
+
+document.getElementById('testKey').addEventListener('keydown', e => {
+  if (e.key === 'Enter') runTest();
+});
+</script>
+</body>
+</html>
