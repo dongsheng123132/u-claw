@@ -1,14 +1,14 @@
 {
   "latest": {
-    "date": "2026-04-07",
+    "date": "2026-04-08",
     "tip": {
       "title": {
-        "zh": "一键切换便携模式与本地安装模式",
-        "en": "One-Click Switch Between Portable and Installed Mode"
+        "zh": "一键切换模型：快速找到最适合的AI助手",
+        "en": "One-Click Model Switching: Quickly Find Your Best AI Assistant"
       },
       "content": {
-        "zh": "U-Claw 支持两种使用模式。在启动器界面，点击右上角的齿轮图标进入设置，找到“运行模式”选项。选择“便携模式”则所有配置和数据都保存在 U 盘内，拔下即走；选择“安装到本机”则会将核心程序安装到电脑硬盘，运行更稳定快速。无需重新配置，技能和模型设置会自动同步。",
-        "en": "U-Claw supports two usage modes. In the launcher interface, click the gear icon in the top right to enter settings and find the 'Operation Mode' option. Select 'Portable Mode' to keep all configurations and data on the USB drive for plug-and-play use. Select 'Install to Local' to install the core program to your computer's hard drive for more stable and faster performance. No reconfiguration is needed; skill and model settings sync automatically."
+        "zh": "在U-Claw主界面右下角，点击当前模型名称（如“DeepSeek”），会弹出所有8个国产模型的切换菜单。无需进入复杂设置，即可在对话中实时切换。特别适合对比不同模型对同一问题的回答质量，或根据任务类型（编程/写作/分析）选择专家模型。切换后对话历史会自动保留。",
+        "en": "Click the current model name (e.g., 'DeepSeek') in the bottom-right corner of the U-Claw main interface to open a menu for switching between all 8 domestic models. Switch models in real-time during a conversation without entering complex settings. Perfect for comparing different models' responses to the same query or selecting the best model for specific tasks (coding/writing/analysis). Conversation history is preserved after switching."
       },
       "tag": {
         "zh": "技巧",
@@ -17,12 +17,12 @@
     },
     "case": {
       "title": {
-        "zh": "离线环境下的团队代码审查助手",
-        "en": "Offline Team Code Review Assistant"
+        "zh": "离线环境下的紧急代码调试：程序员出差救星",
+        "en": "Emergency Code Debugging Offline: A Lifesaver for Traveling Developers"
       },
       "content": {
-        "zh": "某开发团队在内网环境办公，无法访问外部 AI 服务。他们使用 U-Claw 的便携模式，将配置好的 U 盘在组内传阅。通过接入企业微信，团队成员将代码片段发送给 U-Claw，它调用内置的 DeepSeek-Coder 模型进行离线分析和审查，快速指出潜在 Bug 和优化建议，显著提升了代码质量和内网开发效率。",
-        "en": "A development team working in an internal network environment couldn't access external AI services. They used U-Claw in portable mode, passing the configured USB drive among the team. By connecting to WeCom (Enterprise WeChat), team members sent code snippets to U-Claw. It utilized the built-in DeepSeek-Coder model for offline analysis and review, quickly identifying potential bugs and optimization suggestions, significantly improving code quality and development efficiency within the internal network."
+        "zh": "张工程师在高铁上遇到生产环境Bug，但列车网络不稳定。他插入U-Claw虾盘，启动便携模式，选择智谱GLM模型分析错误日志。AI不仅定位到数据库连接池泄漏问题，还生成了具体的修复代码和回滚方案。全程无需网络，15分钟解决问题，避免了系统停机风险。",
+        "en": "Engineer Zhang encountered a production bug on a high-speed train with unstable internet. He plugged in the U-Claw drive, launched portable mode, and selected the GLM model to analyze error logs. The AI pinpointed a database connection pool leak and generated specific fix code with a rollback plan. The entire process required no internet, resolving the issue in 15 minutes and preventing system downtime."
       },
       "tag": {
         "zh": "案例",
@@ -31,6 +31,37 @@
     }
   },
   "history": [
+    {
+      "date": "2026-04-07",
+      "tip": {
+        "title": {
+          "zh": "一键切换便携模式与本地安装模式",
+          "en": "One-Click Switch Between Portable and Installed Mode"
+        },
+        "content": {
+          "zh": "U-Claw 支持两种使用模式。在启动器界面，点击右上角的齿轮图标进入设置，找到“运行模式”选项。选择“便携模式”则所有配置和数据都保存在 U 盘内，拔下即走；选择“安装到本机”则会将核心程序安装到电脑硬盘，运行更稳定快速。无需重新配置，技能和模型设置会自动同步。",
+          "en": "U-Claw supports two usage modes. In the launcher interface, click the gear icon in the top right to enter settings and find the 'Operation Mode' option. Select 'Portable Mode' to keep all configurations and data on the USB drive for plug-and-play use. Select 'Install to Local' to install the core program to your computer's hard drive for more stable and faster performance. No reconfiguration is needed; skill and model settings sync automatically."
+        },
+        "tag": {
+          "zh": "技巧",
+          "en": "Tip"
+        }
+      },
+      "case": {
+        "title": {
+          "zh": "离线环境下的团队代码审查助手",
+          "en": "Offline Team Code Review Assistant"
+        },
+        "content": {
+          "zh": "某开发团队在内网环境办公，无法访问外部 AI 服务。他们使用 U-Claw 的便携模式，将配置好的 U 盘在组内传阅。通过接入企业微信，团队成员将代码片段发送给 U-Claw，它调用内置的 DeepSeek-Coder 模型进行离线分析和审查，快速指出潜在 Bug 和优化建议，显著提升了代码质量和内网开发效率。",
+          "en": "A development team working in an internal network environment couldn't access external AI services. They used U-Claw in portable mode, passing the configured USB drive among the team. By connecting to WeCom (Enterprise WeChat), team members sent code snippets to U-Claw. It utilized the built-in DeepSeek-Coder model for offline analysis and review, quickly identifying potential bugs and optimization suggestions, significantly improving code quality and development efficiency within the internal network."
+        },
+        "tag": {
+          "zh": "案例",
+          "en": "Case"
+        }
+      }
+    },
     {
       "date": "2026-04-06",
       "tip": {
