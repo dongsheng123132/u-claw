@@ -49,7 +49,7 @@ if not exist "%DATA_DIR%\logs" mkdir "%DATA_DIR%\logs"
 REM Default config
 if not exist "%STATE_DIR%\openclaw.json" (
     echo   First run - creating default config...
-    echo {"gateway":{"mode":"local","auth":{"token":"uclaw"}}} > "%STATE_DIR%\openclaw.json"
+    (echo {"gateway":{"mode":"local","auth":{"token":"uclaw"}}})>"%STATE_DIR%\openclaw.json"
     echo   Config created
     echo.
 )

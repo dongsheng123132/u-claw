@@ -6,7 +6,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-[中文](#中文) | [English](#english) | [日本語](#日本語) | [📖 完整教程](https://u-claw.org/tutorial.html)
+[中文](#中文) | [English](#english) | [📖 完整教程](https://u-claw.org/tutorial.html)
 
 ---
 
@@ -21,14 +21,6 @@ U-Claw（虾盘）是一个**制作教程 + 全套源代码**，教你把 [OpenC
 代码库本身就是 U 盘的文件骨架，运行 `setup.sh` 补齐大依赖后，整个 `portable/` 目录直接拷贝到 U 盘即可。
 
 > 📖 **[完整教程](https://u-claw.org/tutorial.html)** — 从零开始的手工安装指南、模型配置、聊天平台接入，小白也能看懂。
-
----
-
-> ⚠️ **新手提示：** 本仓库为开源 1.0 版本，构建需要一定的技术基础（Node.js / 命令行 / 脚本），不建议零基础用户贸然折腾。**想省事的话，推荐直接购买商业版（2.0）**，开箱即用。
->
-> 🚀 **2.0 商业版** 包含 U 盘内运行的**本地模型**（离线可用，无需 API），现已正式销售，附赠 AI 陪跑服务。淘宝 👉 [虾盘 U 盘（作者出品）](https://e.tb.cn/h.ij8LYYB0cZPkNHw?tk=FMo05XEJYk0)（口令 `HU293`）· 拼多多 👉 [点此购买](https://mobile.yangkeduo.com/goods1.html?ps=WaQeS00tDn)。📩 微信：**hecare888**
-
----
 
 ### 一键安装（推荐）
 
@@ -53,8 +45,7 @@ irm https://u-claw.org/install.ps1 | iex
 git clone https://github.com/dongsheng123132/u-claw.git
 
 # 2. 补齐大依赖（Node.js + OpenClaw，国内镜像，约 1 分钟）
-cd u-claw/portable && bash setup.sh   # Mac / Linux
-# Windows 用户：双击 setup.bat，或 PowerShell 中运行 setup.ps1
+cd u-claw/portable && bash setup.sh
 
 # 3. 拷贝到 U 盘
 cp -R portable/ /Volumes/你的U盘/U-Claw/   # Mac
@@ -130,7 +121,6 @@ npm run build:win        # 打包 → release/*.exe
 | MiniMax | 语音多模态 |
 | 豆包 Doubao | 火山引擎 |
 
-
 **国际模型：** Claude · GPT · Gemini（需翻墙或中转）
 
 ### 支持的聊天平台
@@ -175,15 +165,18 @@ bash Mac-Start.command   # Mac 测试
 
 ### 🦞 寻找技术伙伴
 
-**U-Claw 虾盘** 是一个快速成长的开源项目，目前已有不少商业合作机会。但作为产品经理的我，还无力独自承接更多的可能性。
+U-Claw 是一个快速成长的开源项目，目前已有不少商业合作机会。
 
-正在寻找：
+我们正在寻找：
 - **技术伙伴** — 全栈 / Node.js / Electron / 脚本自动化
 - **资源合作** — 渠道、内容、社区运营
 
 如果你对 AI 工具的落地和商业化感兴趣，欢迎联系：
 
-- 微信: **hecare888**
+- 微信: hecare888
+- Telegram: [@dsds8848](https://t.me/dsds8848)
+- Twitter/X: [@Bitplus888](https://x.com/Bitplus888)
+- Email: [hefangsheng@gmail.com](mailto:hefangsheng@gmail.com)
 - GitHub: [@dongsheng123132](https://github.com/dongsheng123132)
 - 官网: [u-claw.org](https://u-claw.org)
 
@@ -204,6 +197,9 @@ MIT 协议，随便复制分发。
 ### 联系
 
 - 微信: hecare888
+- Telegram: [@dsds8848](https://t.me/dsds8848)
+- Twitter/X: [@Bitplus888](https://x.com/Bitplus888)
+- Email: [hefangsheng@gmail.com](mailto:hefangsheng@gmail.com)
 - GitHub: [@dongsheng123132](https://github.com/dongsheng123132)
 - 官网: [u-claw.org](https://u-claw.org)
 
@@ -220,14 +216,6 @@ U-Claw (aka "虾盘" / "Xia Pan" in Chinese, meaning "Claw Drive") is a **tutori
 The codebase itself is the USB file skeleton. Run `setup.sh` to download large dependencies, then copy the entire `portable/` directory to a USB drive.
 
 > 📖 **[Full Tutorial](https://u-claw.org/tutorial.html)** — Step-by-step manual installation, model setup, chat platform integration.
-
----
-
-> ⚠️ **Heads up for beginners:** This repo is the open-source 1.0 version. Building it requires technical knowledge (Node.js / CLI / scripting). If you just want something that works, **we recommend the commercial 2.0 edition** — no setup needed.
->
-> 🚀 **Version 2.0** features **on-device local models** (offline, no API key needed), now available — includes AI onboarding support. Taobao 👉 [U-Claw USB Drive (by author)](https://e.tb.cn/h.ij8LYYB0cZPkNHw?tk=FMo05XEJYk0) (code `HU293`) · Pinduoduo 👉 [Buy here](https://mobile.yangkeduo.com/goods1.html?ps=WaQeS00tDn). 📩 WeChat: **hecare888**
-
----
 
 ### One-Line Install (Recommended)
 
@@ -252,8 +240,7 @@ See [`install/README.md`](install/README.md) for details.
 git clone https://github.com/dongsheng123132/u-claw.git
 
 # 2. Download dependencies (Node.js + OpenClaw, ~1 min)
-cd u-claw/portable && bash setup.sh   # Mac / Linux
-# Windows: double-click setup.bat, or run setup.ps1 in PowerShell
+cd u-claw/portable && bash setup.sh
 
 # 3. Copy to USB drive
 cp -R portable/ /Volumes/YOUR_USB/U-Claw/   # Mac
@@ -397,16 +384,19 @@ WeChat: **hecare888** (备注「U-Claw 远程」优先处理)
 
 ### 🦞 Looking for Partners
 
-**U-Claw** is a fast-growing open-source project with real commercial opportunities already on the table. But as a solo product manager, I can't capture them alone.
+U-Claw is a fast-growing open-source project with real commercial opportunities.
 
-Looking for:
-- **Technical partners** — Full-stack / Node.js / Electron / scripting & automation
-- **Resource partners** — Distribution channels, content creation, community ops
+We're looking for:
+- **Technical partners** — Full-stack / Node.js / Electron / scripting
+- **Resource partners** — Distribution, content, community
 
-If you're excited about bringing AI tools to market, let's talk:
+If you're interested in AI tooling and commercialization, let's talk:
 
-- WeChat: **hecare888**
+- Telegram: [@dsds8848](https://t.me/dsds8848)
+- Twitter/X: [@Bitplus888](https://x.com/Bitplus888)
+- Email: [hefangsheng@gmail.com](mailto:hefangsheng@gmail.com)
 - GitHub: [@dongsheng123132](https://github.com/dongsheng123132)
+- WeChat: hecare888
 - Website: [u-claw.org](https://u-claw.org)
 
 ### FAQ
@@ -425,174 +415,12 @@ Right-click the script → Open.
 
 ### Contact
 
-- WeChat: hecare888
+- Telegram: [@dsds8848](https://t.me/dsds8848)
+- Twitter/X: [@Bitplus888](https://x.com/Bitplus888)
+- Email: [hefangsheng@gmail.com](mailto:hefangsheng@gmail.com)
 - GitHub: [@dongsheng123132](https://github.com/dongsheng123132)
+- WeChat: hecare888
 - Website: [u-claw.org](https://u-claw.org)
-
----
-
----
-
-<a id="日本語"></a>
-
-## 日本語
-
-### これは何？
-
-U-Claw（虾盘 / シャーパン）は、[OpenClaw](https://github.com/openclaw/openclaw)（オープンソース AI アシスタントフレームワーク）を USB メモリに入れて持ち運べるようにする**チュートリアル + ソースコード一式**です。任意の PC に差し込み、ダブルクリックするだけで AI が使えます。
-
-コードベースがそのまま USB のファイル構造になっています。`setup.sh` で大きな依存ファイルをダウンロードした後、`portable/` ディレクトリを USB にコピーすれば完成です。
-
-> 📖 **[完全チュートリアル](https://u-claw.org/tutorial.html)** — ゼロからの手動インストール、モデル設定、チャットプラットフォーム連携。
-
-### ワンラインインストール（推奨）
-
-USB 不要。コマンド一行で PC に直接インストール：
-
-```bash
-# Mac / Linux
-curl -fsSL https://u-claw.org/install.sh | bash
-
-# Windows (PowerShell を管理者として実行)
-irm https://u-claw.org/install.ps1 | iex
-```
-
-自動で Node.js ダウンロード → OpenClaw インストール → スキル設定 → AI モデル設定 → 起動スクリプト生成まで完了します。中国ミラーを使用。
-
-詳細は [`install/README.md`](install/README.md) を参照。
-
-### クイックスタート：ポータブル USB の作成
-
-```bash
-# 1. クローン
-git clone https://github.com/dongsheng123132/u-claw.git
-
-# 2. 依存ファイルをダウンロード（Node.js + OpenClaw、約1分）
-cd u-claw/portable && bash setup.sh
-
-# 3. USB にコピー
-cp -R portable/ /Volumes/YOUR_USB/U-Claw/   # Mac
-# Windows はエクスプローラーでドラッグ＆ドロップ
-```
-
-**完了！** USB を差し込み、起動スクリプトをダブルクリックするだけ。
-
-### USB の機能一覧
-
-| 機能 | Mac | Windows |
-|------|-----|---------|
-| **インストール不要で実行** | `Mac-Start.command` | `Windows-Start.bat` |
-| **メニュー** | `Mac-Menu.command` | `Windows-Menu.bat` |
-| **PC にインストール** | `Mac-Install.command` | `Windows-Install.bat` |
-| **初回設定** | `Config.html` | `Config.html` |
-
-### ファイル構造
-
-```
-U-Claw/                          ← フォルダごと USB にコピー
-├── Mac-Start.command             Mac 起動スクリプト
-├── Mac-Menu.command              Mac メニュー
-├── Mac-Install.command           Mac にインストール
-├── Windows-Start.bat             Windows 起動スクリプト
-├── Windows-Menu.bat              Windows メニュー
-├── Windows-Install.bat           Windows にインストール
-├── Config.html                   初回設定ページ
-├── setup.sh                      依存ダウンロード（開発者向け）
-├── app/                          ← 大きな依存ファイル（setup.sh でDL、git 管理外）
-│   ├── core/                        OpenClaw + QQ プラグイン
-│   └── runtime/
-│       ├── node-mac-arm64/          Mac Apple Silicon
-│       ├── node-mac-x64/           Mac Intel
-│       └── node-win-x64/           Windows 64-bit
-└── data/                         ← ユーザーデータ（git 管理外）
-    ├── .openclaw/                   設定ファイル
-    ├── memory/                      AI メモリ
-    └── backups/                     バックアップ
-```
-
-### Linux ブータブル USB
-
-OS がなくても大丈夫。任意の PC を USB から Ubuntu + AI で起動できます：
-
-- 本リポジトリ内：[`bootable/`](bootable/) ディレクトリ（他のモジュールと完全に独立）
-- 独立リポジトリ：[u-claw-linux](https://github.com/dongsheng123132/u-claw-linux)（同じ内容、単独クローン向け）
-
-Ventoy + Ubuntu 24.04 LTS + 永続化ストレージ対応。Windows 上で 4 ステップの PowerShell スクリプトを実行して作成。詳細は [`bootable/README.md`](bootable/README.md) を参照。
-
-### デスクトップアプリ（Electron）
-
-```bash
-cd u-claw-app
-bash setup.sh            # ワンクリックで開発環境セットアップ
-npm run dev              # 開発モードで実行
-npm run build:mac-arm64  # ビルド → release/*.dmg
-npm run build:win        # ビルド → release/*.exe
-```
-
-### 対応 AI モデル
-
-**中国国産モデル（VPN 不要）：**
-
-| モデル | 推奨用途 |
-|--------|----------|
-| DeepSeek | プログラミング最適、超低価格 |
-| Kimi K2.5 | 長文ドキュメント、256K コンテキスト |
-| Qwen (通義千問) | 無料枠が大きい |
-| GLM (智谱) | 学術向け |
-| MiniMax | 音声・マルチモーダル |
-| Doubao (豆包) | 火山エンジン |
-
-**国際モデル：** Claude・GPT・Gemini（中国からは VPN またはリレーが必要）
-
-### 対応チャットプラットフォーム
-
-| プラットフォーム | 状態 | 備考 |
-|------------------|------|------|
-| QQ | ✅ プリインストール | AppID + Secret を入力 |
-| 飛書 (Lark) | ✅ 内蔵 | 企業向け |
-| Telegram | ✅ 内蔵 | 海外向け |
-| WhatsApp | ✅ 内蔵 | Baileys プロトコル |
-| Discord | ✅ 内蔵 | — |
-| WeChat | ✅ コミュニティプラグイン | iPad プロトコル |
-
-### 開発 & コントリビュート
-
-```bash
-git clone https://github.com/dongsheng123132/u-claw.git
-cd u-claw/portable && bash setup.sh
-bash Mac-Start.command   # Mac でテスト
-```
-
-**対応プラットフォーム：**
-
-| プラットフォーム | 状態 | 備考 |
-|------------------|------|------|
-| Mac Apple Silicon (M1-M4) | ✅ | ポータブル + デスクトップ |
-| Mac Intel (x64) | ✅ | ポータブル + デスクトップ |
-| Windows x64 | 🚧 開発中 | ポータブル + デスクトップ |
-| Linux x64（ブータブル USB） | ✅ | [`bootable/`](bootable/) ディレクトリ |
-
-PR 歓迎！特に：Windows スクリプトの改善、ドキュメント翻訳。
-
-### FAQ
-
-**Q: VPN は必要ですか？**
-不要です。インストール・実行ともに中国ミラーを使用。中国国産モデルの API は直接接続できます。
-
-**Q: USB メモリの容量はどのくらい必要ですか？**
-4GB 以上（フルで約 2.3GB）。
-
-**Q: 再配布できますか？**
-MIT ライセンスです。自由にコピー・配布できます。
-
-**Q: Mac で「未確認の開発元」と表示されますか？**
-スクリプトを右クリック → 「開く」を選択してください。
-
-### お問い合わせ
-
-- WeChat: hecare888
-- GitHub: [@dongsheng123132](https://github.com/dongsheng123132)
-- ウェブサイト: [u-claw.org](https://u-claw.org)
 
 ---
 

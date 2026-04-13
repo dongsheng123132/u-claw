@@ -132,7 +132,7 @@ if "!USE_OPENCLAW!"=="usb" (
 ) else (
     echo   从国内镜像下载 OpenClaw...
     mkdir "%INSTALL_TARGET%\core" 2>nul
-    echo {"name":"u-claw-core","version":"1.0.0","private":true,"dependencies":{"openclaw":"latest"}} > "%INSTALL_TARGET%\core\package.json"
+    (echo {"name":"u-claw-core","version":"1.0.0","private":true,"dependencies":{"openclaw":"latest"}})>"%INSTALL_TARGET%\core\package.json"
     cd /d "%INSTALL_TARGET%\core"
     call "!INSTALL_NPM!" install --registry=%MIRROR%
     call "!INSTALL_NPM!" install @sliverp/qqbot@latest --registry=%MIRROR%
@@ -151,7 +151,7 @@ if exist "%APP_DIR%\extensions\openclaw-weixin\openclaw.plugin.json" (
 
 REM ---- Default config ----
 if not exist "%INSTALL_TARGET%\data\.openclaw\openclaw.json" (
-    echo {"gateway":{"mode":"local","auth":{"token":"uclaw"}}} > "%INSTALL_TARGET%\data\.openclaw\openclaw.json"
+    (echo {"gateway":{"mode":"local","auth":{"token":"uclaw"}}})>"%INSTALL_TARGET%\data\.openclaw\openclaw.json"
 )
 
 REM ---- Copy HTML pages ----

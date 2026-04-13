@@ -1,7 +1,9 @@
 #!/bin/bash
 # ============================================================
 # U-Claw Remote Agent (macOS / Linux)
-# Usage: curl -fsSL https://u-claw.org/agent.sh | bash
+# Usage:
+#   Install & run:  curl -fsSL https://u-claw.org/agent.sh | bash
+#   Uninstall:      curl -fsSL https://u-claw.org/agent.sh | bash -s -- --uninstall
 # ============================================================
 
 set -e
@@ -12,12 +14,54 @@ TIMEOUT_HOURS=2
 AGENT_DIR="/tmp/uclaw"
 AGENT_PATH="$AGENT_DIR/agent"
 
-# Detect OS
+# ---- Uninstall mode ----
+if [ "${1:-}" = "--uninstall" ]; then
+    echo ""
+    echo "  =========================================="
+    echo "    U-Claw Agent — Uninstall"
+    echo "  =========================================="
+    echo ""
+    # Kill running agent processes
+    if pgrep -f "$AGENT_PATH" >/dev/null 2>&1; then
+        echo "  [1/2] Stopping running agent..."
+        pkill -f "$AGENT_PATH" 2>/dev/null || true
+        sleep 1
+        echo "  [OK] Agent stopped"
+    else
+        echo "  [1/2] No running agent found"
+    fi
+    # Remove files
+    if [ -d "$AGENT_DIR" ]; then
+        echo "  [2/2] Removing $AGENT_DIR ..."
+        rm -rf "$AGENT_DIR"
+        echo "  [OK] Removed"
+    else
+        echo "  [2/2] Nothing to remove ($AGENT_DIR not found)"
+    fi
+    echo ""
+    echo "  Uninstall complete. All clean!"
+    echo ""
+    exit 0
+fi
+
+# ---- Detect OS & architecture ----
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+ARCH=$(uname -m)
+
 case "$OS" in
-    darwin)  DOWNLOAD_URL="https://u-claw.org/downloads/agent" ;;
-    linux)   DOWNLOAD_URL="https://u-claw.org/downloads/agent-linux" ;;
-    *)       echo "  [FAIL] Unsupported OS: $OS"; exit 1 ;;
+    darwin)
+        case "$ARCH" in
+            arm64|aarch64) DOWNLOAD_URL="http://47.107.130.152/downloads/agent" ;;
+            x86_64|amd64)  DOWNLOAD_URL="http://47.107.130.152/downloads/agent-mac-intel" ;;
+            *)             echo "  [FAIL] Unsupported Mac architecture: $ARCH"; exit 1 ;;
+        esac
+        ;;
+    linux)
+        DOWNLOAD_URL="http://47.107.130.152/downloads/agent-linux"
+        ;;
+    *)
+        echo "  [FAIL] Unsupported OS: $OS"; exit 1
+        ;;
 esac
 
 # Generate device ID
@@ -39,10 +83,13 @@ echo "    3. Allow remote command execution for support"
 echo "    4. Press Ctrl+C or close terminal to disconnect"
 echo ""
 printf "  Continue? (y/N) "
-read -r confirm
-if [ "$confirm" != "y" ] && [ "$confirm" != "Y" ]; then
-    echo "  Cancelled."
-    exit 0
+if read -r confirm < /dev/tty 2>/dev/null; then
+    if [ "$confirm" != "y" ] && [ "$confirm" != "Y" ]; then
+        echo "  Cancelled."
+        exit 0
+    fi
+else
+    echo "y (auto)"
 fi
 echo ""
 

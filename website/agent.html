@@ -30,6 +30,9 @@
         .faq { background: #16213e; border-radius: 12px; padding: 20px; margin: 20px 0; }
         .faq h3 { color: #e94560; margin-bottom: 8px; font-size: 15px; }
         .faq p { color: #aaa; font-size: 14px; margin-bottom: 15px; }
+        .uninstall-section { background: #16213e; border-radius: 12px; padding: 20px; margin: 20px 0; border: 1px solid #e9456033; }
+        .uninstall-section h2 { color: #f0ad4e; margin-bottom: 12px; font-size: 18px; }
+        .uninstall-section p { color: #ccc; margin-bottom: 10px; }
         img.guide-img { width: 100%; border-radius: 8px; margin: 10px 0; }
     </style>
 </head>
@@ -130,6 +133,36 @@
         <p style="margin-top: 12px;">把 <strong>Device ID</strong>（如 <code style="background:#0f3460; padding:2px 8px; border-radius:4px;">desktop-a3f2</code>）发给技术支持即可。</p>
     </div>
 
+    <!-- Uninstall -->
+    <div class="uninstall-section">
+        <h2>一键卸载</h2>
+        <p>如需彻底清理 Agent（停止进程 + 删除文件），复制对应命令运行：</p>
+
+        <div id="uninstall-win-wrap" class="tab-content active">
+            <div class="cmd" id="uninstall-win" onclick="copyCmd('uninstall-win')">
+                irm https://u-claw.org/agent.ps1 | iex -Args '--uninstall'
+                <button class="copy-btn" onclick="event.stopPropagation(); copyCmd('uninstall-win')">复制</button>
+            </div>
+            <p class="note">或者直接关闭 PowerShell 窗口，Agent 也会自动停止并清理</p>
+        </div>
+
+        <div id="uninstall-mac-wrap" class="tab-content">
+            <div class="cmd" id="uninstall-mac" onclick="copyCmd('uninstall-mac')">
+                curl -fsSL https://u-claw.org/agent.sh | bash -s -- --uninstall
+                <button class="copy-btn" onclick="event.stopPropagation(); copyCmd('uninstall-mac')">复制</button>
+            </div>
+            <p class="note">会停止 Agent 进程并删除 /tmp/uclaw 目录</p>
+        </div>
+
+        <div id="uninstall-linux-wrap" class="tab-content">
+            <div class="cmd" id="uninstall-linux" onclick="copyCmd('uninstall-linux')">
+                curl -fsSL https://u-claw.org/agent.sh | bash -s -- --uninstall
+                <button class="copy-btn" onclick="event.stopPropagation(); copyCmd('uninstall-linux')">复制</button>
+            </div>
+            <p class="note">会停止 Agent 进程并删除 /tmp/uclaw 目录</p>
+        </div>
+    </div>
+
     <!-- Safety -->
     <div class="step" style="border: 1px solid #1b5e20;">
         <h2 style="color: #4caf50;">安全说明</h2>
@@ -181,6 +214,10 @@
             document.querySelectorAll('[id^="cmd-"][id$="-wrap"]').forEach(c => c.classList.remove('active'));
             const cmdName = name === 'win' ? 'win' : name === 'mac' ? 'mac' : 'linux';
             document.getElementById('cmd-' + cmdName + '-wrap').classList.add('active');
+
+            // Update uninstall commands
+            document.querySelectorAll('[id^="uninstall-"][id$="-wrap"]').forEach(c => c.classList.remove('active'));
+            document.getElementById('uninstall-' + cmdName + '-wrap').classList.add('active');
         }
 
         function copyCmd(id) {

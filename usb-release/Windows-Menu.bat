@@ -115,7 +115,7 @@ if !errorlevel!==0 (
 )
 cd /d "%CORE_DIR%"
 if not exist "%STATE_DIR%\openclaw.json" (
-    echo {"gateway":{"mode":"local","auth":{"token":"uclaw"}}} > "%STATE_DIR%\openclaw.json"
+    (echo {"gateway":{"mode":"local","auth":{"token":"uclaw"}}})>"%STATE_DIR%\openclaw.json"
 )
 
 REM Read token from config
@@ -416,7 +416,7 @@ echo   [3/4] Clearing memory...
 rmdir /s /q "%DATA_DIR%\memory" 2>nul
 mkdir "%DATA_DIR%\memory" 2>nul
 echo   [4/4] Restoring default config...
-echo {"gateway":{"mode":"local","auth":{"token":"uclaw"}}} > "%STATE_DIR%\openclaw.json"
+(echo {"gateway":{"mode":"local","auth":{"token":"uclaw"}}})>"%STATE_DIR%\openclaw.json"
 echo.
 echo   Factory reset complete! Run Setup wizard [1] to reconfigure.
 pause

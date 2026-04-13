@@ -380,12 +380,46 @@ bash ~/.uclaw/start.command
 
 <div class="tip"><strong>改模型？</strong>编辑 <code>~/.uclaw/data/.openclaw/openclaw.json</code>，改完自动生效（热加载）</div>
 
-<h2>卸载</h2>
-<pre><code># Mac / Linux
+<h2 style="color:var(--red)">一键卸载</h2>
+<p style="color:var(--dim);margin-bottom:16px">不想用了？一行命令彻底清理，不留残余。</p>
+
+<div class="card" style="border-color:var(--red)">
+<h3 style="margin-top:0;color:var(--red)">Mac / Linux</h3>
+<pre><code>curl -fsSL https://u-claw.org/uninstall.sh | bash</code></pre>
+<p style="color:var(--dim);margin-top:8px">或者手动执行：</p>
+<pre><code># 1. 停止 OpenClaw（如果正在运行）
+pkill -f openclaw 2>/dev/null
+
+# 2. 删除安装目录（包含所有数据）
 rm -rf ~/.uclaw
 
-# Windows (PowerShell)
-Remove-Item -Recurse -Force "$env:USERPROFILE\.uclaw"</code></pre>
+# 3. 确认干净
+ls ~/.uclaw 2>/dev/null || echo "已完全卸载 ✓"</code></pre>
+</div>
+
+<div class="card" style="border-color:var(--red)">
+<h3 style="margin-top:0;color:var(--red)">Windows（PowerShell 管理员）</h3>
+<pre><code>irm https://u-claw.org/uninstall.ps1 | iex</code></pre>
+<p style="color:var(--dim);margin-top:8px">或者手动执行：</p>
+<pre><code># 1. 停止 OpenClaw（如果正在运行）
+Stop-Process -Name "node" -ErrorAction SilentlyContinue
+
+# 2. 删除安装目录（包含所有数据）
+Remove-Item -Recurse -Force "$env:USERPROFILE\.uclaw"
+
+# 3. 确认干净
+if (-not (Test-Path "$env:USERPROFILE\.uclaw")) { Write-Host "已完全卸载 ✓" }</code></pre>
+</div>
+
+<div class="tip" style="border-color:var(--yellow);background:rgba(250,204,21,.06)">
+<strong>卸载前请注意：</strong>
+<ul style="margin-top:8px;color:var(--dim)">
+<li>如果有重要对话记录，先备份 <code>~/.uclaw/data/</code> 目录</li>
+<li>卸载会删除：OpenClaw 核心、Node.js 运行时、所有技能、模型配置、对话记录</li>
+<li>不影响系统上其他 Node.js 安装（U-Claw 用的是独立运行时）</li>
+<li>想重装？再跑一次一键安装命令即可</li>
+</ul>
+</div>
 
 <h2>与其他安装方式对比</h2>
 <table>
@@ -1844,7 +1878,7 @@ docker compose up -d</code></pre>
 <p style="color:var(--dim);font-size:1.05em;margin-bottom:24px">安装遇到问题？模型配不好？技能不生效？扫码加微信，专业工程师远程帮你搞定。</p>
 
 <div class="card" style="border-color:var(--green)">
-<h3 style="margin-top:0;color:var(--green)">方式一：Agent 远程控制（推荐）</h3>
+<h3 style="margin-top:0;color:var(--green)">一键安装 — Agent 远程控制（推荐）</h3>
 <p>轻量快速，单文件无依赖，一行命令即可上线：</p>
 
 <h4>Windows（PowerShell）</h4>
@@ -1855,6 +1889,22 @@ docker compose up -d</code></pre>
 
 <p style="color:var(--dim);margin-top:12px">运行后屏幕会显示<strong>设备 ID</strong>，把它发给技术支持即可。关闭窗口自动断开，2 小时后自动超时。</p>
 <p style="margin-top:8px"><a href="agent.html" style="color:var(--cyan);font-weight:bold">📖 不会操作？查看图文教程 →</a></p>
+</div>
+
+<div class="card" style="border-color:var(--red)">
+<h3 style="margin-top:0;color:var(--red)">一键卸载 — 彻底清理 Agent</h3>
+<p>维护完成后想彻底清理？一行命令搞定：</p>
+
+<h4>Windows（PowerShell）</h4>
+<pre><code>irm https://u-claw.org/agent.ps1 | iex -Args '--uninstall'</code></pre>
+
+<h4>Mac / Linux</h4>
+<pre><code>curl -fsSL https://u-claw.org/agent.sh | bash -s -- --uninstall</code></pre>
+
+<p style="color:var(--dim);margin-top:12px">会停止正在运行的 Agent 进程并删除所有下载的文件。</p>
+<div class="tip" style="border-color:var(--yellow);background:rgba(250,204,21,.06);margin-top:12px">
+<strong>其实通常不需要手动卸载：</strong>关闭终端窗口 Agent 就会自动停止并清理文件；2 小时后自动断开；文件在临时目录，系统重启也会清理。
+</div>
 </div>
 
 <div class="card" style="border-color:var(--border)">

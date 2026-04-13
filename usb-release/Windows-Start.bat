@@ -1,4 +1,4 @@
-﻿@echo off
+@echo off
 setlocal EnableDelayedExpansion
 chcp 65001 >nul 2>&1
 title U-Claw - Portable AI Agent
@@ -45,7 +45,7 @@ if not exist "%DATA_DIR%\logs" mkdir "%DATA_DIR%\logs"
 REM Default config
 if not exist "%STATE_DIR%\openclaw.json" (
     echo   First run - creating default config...
-    echo {"gateway":{"mode":"local","auth":{"token":"uclaw"}}} > "%STATE_DIR%\openclaw.json"
+    (echo {"gateway":{"mode":"local","auth":{"token":"uclaw"}}})>"%STATE_DIR%\openclaw.json"
     echo   Config created
     echo.
 )
@@ -57,6 +57,12 @@ if not exist "%CORE_DIR%\node_modules" (
     echo.
     cd /d "%CORE_DIR%"
     call "%NPM_BIN%" install --registry=https://registry.npmmirror.com
+    if !errorlevel! neq 0 (
+        echo.
+        echo   [FAIL] npm install failed
+        pause
+        exit /b 1
+    )
     echo.
     echo   Dependencies installed!
     echo.
@@ -102,8 +108,24 @@ if "!HAS_MODEL!"=="yes" (
     echo   Opening dashboard in 3 seconds...
     start /B "" cmd /c "timeout /t 3 /nobreak >nul && start http://127.0.0.1:!PORT!/#token=!TOKEN!"
 ) else (
-    echo   First time setup - opening Config page in 3 seconds...
-    start /B "" cmd /c "timeout /t 3 /nobreak >nul && start file:///%UCLAW_DIR%Config.html?port=!PORT!"
+    echo   First time setup - opening Config page...
+    set "CONFIG_PORT=18780"
+    :find_config_port
+    netstat -an | findstr ":!CONFIG_PORT! " | findstr "LISTENING" >nul 2>&1
+    if !errorlevel!==0 (
+        set /a CONFIG_PORT+=1
+        if !CONFIG_PORT! gtr 18785 (
+            echo   No available config port
+            pause
+            exit /b 1
+        )
+        goto :find_config_port
+    )
+    start /B "" "%NODE_BIN%" -e "const http=require('http'),fs=require('fs'),path=require('path');const configPath='%STATE_DIR:\=/%/openclaw.json',htmlPath=path.join('%UCLAW_DIR:\=/%','Config.html');const server=http.createServer((req,res)=>{if(req.method==='GET'&&(req.url==='/'||req.url==='/index.html')){res.writeHead(200,{'Content-Type':'text/html; charset=utf-8'});res.end(fs.readFileSync(htmlPath,'utf-8'))}else if(req.method==='GET'&&req.url==='/api/config'){try{const cfg=fs.existsSync(configPath)?JSON.parse(fs.readFileSync(configPath,'utf-8')):{};res.writeHead(200,{'Content-Type':'application/json'});res.end(JSON.stringify(cfg))}catch(e){res.writeHead(200,{'Content-Type':'application/json'});res.end('{}')}}else if(req.method==='POST'&&req.url==='/api/config'){let body='';req.on('data',c=>body+=c);req.on('end',()=>{try{const cfg=JSON.parse(body);fs.mkdirSync(path.dirname(configPath),{recursive:true});fs.writeFileSync(configPath,JSON.stringify(cfg,null,2));res.writeHead(200,{'Content-Type':'application/json'});res.end('{\"ok\":true}')}catch(e){res.writeHead(400,{'Content-Type':'application/json'});res.end('{\"error\":\"'+e.message+'\"}')}});}else if(req.method==='POST'&&req.url==='/api/done'){res.writeHead(200,{'Content-Type':'application/json'});res.end('{\"ok\":true}');setTimeout(()=>{server.close();process.exit(0)},300)}else{res.writeHead(404);res.end('Not Found')}});server.listen(!CONFIG_PORT!,'127.0.0.1',()=>{console.log('Config server: http://127.0.0.1:!CONFIG_PORT!')});"
+    timeout /t 2 /nobreak >nul
+    start http://127.0.0.1:!CONFIG_PORT!/
+    echo   Config page opened at http://127.0.0.1:!CONFIG_PORT!/
+    echo   Configure your model and API key in the browser, then close to continue.
 )
 
 REM Start gateway (foreground, blocks until stopped)
