@@ -48,3 +48,7 @@ usb-release/toolkit/*.pkg
 usb-release/toolkit/*.msi
 usb-release/toolkit/*.tar.gz
 usb-release/toolkit/*.zip
+
+# ── Environment variables ──
+.env
+.env.*
