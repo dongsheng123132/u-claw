@@ -236,6 +236,10 @@ function startGateway(port) {
       OPENCLAW_EMBEDDED_IN: APP_NAME,
     };
 
+    if (process.platform === 'win32') {
+      env.OPENCLAW_DISABLE_BONJOUR = '1';
+    }
+
     gatewayProcess = spawn(nodeBin, [
       openclawEntry,
       'gateway', 'run',

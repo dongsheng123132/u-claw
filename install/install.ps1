@@ -595,6 +595,7 @@ set "OPENCLAW_MJS=%DIR%core\node_modules\openclaw\openclaw.mjs"
 set "OPENCLAW_HOME=%DIR%data"
 set "OPENCLAW_STATE_DIR=%DIR%data\.openclaw"
 set "OPENCLAW_CONFIG_PATH=%DIR%data\.openclaw\openclaw.json"
+set "OPENCLAW_DISABLE_BONJOUR=1"
 
 REM Find available port
 set PORT=18789
