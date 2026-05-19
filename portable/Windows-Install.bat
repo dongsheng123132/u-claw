@@ -192,6 +192,7 @@ echo set "OPENCLAW_MJS=%%DIR%%core\node_modules\openclaw\openclaw.mjs"
 echo set "OPENCLAW_HOME=%%DIR%%data"
 echo set "OPENCLAW_STATE_DIR=%%DIR%%data\.openclaw"
 echo set "OPENCLAW_CONFIG_PATH=%%DIR%%data\.openclaw\openclaw.json"
+echo set "OPENCLAW_DISABLE_BONJOUR=1"
 echo.
 echo REM Find available port
 echo set PORT=18789

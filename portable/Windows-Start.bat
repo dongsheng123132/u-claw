@@ -24,6 +24,9 @@ set "NPM_BIN=%NODE_DIR%\npm.cmd"
 set "OPENCLAW_HOME=%DATA_DIR%"
 set "OPENCLAW_STATE_DIR=%STATE_DIR%"
 set "OPENCLAW_CONFIG_PATH=%STATE_DIR%\openclaw.json"
+REM U-Claw opens the local dashboard directly; disable mDNS discovery on Windows
+REM to avoid OpenClaw/@homebridge ciao crashes during bonjour re-advertise.
+set "OPENCLAW_DISABLE_BONJOUR=1"
 
 REM Check runtime
 if not exist "%NODE_BIN%" (
@@ -66,10 +69,10 @@ if not exist "%CORE_DIR%\node_modules" (
     echo   [WARN] node_modules not found
     echo   ========================================
     echo   This release should ship with deps pre-installed.
-    echo   Falling back to npm install (USB drives may take 20+ minutes).
+    echo   Falling back to npm install ^(USB drives may take 20+ minutes^).
     echo.
     echo   TIP: Re-download u-claw-portable-*.zip from GitHub releases,
-    echo        which includes pre-installed deps (~200 MB).
+    echo        which includes pre-installed deps ^(~200 MB^).
     echo.
     echo   File system: NTFS recommended. exFAT/FAT32 will be very slow.
     echo.

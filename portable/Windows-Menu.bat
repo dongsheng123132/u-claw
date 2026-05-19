@@ -19,6 +19,9 @@ set "NPM_BIN=%NODE_DIR%\npm.cmd"
 set "OPENCLAW_HOME=%DATA_DIR%"
 set "OPENCLAW_STATE_DIR=%STATE_DIR%"
 set "OPENCLAW_CONFIG_PATH=%STATE_DIR%\openclaw.json"
+REM U-Claw opens the local dashboard directly; disable mDNS discovery on Windows
+REM to avoid OpenClaw/@homebridge ciao crashes during bonjour re-advertise.
+set "OPENCLAW_DISABLE_BONJOUR=1"
 set "PATH=%NODE_DIR%;%PATH%"
 
 set "OPENCLAW_MJS=%CORE_DIR%\node_modules\openclaw\openclaw.mjs"
