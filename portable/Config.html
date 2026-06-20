@@ -164,7 +164,7 @@ input:focus { border-color: #ff6b35; }
         <p class="desc">最省心：用「虾盘云」一个 Key 调用国内外全部大模型（中转站）。也可用下面各家自己的官方 Key。</p>
 
         <div class="model-grid">
-            <div class="model-card" data-provider="uclaw-cloud" data-base="https://api.u-claw.org/v1" data-model="deepseek-v4-flash">
+            <div class="model-card" data-provider="uclaw-cloud" data-base="https://api.u-claw.org/v1" data-model="deepseek-v4-pro">
                 <span class="check">✓</span>
                 <h4>虾盘云 <span class="tag hot">首选</span><span class="tag">中转站</span></h4>
                 <p>一个 Key 用 DeepSeek / Claude / GPT / 通义 等国内外全部大模型，无需翻墙</p>
@@ -498,7 +498,7 @@ function togglePw() {
 function buildOpenClawConfig(provider, base, model, apiKey) {
     // Base config that OpenClaw expects
     const baseConfig = {
-        gateway: { auth: { mode: 'token', token: 'uclaw', scopes: ['operator.admin'] } },
+        gateway: { auth: { mode: 'token', token: 'uclaw', scopes: ['operator.admin'] }, remote: { token: 'uclaw' } },
         commands: { native: 'auto', nativeSkills: 'auto', restart: true, ownerDisplay: 'raw' },
         meta: { lastTouchedVersion: '2026.3.13', lastTouchedAt: new Date().toISOString() }
     };
