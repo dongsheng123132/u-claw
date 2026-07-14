@@ -1,6 +1,6 @@
 {
   "name": "u-claw",
-  "version": "2.1.13",
+  "version": "2.1.14",
   "description": "U-Claw - AI 助手桌面版，插上 U 盘就能用",
   "main": "src/main.js",
   "author": "U-Claw <hello@u-claw.org> (https://u-claw.org)",
