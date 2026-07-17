@@ -8,6 +8,15 @@
 
 [中文](#中文) | [English](#english) | [📖 完整教程](https://u-claw.org/tutorial.html)
 
+> [!TIP]
+> ### 👑 同作者新品：U-King · AI 装机管家
+> 一键装好 **Claude Code / Codex / OpenClaw / Hermes** 四大 AI 神器，驱动自动配好——一个 Key 直用 Claude、GPT、DeepSeek、Kimi 等 24+ 全球模型，免翻墙。绿色版仅几 MB，双击即用，还带 AI 作图 / 视频 / 本地大模型 / 多终端工作台。
+>
+> **免费下载：[www.u-king.org](https://www.u-king.org)**（国内镜像 [cloud.u-claw.org/uking](https://cloud.u-claw.org/uking/)）
+>
+> *U-Claw 让 AI 住进 U 盘；U-King 帮你把全套 AI 编程神器装进电脑。*
+> *EN: U-King — one-click installer for Claude Code / Codex / OpenClaw, with one API key for 24+ global models → [u-king.org](https://www.u-king.org)*
+
 ---
 
 <a id="中文"></a>
@@ -263,6 +272,7 @@ npm install && npm run build
 - **抖店 / 直播带货**：提供最高佣金比例，产品已在多个直播间验证转化
 - **代理分销**：买断或按单分润均可谈，支持定制版本
 - **技术合作**：有开发能力者欢迎深度合作
+- **👑 U-King 装机管家分销（新）**：[U-King](https://www.u-king.org) 软件本身免费送客户，客户按用量给 AI 模型 API 充值，你拿**持续分润**——不压货、零售后（我们负责），赚的是长期流水。适合装机店、AI 培训、社群主理人
 
 有意向请微信联系（备注「代理合作」优先处理）。
 
@@ -530,6 +540,7 @@ U-Claw 3.0 delivers excellent user experience with very low return rates. We han
 - **Live commerce / TikTok shop**: Top commission rates, proven conversion in live streams
 - **Reseller / distribution**: Revenue share or wholesale, custom branded versions available
 - **Technical partnership**: Deep collaboration welcome for developers
+- **👑 U-King distribution (new)**: give away [U-King](https://www.u-king.org) (free AI setup manager) — earn **recurring revenue share** on your customers' API top-ups. No inventory, we handle support
 
 Interested? WeChat hecare888 (mention "partnership" for priority response).
 
