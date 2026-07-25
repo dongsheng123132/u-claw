@@ -128,6 +128,26 @@ if [ ! -d "$CORE_DIR/node_modules" ]; then
     echo ""
 fi
 
+# ---- 7a. Pre-stage WeChat plugin (parity with Windows) ----
+# OpenClaw 从 OPENCLAW_STATE_DIR/extensions 单一目录加载扩展（无 ~/.openclaw 兜底），
+# 而我们把 STATE_DIR 指向 U 盘，所以插件必须放到 $STATE_DIR/extensions 才会被加载。
+WECHAT_PLUGIN_SRC="$APP_DIR/extensions/openclaw-weixin"
+WECHAT_PLUGIN_DST="$STATE_DIR/extensions/openclaw-weixin"
+if [ -f "$WECHAT_PLUGIN_SRC/openclaw.plugin.json" ] && [ ! -f "$WECHAT_PLUGIN_DST/openclaw.plugin.json" ]; then
+    echo -e "  ${CYAN}Installing WeChat plugin...${NC}"
+    mkdir -p "$STATE_DIR/extensions"
+    cp -R "$WECHAT_PLUGIN_SRC" "$WECHAT_PLUGIN_DST" 2>/dev/null \
+        && echo -e "  ${GREEN}WeChat plugin installed${NC}"
+fi
+# 确保插件能解析到 'zod'：npm 包不带 zod，且宿主 node_modules 不在插件的解析路径上，
+# 否则插件以 "Cannot find module 'zod'" 加载失败。从内置 OpenClaw core 复制 zod 过去。
+# 每次启动都跑，已经装好但缺 zod 的旧盘会自愈。
+if [ -f "$WECHAT_PLUGIN_DST/openclaw.plugin.json" ] && [ ! -d "$WECHAT_PLUGIN_DST/node_modules/zod" ] && [ -d "$CORE_DIR/node_modules/zod" ]; then
+    echo -e "  ${CYAN}Repairing WeChat plugin dependency (zod)...${NC}"
+    mkdir -p "$WECHAT_PLUGIN_DST/node_modules"
+    cp -R "$CORE_DIR/node_modules/zod" "$WECHAT_PLUGIN_DST/node_modules/zod" 2>/dev/null
+fi
+
 # ---- 7b. Async update check (non-blocking, 5s timeout, silent failure) ----
 # Writes data/.openclaw/update-available.json if a newer version is on OSS.
 # Welcome.html / Config.html read this file and show a banner.
@@ -175,6 +195,10 @@ sleep 1
 # ---- 10. Start gateway ----
 echo -e "  ${CYAN}Starting OpenClaw on port $PORT...${NC}"
 echo ""
+
+# 清理上次崩溃 / 拔盘残留的 gateway 锁，避免 OpenClaw 报 "gateway already running"。
+# 只删持有进程已不在的死锁；活动实例的锁不动。静默、非阻塞。
+"$NODE_BIN" "$UCLAW_DIR/lib/clean-stale-lock.mjs" "$CONFIG_FILE" || true
 
 cd "$CORE_DIR"
 OPENCLAW_MJS="$CORE_DIR/node_modules/openclaw/openclaw.mjs"

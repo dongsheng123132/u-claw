@@ -339,36 +339,6 @@ input:focus { border-color: #ff6b35; }
                             </div>
                         </div>
                     </div>
-                    <div class="model-card channel-card" onclick="toggleChannel(this, 'dingtalk')">
-                        <h4>📲 钉钉 <span class="tag cn">国内·最易</span></h4>
-                        <p>WebSocket 接入，免公网 IP</p>
-                        <div class="channel-form" id="form-dingtalk" onclick="event.stopPropagation()">
-                            <div class="form-group">
-                                <label>Client ID (AppKey)</label>
-                                <input type="text" id="ch-dingtalk-clientid" placeholder="dingxxx...">
-                            </div>
-                            <div class="form-group">
-                                <label>Client Secret (AppSecret)</label>
-                                <input type="text" id="ch-dingtalk-secret" placeholder="应用密钥">
-                                <p class="hint"><a href="https://open-dev.dingtalk.com" target="_blank">→ 从钉钉开放平台创建机器人应用</a></p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="model-card channel-card" onclick="toggleChannel(this, 'wecom')">
-                        <h4>🏢 企业微信</h4>
-                        <p>接入企业微信机器人</p>
-                        <div class="channel-form" id="form-wecom" onclick="event.stopPropagation()">
-                            <div class="form-group">
-                                <label>Bot ID</label>
-                                <input type="text" id="ch-wecom-botid" placeholder="aib...">
-                            </div>
-                            <div class="form-group">
-                                <label>Secret</label>
-                                <input type="text" id="ch-wecom-secret" placeholder="密钥">
-                                <p class="hint"><a href="https://work.weixin.qq.com" target="_blank">→ 从企业微信管理后台获取</a></p>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </div>
 
@@ -705,7 +675,8 @@ async function launchOpenClaw() {
     const channels = {};
 
     const tgToken = document.getElementById('ch-telegram-token')?.value.trim();
-    if (tgToken) channels.telegram = { enabled: true, token: tgToken, dmPolicy: 'pairing' };
+    // OpenClaw 顶层 telegram 渠道只认 botToken（写 token 会被静默忽略 → 接不上）。
+    if (tgToken) channels.telegram = { enabled: true, botToken: tgToken, dmPolicy: 'pairing' };
 
     const qqId = document.getElementById('ch-qqbot-appid')?.value.trim();
     const qqSecret = document.getElementById('ch-qqbot-secret')?.value.trim();
@@ -714,14 +685,6 @@ async function launchOpenClaw() {
     const fsId = document.getElementById('ch-feishu-appid')?.value.trim();
     const fsSecret = document.getElementById('ch-feishu-secret')?.value.trim();
     if (fsId && fsSecret) channels.feishu = { enabled: true, appId: fsId, appSecret: fsSecret };
-
-    const wcBotId = document.getElementById('ch-wecom-botid')?.value.trim();
-    const wcSecret = document.getElementById('ch-wecom-secret')?.value.trim();
-    if (wcBotId && wcSecret) channels.wecom = { enabled: true, botId: wcBotId, secret: wcSecret };
-
-    const ddId = document.getElementById('ch-dingtalk-clientid')?.value.trim();
-    const ddSecret = document.getElementById('ch-dingtalk-secret')?.value.trim();
-    if (ddId && ddSecret) channels.dingtalk = { enabled: true, clientId: ddId, clientSecret: ddSecret };
 
     // 2. Save channel config if any (merge into existing config)
     if (Object.keys(channels).length > 0) {
