@@ -552,12 +552,7 @@ async function saveConfig() {
     var config = buildConfig(selectedProvider, base, model, apiKey);
 
     try {
-        var res = await fetch('/api/config', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(config)
-        });
-        if (!res.ok) throw new Error('保存失败');
+        await apiSaveConfig(config);
         showToast('配置已保存！');
         goStep(3);
     } catch (e) {
@@ -693,16 +688,8 @@ async function saveChannelsAndOpen() {
 
     if (Object.keys(channels).length > 0) {
         try {
-            var res = await fetch('/api/config');
-            var existing = res.ok ? await res.json() : {};
-            // 清除旧版废弃键，防止 OpenClaw 报 "agent.* was moved" 错误
-            delete existing.agent;
-            existing.channels = Object.assign(existing.channels || {}, channels);
-            await fetch('/api/config', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(existing)
-            });
+            // 服务端是深合并，只 POST 增量即可（少一次往返，也不会把脱敏 Key 写回去）
+            await apiSaveConfig({ channels: channels });
             showToast('渠道配置已保存');
         } catch(e) {}
     }
@@ -710,11 +697,55 @@ async function saveChannelsAndOpen() {
     window.open(gatewayUrl(), '_blank');
 }
 
+
+// --- 影核动作端点封装 ---
+// /api/config 绑定 config.get / config.set，返回 {ok, data, error} 信封。
+// config.get 出口会脱敏密钥，所以只用来判断"是否已配置"，绝不回填输入框再存回去。
+var REDACTED_RE = /^\*{3}$|…/;
+var savedKeyProvider = null;
+
+async function apiGetConfig() {
+    var res = await fetch('/api/config');
+    var r = await res.json();
+    return (r && r.ok && r.data) ? (r.data.config || {}) : {};
+}
+
+async function apiSaveConfig(patch) {
+    var res = await fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(patch)
+    });
+    var r = await res.json();
+    if (!r || !r.ok) throw new Error((r && r.error && r.error.message) || '保存失败');
+    return r.data;
+}
+
+/** 已存过 Key 时只提示、不回填脱敏值（回填再存回去会毁掉真 Key）。 */
+function markSavedKey(value, provider) {
+    if (!value) return;
+    var input = document.getElementById('apiKey');
+    if (!input) return;
+    if (REDACTED_RE.test(value)) {
+        input.placeholder = '已保存 Key（' + value + '），留空即沿用，重填则替换';
+        savedKeyProvider = provider;
+    } else {
+        input.value = value;
+    }
+}
+
+function stripApiKeyFields(node) {
+    if (!node || typeof node !== 'object') return;
+    Object.keys(node).forEach(function (k) {
+        if (k === 'apiKey' || k === 'ZAI_API_KEY') delete node[k];
+        else stripApiKeyFields(node[k]);
+    });
+}
+
 // --- View config ---
 async function viewConfig() {
     try {
-        var res = await fetch('/api/config');
-        var config = await res.json();
+        var config = await apiGetConfig();
         var text = JSON.stringify(config, null, 2);
         var w = window.open('', '_blank');
         w.document.write('<pre style="background:#111;color:#eee;padding:20px;font-size:14px;">' +
@@ -769,13 +800,12 @@ async function checkGateway() {
 // --- Load existing config ---
 async function loadConfig() {
     try {
-        var res = await fetch('/api/config');
-        var cfg = await res.json();
+        var cfg = await apiGetConfig();
 
         if (cfg.env && cfg.env.ZAI_API_KEY) {
             var card = document.querySelector('#step1 .model-card[data-provider="zai"]');
             if (card) card.click();
-            document.getElementById('apiKey').value = cfg.env.ZAI_API_KEY;
+            markSavedKey(cfg.env.ZAI_API_KEY, 'zai');
             return;
         }
 
@@ -785,7 +815,7 @@ async function loadConfig() {
                 var p = cfg.models.providers[providerName];
                 var card = document.querySelector('#step1 .model-card[data-provider="' + providerName + '"]');
                 if (card) card.click();
-                if (p.apiKey) document.getElementById('apiKey').value = p.apiKey;
+                markSavedKey(p.apiKey, providerName);
             }
         }
     } catch(e) {}

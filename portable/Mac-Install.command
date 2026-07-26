@@ -177,24 +177,15 @@ PKGEOF
         ;;
 esac
 
-# ---- Stage WeChat plugin into the dir OpenClaw actually reads ----
-# OpenClaw loads extensions ONLY from OPENCLAW_STATE_DIR/extensions; start.command
-# points STATE_DIR at $INSTALL_TARGET/data/.openclaw, so the plugin must live there.
-WECHAT_DST="$INSTALL_TARGET/data/.openclaw/extensions/openclaw-weixin"
-if [ -f "$APP_DIR/extensions/openclaw-weixin/openclaw.plugin.json" ]; then
-    echo -e "  ${CYAN}Installing WeChat plugin...${NC}"
-    mkdir -p "$INSTALL_TARGET/data/.openclaw/extensions"
-    if cp -R "$APP_DIR/extensions/openclaw-weixin" "$WECHAT_DST" 2>/dev/null; then
-        echo -e "  ${GREEN}WeChat plugin installed ✓${NC}"
-    fi
-    # Copy zod from the bundled OpenClaw core: the plugin's npm tarball ships without it
-    # and the host node_modules is off the plugin's resolution path, so otherwise it
-    # fails to load with "Cannot find module 'zod'".
-    if [ ! -d "$WECHAT_DST/node_modules/zod" ] && [ -d "$APP_DIR/core/node_modules/zod" ]; then
-        mkdir -p "$WECHAT_DST/node_modules"
-        cp -R "$APP_DIR/core/node_modules/zod" "$WECHAT_DST/node_modules/zod" 2>/dev/null
-    fi
-fi
+# ---- Stage WeChat plugin ----
+# 交给 plugin.wechat.install 动作。源在本 U 盘（动作核心按自身位置解析），
+# 目标跟随 OPENCLAW_STATE_DIR —— 这里指向安装目标目录。
+# 与启动器、config-server 共用同一份实现。
+echo -e "  ${CYAN}Installing WeChat plugin...${NC}"
+OPENCLAW_HOME="$INSTALL_TARGET/data" \
+  OPENCLAW_STATE_DIR="$INSTALL_TARGET/data/.openclaw" \
+  OPENCLAW_CONFIG_PATH="$INSTALL_TARGET/data/.openclaw/openclaw.json" \
+  "$APP_DIR/runtime/node-mac-arm64/bin/node" "$UCLAW_DIR/uclaw.mjs" plugin.wechat.install --quiet || true
 
 # ---- Default config ----
 CONFIG_PATH="$INSTALL_TARGET/data/.openclaw/openclaw.json"

@@ -52,7 +52,8 @@ cd bootable
 ### Tests
 
 ```bash
-node --test tests/              # Run all tests (node:test, no test framework dep)
+node --test "tests/*.test.mjs"  # Run all tests (node:test, no test framework dep)
+#                                 NOTE: `node --test tests/` fails on Node 22 (MODULE_NOT_FOUND) -- use the glob
 node --test tests/windows-launchers.test.mjs   # Run one test file
 ```
 

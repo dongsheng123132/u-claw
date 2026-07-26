@@ -7,8 +7,6 @@ const crypto = require('crypto');
 
 const PORT_RANGE_START = 18788;
 const PORT_RANGE_END = 18798;
-const CONFIG_PATH = path.join(__dirname, '../data/.openclaw/openclaw.json');
-const RUNTIME_PATH = path.join(__dirname, '../data/.openclaw/runtime.json');
 
 // ── WeChat Login State ──────────────────────────────────────────────────────
 const DEFAULT_WECHAT_BASE_URL = 'https://ilinkai.weixin.qq.com';
@@ -17,18 +15,76 @@ const ACTIVE_LOGIN_TTL_MS = 5 * 60000;
 const QR_POLL_TIMEOUT_MS = 35000;
 const MAX_QR_REFRESH_COUNT = 3;
 
-// Resolve ~/.openclaw/ directory
-const OPENCLAW_DIR = process.env.OPENCLAW_STATE_DIR ||
-  path.join(process.env.USERPROFILE || process.env.HOME || require('os').homedir(), '.openclaw');
-const WECHAT_STATE_DIR = path.join(OPENCLAW_DIR, 'openclaw-weixin');
-const WECHAT_ACCOUNTS_DIR = path.join(WECHAT_STATE_DIR, 'accounts');
-const WECHAT_ACCOUNT_INDEX_FILE = path.join(WECHAT_STATE_DIR, 'accounts.json');
-
-// Plugin source on USB
-const USB_PLUGIN_DIR = path.join(__dirname, '../app/extensions/openclaw-weixin');
-const INSTALLED_PLUGIN_DIR = path.join(OPENCLAW_DIR, 'extensions', 'openclaw-weixin');
+// ── 路径 ────────────────────────────────────────────────────────────────────
+//
+// 全部来自动作核心的 resolvePaths()，本文件不再自己算。
+// 改造前这里是 `path.join(__dirname,'../data/.openclaw/openclaw.json')` 写死，
+// 完全不认 OPENCLAW_CONFIG_PATH / OPENCLAW_STATE_DIR——而同一个文件里的
+// /api/update-status 又认，一个进程内两套算法。装到 ~/.uclaw 之后配置中心
+// 写的和网关读的就不是同一个文件了。宪法 #8。
+//
+// 在 startup() 里赋值（动作核心是 ESM，CJS 只能异步 import）。
+let PATHS = null;
+const P = () => {
+  if (!PATHS) throw new Error('paths not initialised yet');
+  return PATHS;
+};
 
 const activeLogins = new Map();
+
+// ── 影核动作核心桥接 ────────────────────────────────────────────────────────
+// server.js 是 CJS，动作核心是 ESM，用动态 import() 搭桥（只加载一次）。
+// 关键点：这个文件从此**不再自己实现任何业务**，只做 HTTP 适配 —— 解析请求、
+// 调动作、回结果。业务对不对由 lib/core 负责，CLI 走的是同一批代码。
+let corePromise = null;
+function loadCore() {
+  if (!corePromise) corePromise = import('../lib/core/index.mjs');
+  return corePromise;
+}
+
+async function runAction(id, input, ctxExtra = {}) {
+  const core = await loadCore();
+  const action = core.getAction(id);
+  if (!action) throw new Error(`unknown action: ${id}`);
+  return core.execute(action, input, { paths: core.resolvePaths(), surface: 'gui', ...ctxExtra });
+}
+
+/** 动作结果直出。成功 200，业务失败 400（区别于 5xx 的进程级异常）。 */
+function sendResult(res, result) {
+  res.writeHead(result.ok ? 200 : 400, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify(result));
+}
+
+function sendError(res, err) {
+  res.writeHead(500, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify({ ok: false, data: null, error: { code: 'INTERNAL_ERROR', message: err?.message || String(err) } }));
+}
+
+/** 读 JSON 请求体，带大小上限（宪法 #9：凡会卡的都要有界）。 */
+function readBody(req, limitBytes = 5 * 1024 * 1024) {
+  return new Promise((resolve, reject) => {
+    let body = '';
+    let over = false;
+    req.on('data', (chunk) => {
+      if (over) return;
+      body += chunk;
+      if (body.length > limitBytes) {
+        over = true;
+        reject(new Error(`request body too large (> ${limitBytes} bytes)`));
+        req.destroy();
+      }
+    });
+    req.on('end', () => {
+      if (over) return;
+      try {
+        resolve(body ? JSON.parse(body) : {});
+      } catch (e) {
+        reject(new Error(`invalid JSON body: ${e.message}`));
+      }
+    });
+    req.on('error', reject);
+  });
+}
 
 // ── QR Code PNG Renderer (pure Node.js, no external deps) ───────────────────
 
@@ -49,8 +105,8 @@ function getQrRenderDeps() {
     }
   }
   // Fallback: try WeChat plugin's own node_modules
-  const pluginQr = path.join(USB_PLUGIN_DIR, 'node_modules/qrcode-terminal/vendor/QRCode/index.js');
-  const pluginQrErr = path.join(USB_PLUGIN_DIR, 'node_modules/qrcode-terminal/vendor/QRCode/QRErrorCorrectLevel.js');
+  const pluginQr = path.join(P().bundledExtensionsDir, 'openclaw-weixin', 'node_modules/qrcode-terminal/vendor/QRCode/index.js');
+  const pluginQrErr = path.join(P().bundledExtensionsDir, 'openclaw-weixin', 'node_modules/qrcode-terminal/vendor/QRCode/QRErrorCorrectLevel.js');
   if (fs.existsSync(pluginQr)) {
     return { QRCode: require(pluginQr), QRErrorCorrectLevel: require(pluginQrErr) };
   }
@@ -167,6 +223,7 @@ function normalizeAccountId(raw) {
 
 async function saveWeChatAccount(rawAccountId, payload) {
   const accountId = normalizeAccountId(rawAccountId);
+  const WECHAT_ACCOUNTS_DIR = path.join(P().stateDir, 'openclaw-weixin', 'accounts');
   fs.mkdirSync(WECHAT_ACCOUNTS_DIR, { recursive: true });
   const filePath = path.join(WECHAT_ACCOUNTS_DIR, accountId + '.json');
   const data = {
@@ -179,43 +236,34 @@ async function saveWeChatAccount(rawAccountId, payload) {
 
   // Update account index
   let accounts = [];
+  const WECHAT_ACCOUNT_INDEX_FILE = path.join(P().stateDir, 'openclaw-weixin', 'accounts.json');
   try { accounts = JSON.parse(fs.readFileSync(WECHAT_ACCOUNT_INDEX_FILE, 'utf-8')); } catch {}
   if (!Array.isArray(accounts)) accounts = [];
   if (!accounts.includes(accountId)) {
     accounts.push(accountId);
-    fs.mkdirSync(WECHAT_STATE_DIR, { recursive: true });
+    fs.mkdirSync(path.join(P().stateDir, 'openclaw-weixin'), { recursive: true });
     fs.writeFileSync(WECHAT_ACCOUNT_INDEX_FILE, JSON.stringify(accounts, null, 2));
   }
   return accountId;
 }
 
-function ensureWeChatPluginInstalled() {
-  if (!fs.existsSync(USB_PLUGIN_DIR) || !fs.existsSync(path.join(USB_PLUGIN_DIR, 'openclaw.plugin.json'))) {
-    return { installed: false, warning: 'WeChat plugin not found on USB' };
-  }
-  if (fs.existsSync(path.join(INSTALLED_PLUGIN_DIR, 'openclaw.plugin.json'))) {
-    return { installed: true };
-  }
-  // Copy from USB to ~/.openclaw/extensions/
-  // 容错：copy 失败不抛错中断整个 confirmed 流程（账号保存 + openclaw.json 已/将写好）。
+/**
+ * 铺设微信插件 —— 直通 plugin.wechat.install 动作。
+ *
+ * 原来这里是该动作的第 5 份实现（另外 4 份在 Windows/Mac 的 Start/Install 脚本里），
+ * 而且是唯一一份不补 zod 的，所以从配置中心扫码接入的用户拿到的是个加载不了的插件。
+ * 现在和启动器走同一份代码，不可能再出现"这条路修了那条路没修"。
+ *
+ * 容错：铺设失败不中断整个 confirmed 流程（账号已保存，配置也会写好）。
+ */
+async function ensureWeChatPluginInstalled() {
   try {
-    const extDir = path.join(OPENCLAW_DIR, 'extensions');
-    fs.mkdirSync(extDir, { recursive: true });
-    copyDirSync(USB_PLUGIN_DIR, INSTALLED_PLUGIN_DIR);
+    const r = await runAction('plugin.wechat.install', {}, {});
+    if (!r.ok) return { installed: false, warning: `${r.error.code}: ${r.error.message}` };
+    return { installed: r.data.installed, action: r.data.action, version: r.data.installed_version };
   } catch (e) {
-    console.error('WeChat plugin copy failed:', e.message);
+    console.error('WeChat plugin install failed:', e.message);
     return { installed: false, warning: e.message };
-  }
-  return { installed: fs.existsSync(path.join(INSTALLED_PLUGIN_DIR, 'openclaw.plugin.json')) };
-}
-
-function copyDirSync(src, dest) {
-  fs.mkdirSync(dest, { recursive: true });
-  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
-    const s = path.join(src, entry.name);
-    const d = path.join(dest, entry.name);
-    if (entry.isDirectory()) copyDirSync(s, d);
-    else fs.copyFileSync(s, d);
   }
 }
 
@@ -279,7 +327,7 @@ async function handleWeChatStatus(sessionKey) {
     }
 
     // 1. Install plugin
-    const pluginResult = ensureWeChatPluginInstalled();
+    const pluginResult = await ensureWeChatPluginInstalled();
 
     // 2. Save account
     const accountId = await saveWeChatAccount(result.ilink_bot_id, {
@@ -288,16 +336,16 @@ async function handleWeChatStatus(sessionKey) {
       userId: result.ilink_user_id,
     });
 
-    // 3. Update openclaw.json to enable the plugin
+    // 3. 启用插件 —— 走 config.set 动作，不再自己 writeFileSync。
+    //    原来这里是第三份写配置的实现（另外两份在 Config.html），
+    //    三份各写各的正是"接完微信再改模型就掉线"的根因。
     try {
-      const configRaw = fs.existsSync(CONFIG_PATH) ? fs.readFileSync(CONFIG_PATH, 'utf-8') : '{}';
-      const config = JSON.parse(configRaw);
-      if (!config.plugins) config.plugins = {};
-      if (!config.plugins.entries) config.plugins.entries = {};
-      config.plugins.entries['openclaw-weixin'] = { enabled: true };
-      const dir = path.dirname(CONFIG_PATH);
-      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-      fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
+      const r = await runAction(
+        'config.set',
+        { patch: { plugins: { entries: { 'openclaw-weixin': { enabled: true } } } } },
+        { confirmed: true },
+      );
+      if (!r.ok) console.error('启用微信插件失败:', r.error.code, r.error.message);
     } catch (e) {
       console.error('Failed to update config:', e.message);
     }
@@ -330,11 +378,45 @@ function handleWeChatCancel(sessionKey) {
   else activeLogins.clear();
 }
 
+// ── 同源闸门 ────────────────────────────────────────────────────────────────
+//
+// 改造前这里是 `Access-Control-Allow-Origin: *`，配合 /api/config 直接把整份
+// openclaw.json（含全部 API Key 和 gateway token）交出去——用户浏览器里打开的
+// **任何一个网页**都能 fetch 走；POST 同样没有来源校验，任意网页都能把模型
+// baseUrl 改成攻击者的服务器。两条都实测复现过。
+//
+// 现在：只认本机来源。浏览器无法伪造 Origin，跨站请求一律 403。
+// 同时校验 Host，堵住 DNS rebinding（把恶意域名解析到 127.0.0.1 那一手）。
+const LOCAL_HOST_RE = /^(127\.0\.0\.1|\[::1\]|localhost)(:\d+)?$/i;
+
+function isLocalRequest(req) {
+  const host = req.headers.host || '';
+  if (!LOCAL_HOST_RE.test(host)) return false;
+
+  const origin = req.headers.origin;
+  // 无 Origin：来自 file:// 页面、curl、启动器等非跨站场景，放行。
+  // 跨站 fetch 一定带 Origin，所以这里漏不掉真正的攻击面。
+  if (!origin || origin === 'null') return true;
+  try {
+    return LOCAL_HOST_RE.test(new URL(origin).host);
+  } catch {
+    return false;
+  }
+}
+
 const server = http.createServer((req, res) => {
-  // CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  if (!isLocalRequest(req)) {
+    res.writeHead(403, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'forbidden: cross-origin requests are not allowed' }));
+    return;
+  }
+  // 只回显本机来源，绝不用 *
+  const origin = req.headers.origin;
+  if (origin && origin !== 'null') res.setHeader('Access-Control-Allow-Origin', origin);
+  res.setHeader('Vary', 'Origin');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
 
   if (req.method === 'OPTIONS') {
     res.writeHead(200);
@@ -397,25 +479,52 @@ const server = http.createServer((req, res) => {
 
   // API: WeChat plugin status
   if (req.url === '/api/wechat/plugin-status' && req.method === 'GET') {
-    const hasPlugin = fs.existsSync(path.join(USB_PLUGIN_DIR, 'openclaw.plugin.json'));
-    const installed = fs.existsSync(path.join(INSTALLED_PLUGIN_DIR, 'openclaw.plugin.json'));
+    const hasPlugin = fs.existsSync(path.join(P().bundledExtensionsDir, 'openclaw-weixin', 'openclaw.plugin.json'));
+    const installed = fs.existsSync(path.join(P().extensionsDir, 'openclaw-weixin', 'openclaw.plugin.json'));
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ hasPlugin, installed }));
     return;
   }
 
-  // API: Get config
+  // ── 影核动作端点 ──────────────────────────────────────────────────────────
+  // 这些不再自己实现业务，一律直通 lib/core 的同一个动作。
+  // GUI 和 CLI 因此永远不会漂移（ActionParity §5 架构不变量）。
+
+  // API: Get config —— 绑定 config.get
   if (req.url === '/api/config' && req.method === 'GET') {
-    try {
-      const config = fs.existsSync(CONFIG_PATH)
-        ? JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'))
-        : {};
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify(config));
-    } catch (err) {
-      res.writeHead(500, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: err.message }));
-    }
+    runAction('config.get', {}, {})
+      .then((r) => sendResult(res, r))
+      .catch((err) => sendError(res, err));
+    return;
+  }
+
+  // API: 健康诊断 —— 绑定 doctor.diagnose
+  if (req.url === '/api/doctor' && req.method === 'GET') {
+    runAction('doctor.diagnose', {}, {})
+      .then((r) => sendResult(res, r))
+      .catch((err) => sendError(res, err));
+    return;
+  }
+
+  // API: 读执行日志 —— 绑定 log.tail
+  if (req.url && req.url.startsWith('/api/logs') && req.method === 'GET') {
+    const q = new URL(req.url, 'http://localhost').searchParams;
+    const input = {};
+    if (q.get('limit')) input.limit = Number(q.get('limit'));
+    if (q.get('action_id')) input.action_id = q.get('action_id');
+    if (q.get('failed_only') === 'true') input.failed_only = true;
+    runAction('log.tail', input, {})
+      .then((r) => sendResult(res, r))
+      .catch((err) => sendError(res, err));
+    return;
+  }
+
+  // API: 生成 bug 报告 —— 绑定 bug.collect
+  if (req.url === '/api/bug-report' && req.method === 'POST') {
+    readBody(req)
+      .then((body) => runAction('bug.collect', body.note ? { note: String(body.note) } : {}, {}))
+      .then((r) => sendResult(res, r))
+      .catch((err) => sendError(res, err));
     return;
   }
 
@@ -497,32 +606,50 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // API: Save config
+  // API: Save config —— 绑定 config.set
+  //
+  // 语义从"整份覆盖"改成"深合并"。这一条就是那个 bug 的修法：
+  // 原来 Config.html 存模型时 POST 一份从零构造的配置，把用户已接好的
+  // channels / plugins 整份冲掉（接完微信再改模型 → 微信掉线）。
+  // 现在少传的字段一律保留，要删必须走 unset 显式声明。
   if (req.url === '/api/config' && req.method === 'POST') {
-    let body = '';
-    req.on('data', chunk => body += chunk);
-    req.on('end', () => {
-      try {
-        const config = JSON.parse(body);
-        // 清除旧版废弃键，防止 OpenClaw 报 "agent.* was moved" 错误
-        delete config.agent;
-        const dir = path.dirname(CONFIG_PATH);
-        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-        fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ ok: true }));
-      } catch (err) {
-        res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: err.message }));
-      }
-    });
+    readBody(req)
+      .then((patch) => {
+        // 清除旧版废弃键，防止 OpenClaw 报 "agent.* was moved" 错误。
+        // 深合并表达不了删除，所以走 unset。
+        const unset = [];
+        if (patch && typeof patch === 'object' && 'agent' in patch) delete patch.agent;
+        unset.push('agent');
+        return runAction('config.set', { patch: patch || {}, unset }, { confirmed: true });
+      })
+      .then((r) => sendResult(res, r))
+      .catch((err) => sendError(res, err));
     return;
   }
 
-  // Serve static files
-  const filePath = req.url === '/'
-    ? path.join(__dirname, 'public/index.html')
-    : path.join(__dirname, 'public', req.url);
+  // ── 静态文件 ──────────────────────────────────────────────────────────────
+  // 改造前这里是 path.join(__dirname,'public', req.url)，req.url 未经净化，
+  // `GET /../../data/.openclaw/openclaw.json` 直接把配置文件（含 Key）吐出来，
+  // 实测复现过。现在：先剥查询串、解码、再 resolve，最后强制校验结果仍在 public/ 内。
+  const PUBLIC_DIR = path.resolve(__dirname, 'public');
+  let rawPath;
+  try {
+    rawPath = decodeURIComponent((req.url || '/').split('?')[0].split('#')[0]);
+  } catch {
+    res.writeHead(400);
+    res.end('Bad Request');
+    return;
+  }
+  const filePath = rawPath === '/'
+    ? path.join(PUBLIC_DIR, 'index.html')
+    : path.resolve(PUBLIC_DIR, '.' + path.posix.normalize(rawPath));
+
+  // 归一化后必须仍在 public/ 之内，否则一律 403（含 .. 和符号链接逃逸）
+  if (filePath !== PUBLIC_DIR && !filePath.startsWith(PUBLIC_DIR + path.sep)) {
+    res.writeHead(403);
+    res.end('Forbidden');
+    return;
+  }
 
   if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
     const ext = path.extname(filePath);
@@ -541,31 +668,65 @@ const server = http.createServer((req, res) => {
   }
 });
 
-function listenWithFallback(port) {
-  server.once('error', (err) => {
+/**
+ * 端口占用时顺延重试。
+ *
+ * 注意这里**只注册一次** 'listening' 处理器，端口从 server.address() 读。
+ * 原来写的是 server.listen(port, host, cb) —— Node 会把 cb 挂成一次性
+ * 'listening' 监听器，而绑定失败时它不会被消费；重试三次就积了三个回调，
+ * 真正绑上之后**全部一起触发**，于是控制台打印的是最早那个（错的）端口，
+ * runtime.json 也被连写三遍。用户照着提示打开 18788，其实服务在 18790。
+ */
+function listenWithFallback(startPort) {
+  let port = startPort;
+
+  server.on('listening', () => {
+    const actual = server.address()?.port ?? port;
+    console.log(`\n🦞 U-Claw Config Center`);
+    console.log(`   http://127.0.0.1:${actual}`);
+    console.log(`\n   Config file: ${P().configPath}\n`);
+
+    // 落盘实际端口，供 Config.html / 启动器发现
+    let runtimePath = '(unresolved)';
+    try {
+      runtimePath = P().runtimeJson;
+      fs.mkdirSync(path.dirname(runtimePath), { recursive: true });
+      const existing = fs.existsSync(runtimePath) ? JSON.parse(fs.readFileSync(runtimePath, 'utf8')) : {};
+      existing.configServerPort = actual;
+      existing.configServerUpdatedAt = new Date().toISOString();
+      fs.writeFileSync(runtimePath, JSON.stringify(existing, null, 2));
+    } catch (err) {
+      console.warn(`   Warning: could not write ${runtimePath}: ${err.message}`);
+    }
+  });
+
+  server.on('error', (err) => {
     if (err && err.code === 'EADDRINUSE' && port < PORT_RANGE_END) {
       console.log(`   Port ${port} busy, trying ${port + 1}…`);
-      setImmediate(() => listenWithFallback(port + 1));
+      port += 1;
+      setImmediate(() => server.listen(port, '127.0.0.1'));
       return;
     }
     console.error(`Config server failed to bind: ${err && err.message ? err.message : err}`);
     process.exit(1);
   });
-  server.listen(port, '127.0.0.1', () => {
-    console.log(`\n🦞 U-Claw Config Center`);
-    console.log(`   http://127.0.0.1:${port}`);
-    console.log(`\n   Config file: ${CONFIG_PATH}\n`);
-    // Persist the live port so Config.html / launchers can discover it after restarts.
-    try {
-      fs.mkdirSync(path.dirname(RUNTIME_PATH), { recursive: true });
-      const existing = fs.existsSync(RUNTIME_PATH) ? JSON.parse(fs.readFileSync(RUNTIME_PATH, 'utf8')) : {};
-      existing.configServerPort = port;
-      existing.configServerUpdatedAt = new Date().toISOString();
-      fs.writeFileSync(RUNTIME_PATH, JSON.stringify(existing, null, 2));
-    } catch (err) {
-      console.warn(`   Warning: could not write ${RUNTIME_PATH}: ${err.message}`);
-    }
-  });
+
+  server.listen(port, '127.0.0.1');
 }
 
-listenWithFallback(PORT_RANGE_START);
+/**
+ * 启动：先把动作核心加载起来拿到路径，再开始监听。
+ * 顺序不能反——路径没就绪时任何请求进来 P() 都会抛。
+ */
+async function startup() {
+  try {
+    const core = await loadCore();
+    PATHS = core.resolvePaths();
+  } catch (err) {
+    console.error(`无法加载动作核心 (lib/core)：${err.message}`);
+    process.exit(1);
+  }
+  listenWithFallback(PORT_RANGE_START);
+}
+
+startup();

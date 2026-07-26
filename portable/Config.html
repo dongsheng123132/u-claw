@@ -512,10 +512,15 @@ function buildOpenClawConfig(provider, base, model, apiKey) {
 // --- Save config ---
 async function saveConfig() {
     let apiKey = document.getElementById('apiKey').value.trim();
+    // 输入框留空、但这个 provider 之前已存过 Key → 沿用旧 Key（下面会把 apiKey
+    // 字段从 patch 里摘掉，服务端深合并会保留原值）。这样"只想换个模型"的用户
+    // 不必重新翻出 Key 来抄一遍。
+    const keepExistingKey = !apiKey && savedKeyProvider === selectedProvider;
+
     // 本地模型（Ollama/LM Studio）不需要真实 Key，OpenClaw 配置结构里仍要有 apiKey 字段
     if (selectedLocal) {
         if (!apiKey) apiKey = 'local';
-    } else if (!apiKey) {
+    } else if (!apiKey && !keepExistingKey) {
         showToast('请填写 API Key', true); return;
     }
 
@@ -530,13 +535,12 @@ async function saveConfig() {
 
     const openclawConfig = buildOpenClawConfig(selectedProvider, base, model, apiKey);
 
+    // 沿用旧 Key 时把 apiKey 字段整个摘掉，交给服务端深合并保留原值。
+    // 绝不能写空串或脱敏占位值——那等于毁掉用户的 Key。
+    if (keepExistingKey) stripApiKeyFields(openclawConfig);
+
     try {
-        const res = await fetch('/api/config', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(openclawConfig)
-        });
-        if (!res.ok) throw new Error('保存失败');
+        await apiSaveConfig(openclawConfig);
 
         showToast('配置已保存！');
         goStep(3);
@@ -555,17 +559,67 @@ function showToast(msg, isError) {
     setTimeout(() => t.className = 'toast', 3000);
 }
 
+// --- 影核动作端点封装 ---
+//
+// /api/config 现在绑定 config.get / config.set 两个动作，返回 ActionParity 的
+// 结构化信封 {ok, data, error}，不再是裸配置对象。这里统一拆封，页面其余部分不用改。
+//
+// 注意：config.get 出口会把 apiKey / token 脱敏成 `sk-A…z999` 形态。
+// 绝不能把脱敏值回填到输入框再存回去——那会用打码值覆盖用户的真 Key。
+// 所以下面只用它判断"是否已配置"，不往 value 里填。
+const REDACTED_RE = /^\*{3}$|…/;
+
+// 记录"哪个 provider 已经存过 Key"，供 saveConfig 判断能否沿用旧 Key
+let savedKeyProvider = null;
+
+/** 递归摘掉 patch 里所有 apiKey / ZAI_API_KEY 字段，让服务端合并时保留原值。 */
+function stripApiKeyFields(node) {
+    if (!node || typeof node !== 'object') return;
+    for (const key of Object.keys(node)) {
+        if (key === 'apiKey' || key === 'ZAI_API_KEY') delete node[key];
+        else stripApiKeyFields(node[key]);
+    }
+}
+
+async function apiGetConfig() {
+    const res = await fetch('/api/config');
+    const r = await res.json();
+    return r && r.ok && r.data ? (r.data.config || {}) : {};
+}
+
+async function apiSaveConfig(patch) {
+    const res = await fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(patch)
+    });
+    const r = await res.json();
+    if (!r || !r.ok) throw new Error((r && r.error && r.error.message) || '保存失败');
+    return r.data;
+}
+
 // --- Load existing config ---
 async function loadConfig() {
     try {
-        const res = await fetch('/api/config');
-        const cfg = await res.json();
+        const cfg = await apiGetConfig();
+        const keyInput = document.getElementById('apiKey');
+
+        // 已存过 Key 时给个占位提示，不回填脱敏值
+        const markSaved = (value, provider) => {
+            if (!value) return;
+            if (REDACTED_RE.test(value)) {
+                keyInput.placeholder = '已保存 Key（' + value + '），留空即沿用，重填则替换';
+                savedKeyProvider = provider;
+            } else {
+                keyInput.value = value;
+            }
+        };
 
         // Detect zai provider (智谱 GLM)
         if (cfg.env && cfg.env.ZAI_API_KEY) {
             const card = document.querySelector('.model-card[data-provider="zai"]');
             if (card) card.click();
-            document.getElementById('apiKey').value = cfg.env.ZAI_API_KEY;
+            markSaved(cfg.env.ZAI_API_KEY, 'zai');
             return;
         }
 
@@ -577,7 +631,7 @@ async function loadConfig() {
                 document.querySelectorAll('.model-card').forEach(card => {
                     if (card.dataset.provider === providerName) card.click();
                 });
-                if (p.apiKey) document.getElementById('apiKey').value = p.apiKey;
+                markSaved(p.apiKey, providerName);
             }
         }
     } catch(e) {}
@@ -686,19 +740,12 @@ async function launchOpenClaw() {
     const fsSecret = document.getElementById('ch-feishu-secret')?.value.trim();
     if (fsId && fsSecret) channels.feishu = { enabled: true, appId: fsId, appSecret: fsSecret };
 
-    // 2. Save channel config if any (merge into existing config)
+    // 2. 保存渠道配置。
+    //    以前要"先 GET 整份、改一改、再 POST 整份"，现在服务端是深合并，
+    //    只 POST 增量即可——少一次往返，也不会把读到的脱敏 Key 又写回去。
     if (Object.keys(channels).length > 0) {
         try {
-            const res = await fetch('/api/config');
-            const existing = res.ok ? await res.json() : {};
-            // 清除旧版废弃键，防止 OpenClaw 报 "agent.* was moved" 错误
-            delete existing.agent;
-            existing.channels = Object.assign(existing.channels || {}, channels);
-            await fetch('/api/config', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(existing)
-            });
+            await apiSaveConfig({ channels });
         } catch(e) {}
     }
 
