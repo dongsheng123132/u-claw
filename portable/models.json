@@ -1,0 +1,139 @@
+{
+  "_comment": [
+    "模型目录的单一真相源。改这里，然后跑 `node lib/sync-models.mjs` 同步到各配置页。",
+    "tests/models-catalog.test.mjs 会校验各处没有漂移，漂移了测试直接失败。",
+    "",
+    "为什么要有这个文件：模型 ID 原本硬编码在 Config.html、config-server/public/index.html、",
+    "install.ps1、install.sh 等多份副本里，各家模型名每几个月换一代，副本必然漂移。",
+    "2026-07 就因为 DeepSeek 停用 deepseek-chat 导致客户机每条消息都 400（见 pc-5376）。",
+    "",
+    "verified 字段记录该模型名的证据强度，别在没有证据时随手改：",
+    "  direct-400  = 直连该厂商 API 实测拒绝旧名（最强）",
+    "  vendor-docs = 厂商官方文档明确列出",
+    "  relay-200   = 虾盘云中转站实测可用（只对 uclaw-cloud 卡决定性，不能证明直连可用）",
+    "  unverified  = 没拿到证据，沿用历史值，别当作正确"
+  ],
+  "updated": "2026-07-27",
+  "providers": [
+    {
+      "id": "uclaw-cloud",
+      "baseUrl": "https://api.u-claw.org/v1",
+      "model": "deepseek-v4-flash",
+      "title": "虾盘云",
+      "tags": [{ "cls": "hot", "text": "首选" }, { "cls": "", "text": "中转站" }],
+      "desc": "一个 Key 用 DeepSeek / Claude / GPT / 通义 等国内外全部大模型，无需翻墙",
+      "link": "https://u-claw.org/cloud.html",
+      "linkText": "→ 注册 / 充值 / 获取 API Key",
+      "verified": "relay-200"
+    },
+    {
+      "id": "deepseek",
+      "baseUrl": "https://api.deepseek.com/v1",
+      "model": "deepseek-v4-flash",
+      "title": "DeepSeek",
+      "tags": [{ "cls": "cn", "text": "国内" }, { "cls": "cheap", "text": "便宜" }],
+      "desc": "deepseek-v4-flash / deepseek-v4-pro，超低价格",
+      "link": "https://platform.deepseek.com/",
+      "verified": "direct-400",
+      "note": "旧名 deepseek-chat/coder/reasoner 已停用，直连返回 400"
+    },
+    {
+      "id": "minimax",
+      "baseUrl": "https://api.minimax.chat/v1",
+      "model": "MiniMax-M2.7",
+      "title": "MiniMax",
+      "tags": [{ "cls": "cn", "text": "国内" }],
+      "desc": "MiniMax-M2.7，速度快，性价比高",
+      "link": "https://platform.minimaxi.com/",
+      "verified": "relay-200",
+      "note": "MiniMax-Text-01 / MiniMax-M2 在中转站已 503 下线；直连命名未实测"
+    },
+    {
+      "id": "kimi",
+      "baseUrl": "https://api.moonshot.cn/v1",
+      "model": "kimi-k2.6",
+      "title": "Kimi (月之暗面)",
+      "tags": [{ "cls": "cn", "text": "国内" }, { "cls": "fast", "text": "快" }],
+      "desc": "kimi-k2.6，长上下文强",
+      "link": "https://platform.moonshot.cn/",
+      "verified": "vendor-docs",
+      "note": "官方文档列 kimi-k3/k2.7/k2.6/k2.5 与 moonshot-v1-*；kimi-k2-turbo-preview 未列，已移除"
+    },
+    {
+      "id": "zai",
+      "baseUrl": "",
+      "model": "glm-5",
+      "title": "智谱 GLM",
+      "tags": [{ "cls": "cn", "text": "国内" }, { "cls": "free", "text": "有免费" }],
+      "desc": "glm-5（zai provider），免费额度可用",
+      "link": "https://open.bigmodel.cn/",
+      "verified": "vendor-docs",
+      "note": "glm-4-plus 已不在官方模型总览中"
+    },
+    {
+      "id": "qwen",
+      "baseUrl": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      "model": "qwen-plus",
+      "title": "通义千问",
+      "tags": [{ "cls": "cn", "text": "国内" }, { "cls": "free", "text": "有免费" }],
+      "desc": "qwen-plus，阿里云出品",
+      "link": "https://dashscope.console.aliyun.com/",
+      "verified": "relay-200",
+      "note": "官方文档现主推 qwen3.7-max/plus/flash，qwen-plus 仍可用"
+    },
+    {
+      "id": "doubao",
+      "baseUrl": "https://ark.cn-beijing.volces.com/api/v3",
+      "model": "doubao-seed-1-6-250615",
+      "title": "豆包 (字节)",
+      "tags": [{ "cls": "cn", "text": "国内" }, { "cls": "fast", "text": "快" }],
+      "desc": "doubao-seed-1.6，字节跳动",
+      "link": "https://console.volcengine.com/ark",
+      "verified": "unverified",
+      "note": "火山文档未抓取成功，虾盘云不路由豆包，无法验证；沿用历史较新值"
+    },
+    {
+      "id": "openai",
+      "baseUrl": "https://api.openai.com/v1",
+      "model": "gpt-5.4",
+      "title": "OpenAI",
+      "tags": [{ "cls": "hot", "text": "强" }],
+      "desc": "GPT-5.4，需翻墙或中转",
+      "link": "https://platform.openai.com/",
+      "verified": "relay-200"
+    },
+    {
+      "id": "anthropic",
+      "baseUrl": "https://api.anthropic.com/v1",
+      "model": "claude-sonnet-5",
+      "title": "Claude",
+      "tags": [{ "cls": "hot", "text": "强" }],
+      "desc": "Claude Sonnet 5，需翻墙或中转",
+      "link": "https://console.anthropic.com/",
+      "verified": "relay-200",
+      "note": "claude-sonnet-4-20250514 在中转站已 503 下线"
+    },
+    {
+      "id": "groq",
+      "baseUrl": "https://api.groq.com/openai/v1",
+      "model": "llama-3.3-70b-versatile",
+      "title": "Groq",
+      "tags": [{ "cls": "fast", "text": "极快" }, { "cls": "free", "text": "有免费" }],
+      "desc": "Llama 3.3 70B，超高速推理",
+      "link": "https://console.groq.com/",
+      "verified": "vendor-docs",
+      "note": "Groq 官方文档仍列为 production model"
+    },
+    {
+      "id": "siliconflow",
+      "baseUrl": "https://api.siliconflow.cn/v1",
+      "model": "deepseek-ai/DeepSeek-V3",
+      "title": "硅基流动",
+      "tags": [{ "cls": "cn", "text": "国内" }, { "cls": "cheap", "text": "便宜" }],
+      "desc": "多模型聚合，价格低",
+      "link": "https://cloud.siliconflow.cn/",
+      "verified": "unverified",
+      "note": "官方文档提到该 ID，但未列完整目录；Qwen/Qwen2.5-72B-Instruct 未能确认"
+    }
+  ]
+}

@@ -164,6 +164,7 @@ input:focus { border-color: #ff6b35; }
         <p class="desc">最省心：用「虾盘云」一个 Key 调用国内外全部大模型（中转站）。也可用下面各家自己的官方 Key。</p>
 
         <div class="model-grid">
+            <!-- MODELS:BEGIN 由 models.json 生成，勿手改；改 models.json 后跑 node lib/sync-models.mjs -->
             <div class="model-card" data-provider="uclaw-cloud" data-base="https://api.u-claw.org/v1" data-model="deepseek-v4-flash">
                 <span class="check">✓</span>
                 <h4>虾盘云 <span class="tag hot">首选</span><span class="tag">中转站</span></h4>
@@ -176,16 +177,16 @@ input:focus { border-color: #ff6b35; }
                 <p>deepseek-v4-flash / deepseek-v4-pro，超低价格</p>
                 <a class="buy-link" href="https://platform.deepseek.com/" target="_blank">→ 获取 API Key</a>
             </div>
-            <div class="model-card" data-provider="minimax" data-base="https://api.minimax.chat/v1" data-model="MiniMax-M2">
+            <div class="model-card" data-provider="minimax" data-base="https://api.minimax.chat/v1" data-model="MiniMax-M2.7">
                 <span class="check">✓</span>
                 <h4>MiniMax <span class="tag cn">国内</span></h4>
-                <p>MiniMax-M2，速度快，性价比高</p>
+                <p>MiniMax-M2.7，速度快，性价比高</p>
                 <a class="buy-link" href="https://platform.minimaxi.com/" target="_blank">→ 获取 API Key</a>
             </div>
-            <div class="model-card" data-provider="kimi" data-base="https://api.moonshot.cn/v1" data-model="kimi-k2-turbo-preview">
+            <div class="model-card" data-provider="kimi" data-base="https://api.moonshot.cn/v1" data-model="kimi-k2.6">
                 <span class="check">✓</span>
                 <h4>Kimi (月之暗面) <span class="tag cn">国内</span><span class="tag fast">快</span></h4>
-                <p>kimi-k2，长上下文强</p>
+                <p>kimi-k2.6，长上下文强</p>
                 <a class="buy-link" href="https://platform.moonshot.cn/" target="_blank">→ 获取 API Key</a>
             </div>
             <div class="model-card" data-provider="zai" data-base="" data-model="glm-5">
@@ -197,7 +198,7 @@ input:focus { border-color: #ff6b35; }
             <div class="model-card" data-provider="qwen" data-base="https://dashscope.aliyuncs.com/compatible-mode/v1" data-model="qwen-plus">
                 <span class="check">✓</span>
                 <h4>通义千问 <span class="tag cn">国内</span><span class="tag free">有免费</span></h4>
-                <p>qwen-plus / qwen3-max，阿里云出品</p>
+                <p>qwen-plus，阿里云出品</p>
                 <a class="buy-link" href="https://dashscope.console.aliyun.com/" target="_blank">→ 获取 API Key</a>
             </div>
             <div class="model-card" data-provider="doubao" data-base="https://ark.cn-beijing.volces.com/api/v3" data-model="doubao-seed-1-6-250615">
@@ -212,10 +213,10 @@ input:focus { border-color: #ff6b35; }
                 <p>GPT-5.4，需翻墙或中转</p>
                 <a class="buy-link" href="https://platform.openai.com/" target="_blank">→ 获取 API Key</a>
             </div>
-            <div class="model-card" data-provider="anthropic" data-base="https://api.anthropic.com/v1" data-model="claude-opus-4-6">
+            <div class="model-card" data-provider="anthropic" data-base="https://api.anthropic.com/v1" data-model="claude-sonnet-5">
                 <span class="check">✓</span>
                 <h4>Claude <span class="tag hot">强</span></h4>
-                <p>Claude Opus 4.6 / Sonnet 4.6，需翻墙或中转</p>
+                <p>Claude Sonnet 5，需翻墙或中转</p>
                 <a class="buy-link" href="https://console.anthropic.com/" target="_blank">→ 获取 API Key</a>
             </div>
             <div class="model-card" data-provider="groq" data-base="https://api.groq.com/openai/v1" data-model="llama-3.3-70b-versatile">
@@ -224,12 +225,13 @@ input:focus { border-color: #ff6b35; }
                 <p>Llama 3.3 70B，超高速推理</p>
                 <a class="buy-link" href="https://console.groq.com/" target="_blank">→ 获取 API Key</a>
             </div>
-            <div class="model-card" data-provider="siliconflow" data-base="https://api.siliconflow.cn/v1" data-model="Qwen/Qwen2.5-72B-Instruct">
+            <div class="model-card" data-provider="siliconflow" data-base="https://api.siliconflow.cn/v1" data-model="deepseek-ai/DeepSeek-V3">
                 <span class="check">✓</span>
                 <h4>硅基流动 <span class="tag cn">国内</span><span class="tag cheap">便宜</span></h4>
                 <p>多模型聚合，价格低</p>
                 <a class="buy-link" href="https://cloud.siliconflow.cn/" target="_blank">→ 获取 API Key</a>
             </div>
+            <!-- MODELS:END -->
             <div class="model-card" data-provider="custom" data-base="" data-model="">
                 <span class="check">✓</span>
                 <h4>自定义 <span class="tag">OpenAI 兼容</span></h4>

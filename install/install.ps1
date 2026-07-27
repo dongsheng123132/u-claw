@@ -497,14 +497,14 @@ if ($hasConfig) {
 
     $modelConfigs = @{
         "1"  = @{ model="deepseek-v4-flash"; baseUrl="https://api.deepseek.com/v1"; provider="custom"; label="DeepSeek API Key"; hint="Get key: https://platform.deepseek.com/api_keys"; needKey=$true }
-        "2"  = @{ model="moonshot-v1-auto"; baseUrl="https://api.moonshot.cn/v1"; provider="custom"; label="Moonshot API Key"; hint="Get key: https://platform.moonshot.cn/console/api-keys"; needKey=$true }
+        "2"  = @{ model="kimi-k2.6"; baseUrl="https://api.moonshot.cn/v1"; provider="custom"; label="Moonshot API Key"; hint="Get key: https://platform.moonshot.cn/console/api-keys"; needKey=$true }
         "3"  = @{ model="qwen-plus"; baseUrl="https://dashscope.aliyuncs.com/compatible-mode/v1"; provider="custom"; label="Qwen API Key"; hint="Get key: https://dashscope.console.aliyun.com/apiKey (free quota available)"; needKey=$true }
-        "4"  = @{ model="glm-4-plus"; baseUrl="https://open.bigmodel.cn/api/paas/v4"; provider="custom"; label="Zhipu API Key"; hint="Get key: https://open.bigmodel.cn/usercenter/apikeys"; needKey=$true }
-        "5"  = @{ model="abab6.5s-chat"; baseUrl="https://api.minimax.chat/v1"; provider="custom"; label="MiniMax API Key"; hint="Get key: https://platform.minimaxi.com/"; needKey=$true }
-        "6"  = @{ model="doubao-pro-256k"; baseUrl="https://ark.cn-beijing.volces.com/api/v3"; provider="custom"; label="Volcengine API Key"; hint="Get key: https://console.volcengine.com/ark"; needKey=$true }
+        "4"  = @{ model="glm-5"; baseUrl="https://open.bigmodel.cn/api/paas/v4"; provider="custom"; label="Zhipu API Key"; hint="Get key: https://open.bigmodel.cn/usercenter/apikeys"; needKey=$true }
+        "5"  = @{ model="MiniMax-M2.7"; baseUrl="https://api.minimax.chat/v1"; provider="custom"; label="MiniMax API Key"; hint="Get key: https://platform.minimaxi.com/"; needKey=$true }
+        "6"  = @{ model="doubao-seed-1-6-250615"; baseUrl="https://ark.cn-beijing.volces.com/api/v3"; provider="custom"; label="Volcengine API Key"; hint="Get key: https://console.volcengine.com/ark"; needKey=$true }
         "7"  = @{ model="deepseek-ai/DeepSeek-V3"; baseUrl="https://api.siliconflow.cn/v1"; provider="custom"; label="SiliconFlow API Key"; hint="Get key: https://cloud.siliconflow.cn/account/ak"; needKey=$true }
-        "8"  = @{ model="claude-sonnet-4-20250514"; baseUrl=""; provider="anthropic"; label="Anthropic API Key"; hint="Get key: https://console.anthropic.com/settings/keys (VPN required)"; needKey=$true }
-        "9"  = @{ model="gpt-4o"; baseUrl=""; provider="openai"; label="OpenAI API Key"; hint="Get key: https://platform.openai.com/api-keys (VPN required)"; needKey=$true }
+        "8"  = @{ model="claude-sonnet-5"; baseUrl=""; provider="anthropic"; label="Anthropic API Key"; hint="Get key: https://console.anthropic.com/settings/keys (VPN required)"; needKey=$true }
+        "9"  = @{ model="gpt-5.4"; baseUrl=""; provider="openai"; label="OpenAI API Key"; hint="Get key: https://platform.openai.com/api-keys (VPN required)"; needKey=$true }
         "10" = @{ model="llama3.2"; baseUrl="http://127.0.0.1:11434/v1"; provider="custom"; label=""; hint="Install Ollama first (https://ollama.com), then: ollama run llama3.2"; needKey=$false }
     }
 
@@ -526,6 +526,13 @@ if ($hasConfig) {
         }
     }
 
+    # Escape characters that would break the JSON string (backslash and double quote).
+    # Only these two matter in practice: a legitimate API key rarely contains control
+    # characters, and if the user pastes something odd the JSON at least stays parseable.
+    # Without this, a key containing \ or " writes an openclaw.json OpenClaw cannot read,
+    # and the gateway fails to start with no obvious cause. (install.sh has had this fix.)
+    $apiKeyJson = $apiKey -replace '\\', '\\' -replace '"', '\"'
+
     # Write config
     if ($cfg.provider -eq "custom" -and $cfg.baseUrl) {
         $providerName = "custom"
@@ -540,7 +547,7 @@ if ($hasConfig) {
     "providers": {
       "$providerName": {
         "baseUrl": "$($cfg.baseUrl)",
-        "apiKey": "$apiKey",
+        "apiKey": "$apiKeyJson",
         "api": "openai-completions",
         "models": [{ "id": "$($cfg.model)" }]
       }
@@ -561,7 +568,7 @@ if ($hasConfig) {
     "mode": "merge",
     "providers": {
       "$providerName": {
-        "apiKey": "$apiKey",
+        "apiKey": "$apiKeyJson",
         "api": "$(if ($providerName -eq 'anthropic') {'anthropic'} else {'openai-completions'})",
         "models": [{ "id": "$($cfg.model)" }]
       }

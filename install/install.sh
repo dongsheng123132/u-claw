@@ -806,7 +806,7 @@ else
                 NEED_KEY=true
                 ;;
             2)
-                MODEL_NAME="moonshot-v1-auto"
+                MODEL_NAME="kimi-k2.6"
                 BASE_URL="https://api.moonshot.cn/v1"
                 PROVIDER="custom"
                 KEY_LABEL="Moonshot API Key"
@@ -822,7 +822,7 @@ else
                 NEED_KEY=true
                 ;;
             4)
-                MODEL_NAME="glm-4-plus"
+                MODEL_NAME="glm-5"
                 BASE_URL="https://open.bigmodel.cn/api/paas/v4"
                 PROVIDER="custom"
                 KEY_LABEL="智谱 API Key"
@@ -830,7 +830,7 @@ else
                 NEED_KEY=true
                 ;;
             5)
-                MODEL_NAME="abab6.5s-chat"
+                MODEL_NAME="MiniMax-M2.7"
                 BASE_URL="https://api.minimax.chat/v1"
                 PROVIDER="custom"
                 KEY_LABEL="MiniMax API Key"
@@ -838,7 +838,7 @@ else
                 NEED_KEY=true
                 ;;
             6)
-                MODEL_NAME="doubao-pro-256k"
+                MODEL_NAME="doubao-seed-1-6-250615"
                 BASE_URL="https://ark.cn-beijing.volces.com/api/v3"
                 PROVIDER="custom"
                 KEY_LABEL="火山引擎 API Key"
@@ -854,7 +854,7 @@ else
                 NEED_KEY=true
                 ;;
             8)
-                MODEL_NAME="claude-sonnet-4-20250514"
+                MODEL_NAME="claude-sonnet-5"
                 BASE_URL=""
                 PROVIDER="anthropic"
                 KEY_LABEL="Anthropic API Key"
@@ -862,7 +862,7 @@ else
                 NEED_KEY=true
                 ;;
             9)
-                MODEL_NAME="gpt-4o"
+                MODEL_NAME="gpt-5.4"
                 BASE_URL=""
                 PROVIDER="openai"
                 KEY_LABEL="OpenAI API Key"
