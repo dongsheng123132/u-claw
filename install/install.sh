@@ -830,8 +830,8 @@ else
                 NEED_KEY=true
                 ;;
             5)
-                MODEL_NAME="abab6.5s-chat"
-                BASE_URL="https://api.minimax.chat/v1"
+                MODEL_NAME="MiniMax-M3"
+                BASE_URL="https://api.minimaxi.com/v1"
                 PROVIDER="custom"
                 KEY_LABEL="MiniMax API Key"
                 KEY_HINT="获取地址: https://platform.minimaxi.com/"
