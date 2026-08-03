@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 560" role="img" aria-labelledby="title desc">
+  <title id="title">U-Claw portable AI workspace</title>
+  <desc id="desc">A USB drive carries a local AI workspace across Windows, macOS, and Linux.</desc>
+  <rect width="1280" height="560" fill="#09121e"/>
+  <path d="M0 430C196 362 286 473 491 400s300-37 486-87 207-36 303-11v258H0Z" fill="#0e2632"/>
+  <circle cx="1047" cy="126" r="176" fill="#163d45" opacity=".62"/>
+  <circle cx="1047" cy="126" r="132" fill="#1d6970" opacity=".48"/>
+  <g fill="none" stroke="#48d1c1" stroke-width="2" opacity=".65">
+    <path d="M730 92h174v74h120v104"/>
+    <path d="M778 387h115v-69h151v-94"/>
+    <path d="M235 401h114v-77h96"/>
+  </g>
+  <g transform="translate(472 132)">
+    <rect x="0" y="0" width="286" height="260" rx="18" fill="#d8f2e9"/>
+    <rect x="28" y="24" width="230" height="156" rx="10" fill="#123343"/>
+    <path d="M113 64v58m30-58v58m30-58v58" stroke="#48d1c1" stroke-width="9" stroke-linecap="round"/>
+    <path d="M76 130h137" stroke="#48d1c1" stroke-width="9" stroke-linecap="round"/>
+    <rect x="93" y="203" width="100" height="20" rx="10" fill="#0a1b2b"/>
+    <path d="M44 260v38h198v-38" fill="#b9dfd5"/>
+  </g>
+  <g fill="#b8f4e8">
+    <text x="84" y="151" font-family="Arial, sans-serif" font-size="62" font-weight="700">U-CLAW</text>
+    <text x="88" y="202" font-family="Arial, sans-serif" font-size="25" letter-spacing="3">AI THAT TRAVELS WITH YOU</text>
+  </g>
+  <g font-family="Arial, sans-serif" font-size="22" fill="#d8f2e9">
+    <text x="90" y="313">Portable workspace</text>
+    <text x="90" y="350">Local data · Your model · Your USB drive</text>
+  </g>
+  <g transform="translate(923 367)" fill="#d8f2e9" font-family="Arial, sans-serif" font-size="18">
+    <text x="0" y="0">Windows</text><text x="116" y="0">macOS</text><text x="218" y="0">Linux</text>
+  </g>
+</svg>

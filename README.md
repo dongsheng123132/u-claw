@@ -1,12 +1,38 @@
-# 🦞 U-Claw（虾盘）
+<p align="center">
+  <img src="assets/readme/hero.svg" alt="U-Claw：随身携带的 AI 工作空间" width="100%" />
+</p>
 
-> **虾盘 — 全球首个 U 盘里运行的 AI 助手 | The world's first AI assistant that runs from a USB drive**
-> **制作「插上就能用」的 AI 助手 U 盘 — 教程与源代码**
-> **Build a plug-and-play AI assistant USB drive — Tutorial & Source Code**
+<h1 align="center">U-Claw（虾盘）</h1>
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+<p align="center"><strong>把 AI 工作空间装进 U 盘：插上任意电脑，配置、记忆和工具都跟着走。</strong></p>
 
-[中文](#中文) | [English](#english) | [📖 完整教程](https://u-claw.org/tutorial.html)
+<p align="center">
+  <a href="https://github.com/dongsheng123132/u-claw/releases">下载便携版</a> ·
+  <a href="https://u-claw.org/tutorial.html">完整教程</a> ·
+  <a href="#快速开始制作便携版-u-盘">从源码制作</a> ·
+  <a href="#english">English</a>
+</p>
+
+<p align="center">
+  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-1f7a8c?style=flat-square" alt="MIT License" /></a>
+  <img src="https://img.shields.io/badge/Portable-USB%20first-123343?style=flat-square" alt="USB first" />
+  <img src="https://img.shields.io/badge/Runtime-OpenClaw-48d1c1?style=flat-square" alt="OpenClaw runtime" />
+</p>
+
+> [!IMPORTANT]
+> 这不是 U 盘制作工具。这个仓库就是 U 盘的文件骨架：运行一次 `setup.sh` 补齐运行时，再把整个 `portable/` 拷到盘里即可。
+
+## 三步开始
+
+1. 从 [Releases](https://github.com/dongsheng123132/u-claw/releases) 下载 Windows 便携版，解压到 U 盘后双击 `Windows-Start.bat`。
+2. 或克隆仓库，在 `portable/` 运行 `bash setup.sh`，下载 Node.js 与 OpenClaw。
+3. 首次启动在本地配置模型 Key；配置只保存在 U 盘的 `data/.openclaw/openclaw.json`。
+
+| 你得到什么 | 为什么重要 |
+| --- | --- |
+| 随身 AI 工作空间 | 换电脑时带走配置、记忆与工具，不在主机残留用户数据。 |
+| 本地优先 | 不绑定设备、不打指纹、不上传本地配置。 |
+| 多种使用方式 | 便携 U 盘、在线一键安装、可启动 Linux U 盘各自独立。 |
 
 > [!TIP]
 > ### 👑 同作者新品：U-King · AI 装机管家

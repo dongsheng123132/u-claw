@@ -107,7 +107,7 @@ do_config() {
     echo ""
     echo -e "  DeepSeek  → 选 Custom Provider"
     echo -e "              URL: https://api.deepseek.com/v1"
-    echo -e "              模型: deepseek-chat"
+    echo -e "              模型: deepseek-v4-flash"
     echo -e "  Kimi      → 选 Moonshot AI"
     echo -e "  通义千问  → 选 Qwen"
     echo -e "  豆包      → 选 Volcano Engine"

@@ -495,9 +495,11 @@ metadata: { "openclaw": { "emoji": "🤖" } }
 
 | 模型 | 适用场景 | 上下文长度 |
 |------|---------|-----------|
-| deepseek-chat | 日常对话、文案写作、知识问答 | 32K |
-| deepseek-coder | 代码生成、代码审查、技术文档 | 16K |
-| deepseek-reasoner | 复杂推理、数学、逻辑分析 | 64K |
+| deepseek-v4-flash | 日常对话、文案写作、知识问答，快且便宜 | 128K |
+| deepseek-v4-pro | 复杂推理、数学、代码 | 128K |
+
+> 注意：旧名 `deepseek-chat` / `deepseek-coder` / `deepseek-reasoner` 已被
+> api.deepseek.com 拒绝，调用会直接返回 HTTP 400。
 
 ## 关键提示
 
@@ -796,7 +798,7 @@ else
         # 模型配置映射
         case $MODEL_CHOICE in
             1)
-                MODEL_NAME="deepseek-chat"
+                MODEL_NAME="deepseek-v4-flash"
                 BASE_URL="https://api.deepseek.com/v1"
                 PROVIDER="custom"
                 KEY_LABEL="DeepSeek API Key"
@@ -877,7 +879,7 @@ else
                 ;;
             *)
                 echo -e "  ${YELLOW}未知选项，使用默认 DeepSeek${NC}"
-                MODEL_NAME="deepseek-chat"
+                MODEL_NAME="deepseek-v4-flash"
                 BASE_URL="https://api.deepseek.com/v1"
                 PROVIDER="custom"
                 KEY_LABEL="DeepSeek API Key"

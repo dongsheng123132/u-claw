@@ -355,9 +355,11 @@ metadata: { "openclaw": { "emoji": "robot" } }
 
 | Model | Use case | Context |
 |-------|----------|---------|
-| deepseek-chat | Daily chat | 32K |
-| deepseek-coder | Code generation | 16K |
-| deepseek-reasoner | Complex reasoning | 64K |
+| deepseek-v4-flash | Daily chat, fast and cheap | 128K |
+| deepseek-v4-pro | Complex reasoning, code | 128K |
+
+> Note: the legacy names `deepseek-chat` / `deepseek-coder` / `deepseek-reasoner` are
+> no longer accepted by api.deepseek.com and return HTTP 400.
 
 - OpenAI-compatible API, base_url: https://api.deepseek.com
 - Direct access in China, API Key: https://platform.deepseek.com
@@ -494,7 +496,7 @@ if ($hasConfig) {
     if ([string]::IsNullOrEmpty($choice)) { $choice = "1" }
 
     $modelConfigs = @{
-        "1"  = @{ model="deepseek-chat"; baseUrl="https://api.deepseek.com/v1"; provider="custom"; label="DeepSeek API Key"; hint="Get key: https://platform.deepseek.com/api_keys"; needKey=$true }
+        "1"  = @{ model="deepseek-v4-flash"; baseUrl="https://api.deepseek.com/v1"; provider="custom"; label="DeepSeek API Key"; hint="Get key: https://platform.deepseek.com/api_keys"; needKey=$true }
         "2"  = @{ model="moonshot-v1-auto"; baseUrl="https://api.moonshot.cn/v1"; provider="custom"; label="Moonshot API Key"; hint="Get key: https://platform.moonshot.cn/console/api-keys"; needKey=$true }
         "3"  = @{ model="qwen-plus"; baseUrl="https://dashscope.aliyuncs.com/compatible-mode/v1"; provider="custom"; label="Qwen API Key"; hint="Get key: https://dashscope.console.aliyun.com/apiKey (free quota available)"; needKey=$true }
         "4"  = @{ model="glm-4-plus"; baseUrl="https://open.bigmodel.cn/api/paas/v4"; provider="custom"; label="Zhipu API Key"; hint="Get key: https://open.bigmodel.cn/usercenter/apikeys"; needKey=$true }
