@@ -514,6 +514,32 @@ if ($hasConfig) {
         $cfg = $modelConfigs["1"]
     }
 
+    if ($choice -eq "5") {
+        Write-Host ""
+        Write-Host "  Select MiniMax model:" -ForegroundColor White
+        Write-Host "  1) MiniMax-M3 (recommended)" -ForegroundColor Green
+        Write-Host "  2) MiniMax-M2.7"
+        $minimaxModelChoice = Read-Host "  Enter number [1]"
+        if ($minimaxModelChoice -eq "2") {
+            $cfg.model = "MiniMax-M2.7"
+        } else {
+            $cfg.model = "MiniMax-M3"
+        }
+
+        Write-Host ""
+        Write-Host "  Select MiniMax region:" -ForegroundColor White
+        Write-Host "  1) China" -ForegroundColor Green
+        Write-Host "  2) Global"
+        $minimaxRegionChoice = Read-Host "  Enter number [1]"
+        if ($minimaxRegionChoice -eq "2") {
+            $cfg.baseUrl = "https://api.minimax.io/v1"
+            $cfg.hint = "Open docs: https://platform.minimax.io/docs"
+        } else {
+            $cfg.baseUrl = "https://api.minimaxi.com/v1"
+            $cfg.hint = "Open docs: https://platform.minimaxi.com/docs"
+        }
+    }
+
     Write-Host ""
     Write-Cyan "  $($cfg.hint)"
     Write-Host ""

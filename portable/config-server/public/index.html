@@ -189,9 +189,27 @@ input:focus { border-color: #ff6b35; }
             </div>
             <div class="model-card" data-provider="minimax" data-base="https://api.minimaxi.com/v1" data-model="MiniMax-M3">
                 <span class="check">✓</span>
-                <h4>MiniMax <span class="tag hot">推荐</span><span class="tag cn">国内</span></h4>
-                <p>MiniMax-M3，速度快，性价比高</p>
-                <a class="buy-link" href="https://platform.minimaxi.com/" target="_blank">→ 获取 API Key</a>
+                <h4>MiniMax M3 <span class="tag hot">Recommended</span><span class="tag cn">China</span></h4>
+                <p>MiniMax-M3 via the China endpoint</p>
+                <a class="buy-link" href="https://platform.minimaxi.com/docs" target="_blank" data-action-label="View documentation">View documentation</a>
+            </div>
+            <div class="model-card" data-provider="minimax" data-base="https://api.minimaxi.com/v1" data-model="MiniMax-M2.7">
+                <span class="check">&#10003;</span>
+                <h4>MiniMax M2.7 <span class="tag cn">China</span></h4>
+                <p>MiniMax-M2.7 via the China endpoint</p>
+                <a class="buy-link" href="https://platform.minimaxi.com/docs" target="_blank" data-action-label="View documentation">View documentation</a>
+            </div>
+            <div class="model-card" data-provider="minimax" data-base="https://api.minimax.io/v1" data-model="MiniMax-M3">
+                <span class="check">&#10003;</span>
+                <h4>MiniMax M3 <span class="tag">Global</span></h4>
+                <p>MiniMax-M3 via the global endpoint</p>
+                <a class="buy-link" href="https://platform.minimax.io/docs" target="_blank" data-action-label="View documentation">View documentation</a>
+            </div>
+            <div class="model-card" data-provider="minimax" data-base="https://api.minimax.io/v1" data-model="MiniMax-M2.7">
+                <span class="check">&#10003;</span>
+                <h4>MiniMax M2.7 <span class="tag">Global</span></h4>
+                <p>MiniMax-M2.7 via the global endpoint</p>
+                <a class="buy-link" href="https://platform.minimax.io/docs" target="_blank" data-action-label="View documentation">View documentation</a>
             </div>
             <div class="model-card" data-provider="kimi" data-base="https://api.moonshot.cn/v1" data-model="moonshot-v1-auto">
                 <span class="check">✓</span>
@@ -475,7 +493,7 @@ function setupStep2() {
     var name = PROVIDER_NAMES[selectedProvider] || selectedProvider;
     document.getElementById('step2desc').textContent = '请填写 ' + name + ' 的 API Key';
 
-    var card = document.querySelector('#step1 .model-card[data-provider="' + selectedProvider + '"]');
+    var card = document.querySelector('#step1 .model-card.selected');
     var buyLink = card ? card.querySelector('.buy-link') : null;
     var linksDiv = document.getElementById('providerLinks');
     linksDiv.innerHTML = '';
@@ -494,6 +512,36 @@ function togglePw(id) {
     var btn = inp.parentElement.querySelector('.toggle-pw');
     if (inp.type === 'password') { inp.type = 'text'; btn.textContent = '隐藏'; }
     else { inp.type = 'password'; btn.textContent = '显示'; }
+}
+
+function buildModelDefinition(provider, model) {
+    var definition = {
+        id: model,
+        name: model,
+        reasoning: false,
+        input: ['text'],
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+        contextWindow: 128000,
+        maxTokens: 8192
+    };
+
+    if (provider !== 'minimax') return definition;
+
+    var miniMaxProfiles = {
+        'MiniMax-M3': {
+            reasoning: true,
+            input: ['text', 'image', 'video'],
+            cost: { input: 0.6, output: 2.4, cacheRead: 0.12 },
+            contextWindow: 1000000
+        },
+        'MiniMax-M2.7': {
+            reasoning: true,
+            input: ['text'],
+            cost: { input: 0.3, output: 1.2, cacheRead: 0.06, cacheWrite: 0.375 },
+            contextWindow: 204800
+        }
+    };
+    return Object.assign(definition, miniMaxProfiles[model] || miniMaxProfiles['MiniMax-M3']);
 }
 
 // --- Build OpenClaw config ---
@@ -518,15 +566,7 @@ function buildConfig(provider, base, model, apiKey) {
         baseUrl: base,
         apiKey: apiKey,
         api: 'openai-completions',
-        models: [{
-            id: model,
-            name: model,
-            reasoning: false,
-            input: ['text'],
-            cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-            contextWindow: 128000,
-            maxTokens: 8192
-        }]
+        models: [buildModelDefinition(provider, model)]
     };
     return Object.assign({}, baseConfig, {
         models: { mode: 'merge', providers: providers },
@@ -786,7 +826,12 @@ async function loadConfig() {
             var providerName = Object.keys(cfg.models.providers)[0];
             if (providerName) {
                 var p = cfg.models.providers[providerName];
-                var card = document.querySelector('#step1 .model-card[data-provider="' + providerName + '"]');
+                var modelId = p.models && p.models[0] ? p.models[0].id : '';
+                var card = Array.from(document.querySelectorAll('#step1 .model-card')).find(function(candidate) {
+                    return candidate.dataset.provider === providerName &&
+                        candidate.dataset.base === (p.baseUrl || '') &&
+                        candidate.dataset.model === modelId;
+                }) || document.querySelector('#step1 .model-card[data-provider="' + providerName + '"]');
                 if (card) card.click();
                 if (p.apiKey) document.getElementById('apiKey').value = p.apiKey;
             }
