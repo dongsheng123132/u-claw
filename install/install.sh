@@ -830,11 +830,33 @@ else
                 NEED_KEY=true
                 ;;
             5)
-                MODEL_NAME="abab6.5s-chat"
-                BASE_URL="https://api.minimax.chat/v1"
+                echo -e "  Select MiniMax model:"
+                echo -e "  ${GREEN}1)${NC} MiniMax-M3 (recommended)"
+                echo -e "  ${NC}2)${NC} MiniMax-M2.7"
+                read -p "  Enter number [1]: " MINIMAX_MODEL_CHOICE
+                MINIMAX_MODEL_CHOICE=${MINIMAX_MODEL_CHOICE:-1}
+                case $MINIMAX_MODEL_CHOICE in
+                    2) MODEL_NAME="MiniMax-M2.7" ;;
+                    *) MODEL_NAME="MiniMax-M3" ;;
+                esac
+                echo ""
+                echo -e "  Select MiniMax region:"
+                echo -e "  ${GREEN}1)${NC} China"
+                echo -e "  ${NC}2)${NC} Global"
+                read -p "  Enter number [1]: " MINIMAX_REGION_CHOICE
+                MINIMAX_REGION_CHOICE=${MINIMAX_REGION_CHOICE:-1}
+                case $MINIMAX_REGION_CHOICE in
+                    2)
+                        BASE_URL="https://api.minimax.io/v1"
+                        KEY_HINT="Open docs: https://platform.minimax.io/docs"
+                        ;;
+                    *)
+                        BASE_URL="https://api.minimaxi.com/v1"
+                        KEY_HINT="Open docs: https://platform.minimaxi.com/docs"
+                        ;;
+                esac
                 PROVIDER="custom"
                 KEY_LABEL="MiniMax API Key"
-                KEY_HINT="获取地址: https://platform.minimaxi.com/"
                 NEED_KEY=true
                 ;;
             6)

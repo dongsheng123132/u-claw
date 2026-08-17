@@ -500,7 +500,7 @@ if ($hasConfig) {
         "2"  = @{ model="moonshot-v1-auto"; baseUrl="https://api.moonshot.cn/v1"; provider="custom"; label="Moonshot API Key"; hint="Get key: https://platform.moonshot.cn/console/api-keys"; needKey=$true }
         "3"  = @{ model="qwen-plus"; baseUrl="https://dashscope.aliyuncs.com/compatible-mode/v1"; provider="custom"; label="Qwen API Key"; hint="Get key: https://dashscope.console.aliyun.com/apiKey (free quota available)"; needKey=$true }
         "4"  = @{ model="glm-4-plus"; baseUrl="https://open.bigmodel.cn/api/paas/v4"; provider="custom"; label="Zhipu API Key"; hint="Get key: https://open.bigmodel.cn/usercenter/apikeys"; needKey=$true }
-        "5"  = @{ model="abab6.5s-chat"; baseUrl="https://api.minimax.chat/v1"; provider="custom"; label="MiniMax API Key"; hint="Get key: https://platform.minimaxi.com/"; needKey=$true }
+        "5"  = @{ model="MiniMax-M3"; baseUrl="https://api.minimaxi.com/v1"; provider="custom"; label="MiniMax API Key"; hint="Get key: https://platform.minimaxi.com/"; needKey=$true }
         "6"  = @{ model="doubao-pro-256k"; baseUrl="https://ark.cn-beijing.volces.com/api/v3"; provider="custom"; label="Volcengine API Key"; hint="Get key: https://console.volcengine.com/ark"; needKey=$true }
         "7"  = @{ model="deepseek-ai/DeepSeek-V3"; baseUrl="https://api.siliconflow.cn/v1"; provider="custom"; label="SiliconFlow API Key"; hint="Get key: https://cloud.siliconflow.cn/account/ak"; needKey=$true }
         "8"  = @{ model="claude-sonnet-4-20250514"; baseUrl=""; provider="anthropic"; label="Anthropic API Key"; hint="Get key: https://console.anthropic.com/settings/keys (VPN required)"; needKey=$true }
@@ -512,6 +512,32 @@ if ($hasConfig) {
     if (-not $cfg) {
         Write-Yellow "  Unknown option, using DeepSeek"
         $cfg = $modelConfigs["1"]
+    }
+
+    if ($choice -eq "5") {
+        Write-Host ""
+        Write-Host "  Select MiniMax model:" -ForegroundColor White
+        Write-Host "  1) MiniMax-M3 (recommended)" -ForegroundColor Green
+        Write-Host "  2) MiniMax-M2.7"
+        $minimaxModelChoice = Read-Host "  Enter number [1]"
+        if ($minimaxModelChoice -eq "2") {
+            $cfg.model = "MiniMax-M2.7"
+        } else {
+            $cfg.model = "MiniMax-M3"
+        }
+
+        Write-Host ""
+        Write-Host "  Select MiniMax region:" -ForegroundColor White
+        Write-Host "  1) China" -ForegroundColor Green
+        Write-Host "  2) Global"
+        $minimaxRegionChoice = Read-Host "  Enter number [1]"
+        if ($minimaxRegionChoice -eq "2") {
+            $cfg.baseUrl = "https://api.minimax.io/v1"
+            $cfg.hint = "Open docs: https://platform.minimax.io/docs"
+        } else {
+            $cfg.baseUrl = "https://api.minimaxi.com/v1"
+            $cfg.hint = "Open docs: https://platform.minimaxi.com/docs"
+        }
     }
 
     Write-Host ""
