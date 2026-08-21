@@ -6,12 +6,13 @@
     "v3 瘦壳架构的版本通道：Node 与 OpenClaw 内核装到本机，不再住在 U 盘上。",
     "内核版本不写在这里 —— OPENCLAW_VERSION 文件是唯一真相源（track-upstream.yml 每天改它）。",
     "这里只用 kernel.versionFrom 指过去，避免同一事实存两份而漂移。",
-    "sha256 取自 nodejs.org 官方 SHASUMS256.txt，镜像只加速下载、不改变校验基准。"
+    "sha256 取自 nodejs.org 官方 SHASUMS256.txt，镜像只加速下载、不改变校验基准。",
+    "node.minimumVersion 跟着 openclaw 的 engines.node 走（当前 >=22.14.0），不是拍脑袋定的。"
   ],
 
   "node": {
     "version": "22.22.1",
-    "minimumVersion": "22.12.0",
+    "minimumVersion": "22.14.0",
     "mirrors": [
       "https://npmmirror.com/mirrors/node",
       "https://nodejs.org/dist"

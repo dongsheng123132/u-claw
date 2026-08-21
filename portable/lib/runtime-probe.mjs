@@ -209,8 +209,12 @@ function probeKernel({ paths, channel, env, platform }) {
   const legacy = inspect('legacy-usb', paths.legacy.kernelPackage);
 
   // 3 U 盘 vendor/ 离线 seed
-  const seedArchive = join(paths.vendorDir, `openclaw-${pinned}.tgz`);
-  const seedAvailable = existsSync(seedArchive);
+  //   seed 是**装好的整棵树**、按平台打，不是 npm tarball —— openclaw 有 58 个依赖，
+  //   npm pack 的包不含它们，装它照样要联网，那就破了"零网络依赖"。
+  const seedArchive = ['zip', 'tar.gz']
+    .map((extension) => join(paths.vendorDir, `openclaw-${pinned}-${paths.target}.${extension}`))
+    .find((candidate) => existsSync(candidate)) ?? null;
+  const seedAvailable = Boolean(seedArchive);
   if (seedAvailable) {
     candidates.push({ source: 'usb-seed', path: seedArchive, version: pinned, installed: false });
   }

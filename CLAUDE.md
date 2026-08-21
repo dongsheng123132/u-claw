@@ -145,6 +145,7 @@ Pure-Node, zero-dependency `.mjs` modules (use `fetch` + `node:zlib` only). All 
 | `atomic-file.mjs` | 原子写（临时文件 → rename，同目录）。给 active.json / 钱包 / 设置这类"写坏了就毁一天"的小文件用。 |
 | `runtime-channel.mjs` | 读 `portable/config/runtime-channel.json`（Node 版本 + 官方 SHA256 + 镜像 + 复用开关）。**内核版本不在通道里** —— `OPENCLAW_VERSION` 是唯一真相源，通道只用 `kernel.versionFrom` 指过去，避免和 track-upstream.yml 漂移。 |
 | `runtime-paths.mjs` | **v3 状态边界**：① 随盘走 `<usb>/data/`（配置/会话/钱包）② 本机共享 `<host>/shared/`（Node/内核/npm 缓存，跨 U 盘复用）③ 本机按盘隔离 `<host>/<slot16>/`（浏览器/编译缓存/日志/锁）。纯计算无副作用；建目录用 `prepareHostDirs()`，返回 `ok:false` 时必须降级回落 U 盘而不是报错。 |
+| `kernel-manager.mjs` | **影核动作 `runtime.seed` / `install` / `activate` / `gc`**：把 Node 和内核装到本机。顺序＝已装 → **U 盘 vendor/ 离线 seed** → 网络（镜像回退）。seed 是**装好的整棵树、按平台打**（openclaw 有 58 个依赖 + 原生 `sqlite-vec`，npm tarball 装了照样要联网）。全程"临时目录 → 校验 → 原子改名"，装完**不自动切换**，由调用方 `activate()`；起不来 `rollback()` 改指针即可，旧版本还在盘上。`gc()` 保留 当前/上一版/锁定版。⚠️ Windows 解 tar.gz 必须用 `tarBinary()` 点名 System32 的 bsdtar——PATH 上的 GNU tar 会把 `C:\` 当远程主机。 |
 | `runtime-probe.mjs` | **影核动作 `runtime.probe`**：只读探测本机已有的 Node 与内核。Node 顺序＝本机托管 → U 盘 v2 遗留 → 同门产品(`~/.uking/runtime/node`) → U 盘 seed → 系统 PATH(默认关)；内核同理，但**客户自己 `npm i -g` 的 openclaw 只报告绝不使用**（那份没有随包预装的渠道插件）。CLI：`node lib/runtime-probe.mjs <U盘根> [--json]`，退出码 0 就绪 / 2 有办法 / 3 卡住 / 1 探测出错。 |
 
 ### 启动加速（吸收自 v2 u-clawx 4.0 的工程经验，2026-06-17）

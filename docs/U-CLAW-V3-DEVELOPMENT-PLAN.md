@@ -89,7 +89,11 @@ v2 的根本病是**运行时住在 U 盘上**：`node_modules` 几万个小文�
 
 1. `%LOCALAPPDATA%\U-Claw\shared\kernels\openclaw\<version>\` + 激活指针 `current`，版本匹配直接用
 2. 本机其它 slot 的 kernels → 复用
-3. U 盘 seed `vendor/openclaw-<version>.tgz` → 按 u-dsh `kernel-manager.js` 的流程装到 (1)：临时目录 → 校验包名/版本/入口/必需 peer → 原子改名 → 切激活指针
+3. U 盘 seed `vendor/openclaw-<version>-<target>.{zip,tar.gz}` → 临时目录 → 校验包名/版本/入口 → 原子改名 → 切激活指针
+
+   **seed 必须是装好的整棵树，不是 npm tarball。** openclaw 有 58 个依赖，`npm pack` 出来的包不含它们，装它照样要联网——那就破了「零网络依赖」。又因为它带 `sqlite-vec` 这个原生 `optionalDependency`，整棵树**按平台打**，不能跨平台复用。
+
+   另：openclaw 的 `peerDependencies` 是空的，u-dsh 那套 peer 收敛循环不用移植。
 4. 网络 registry + 镜像回退
 5. **客户自己全局装的 `openclaw`（`npm i -g` 或 `~/.uclaw/`）：绝不复用。** 版本不受控、配置目录会串——#51 就是这类症状。探测到了只**报告**（「检测到系统中另有 openclaw X.Y，U-Claw 不会使用它」），供诊断用，不接管、不修改、不卸载。
 
@@ -263,7 +267,7 @@ GUI、CLI、MCP、OpenClaw Skill 和测试都调用同一套动作核心，不�
 ```text
 u-claw/
 ├── portable/              # 新版默认便携发行版入口（= U 盘内容）
-│   ├── vendor/            # 离线 seed：node zip + openclaw tgz + 渠道插件，保证零网络依赖
+│   ├── vendor/            # 离线 seed：node 官方 zip + openclaw 整棵树（按平台）+ 渠道插件
 │   ├── config/            # 配置页与配置服务
 │   │   └── runtime-channel.json   # Node/内核版本、SHA256、镜像回退，单一真相源
 │   ├── actions/           # 影核 Action Core
@@ -311,8 +315,13 @@ v3 走独立分支后，每日 cron 只碰 main，与 v3 无冲突，CI 一行�
 - `kernel-manager.js` → 适配 OpenClaw 包名与入口；
 - `atomic-file.js`；
 - 运行时探测与复用（§3），含 `runtime.probe` 输出；
-- 离线 seed 打包与首启解压路径；
+- 离线 seed 首启解压路径（`kernel-manager.mjs`：seed → 校验 → 原子落地 → 激活/回退/gc）；
+- **CI 产出 seed**：把现在 release zip 里的 `app/core/` 改打成 `vendor/openclaw-<version>-<target>`；
 - 首启进度界面（扩现有 `loading.html`，不得黑窗）。
+
+> 踩到的坑，记在这里免得再踩：Windows 上解 tar.gz **必须点名 `%SystemRoot%\System32\tar.exe`**（bsdtar）。
+> 客户机和开发机的 PATH 上常有 GNU tar，它把 `C:\...` 的冒号当 `host:path` 分隔符，直接
+> 报 `Cannot connect to C: resolve failed`。只写 `tar` 在 CI 上可能是绿的，到客户机上就炸。
 
 理由：AI 设置的落盘位置取决于状态边界，边界没落地就做配置核心必然返工。
 
