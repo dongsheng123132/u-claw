@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "channel": "stable",
+
+  "_note": [
+    "v3 瘦壳架构的版本通道：Node 与 OpenClaw 内核装到本机，不再住在 U 盘上。",
+    "内核版本不写在这里 —— OPENCLAW_VERSION 文件是唯一真相源（track-upstream.yml 每天改它）。",
+    "这里只用 kernel.versionFrom 指过去，避免同一事实存两份而漂移。",
+    "sha256 取自 nodejs.org 官方 SHASUMS256.txt，镜像只加速下载、不改变校验基准。"
+  ],
+
+  "node": {
+    "version": "22.22.1",
+    "minimumVersion": "22.12.0",
+    "mirrors": [
+      "https://npmmirror.com/mirrors/node",
+      "https://nodejs.org/dist"
+    ],
+    "targets": {
+      "win-x64": {
+        "archive": "node-v22.22.1-win-x64.zip",
+        "sha256": "877cb93829e14fffbbc7903e7d8037336c9a79f3ea43c5d0b8c2379b79da56de",
+        "nodeRelativePath": "node.exe",
+        "npmCliRelativePath": "node_modules/npm/bin/npm-cli.js"
+      },
+      "darwin-arm64": {
+        "archive": "node-v22.22.1-darwin-arm64.tar.gz",
+        "sha256": "679ad4966339e4ef4900f57996714864e4211b898825bb840c3086c419fbcef2",
+        "nodeRelativePath": "bin/node",
+        "npmCliRelativePath": "lib/node_modules/npm/bin/npm-cli.js"
+      },
+      "linux-x64": {
+        "archive": "node-v22.22.1-linux-x64.tar.gz",
+        "sha256": "07c8aafa60644fb81adefa1ee7da860eb1920851ffdc9a37020ab0be47fbc10e",
+        "nodeRelativePath": "bin/node",
+        "npmCliRelativePath": "lib/node_modules/npm/bin/npm-cli.js"
+      }
+    }
+  },
+
+  "kernel": {
+    "package": "openclaw",
+    "versionFrom": "OPENCLAW_VERSION",
+    "registry": "https://registry.npmjs.org/",
+    "installRegistries": [
+      "https://registry.npmmirror.com/",
+      "https://registry.npmjs.org/"
+    ]
+  },
+
+  "reuse": {
+    "_note": "见开发计划 §3。默认值刻意保守：省一次下载不值得换来一类查不出的串线 Bug。",
+    "allowSystemNode": false,
+    "allowForeignKernel": false
+  }
+}

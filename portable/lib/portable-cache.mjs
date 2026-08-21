@@ -42,7 +42,9 @@ const CACHE_ID_FILE = 'portable-cache-id';
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 // 本机缓存根：各平台的"用户缓存"约定位置。绝不放 U 盘。
-function systemCacheRoot(platform = process.platform, env = process.env) {
+// 导出给 runtime-paths.mjs 复用 —— 本机根目录的算法只能有一份，
+// 存两份就会在某次改动后漂成两个目录（宪法 8）。
+export function systemCacheRoot(platform = process.platform, env = process.env) {
   if (platform === 'win32') {
     return env.LOCALAPPDATA?.trim() || join(homedir() || tmpdir(), 'AppData', 'Local');
   }
@@ -70,6 +72,15 @@ function readOrCreateCacheId(stateDir) {
   }
 }
 
+// 解析"这支 U 盘在本机的槽位身份"，纯计算 + 至多写一个 UUID 文件，不建目录、不做链接。
+// 单独导出是给 runtime-probe.mjs 用的：探测是只读动作，不该顺手把浏览器目录链掉。
+export function resolveCacheSlot({ stateDir, usbRoot } = {}) {
+  const cacheId = readOrCreateCacheId(stateDir);
+  // 有 UUID 用 UUID，否则退而用 U 盘路径做身份（仍稳定，只是换盘符会换目录）
+  const identity = cacheId ? `portable-id:${cacheId}` : String(usbRoot || stateDir || 'u-claw').toLowerCase();
+  return { cacheId, slot: createHash('sha256').update(identity).digest('hex').slice(0, 16) };
+}
+
 // 解析本机缓存目录集合。stateDir 缺失/不可写时回退到 U 盘内目录。
 export function resolvePortableCache({
   stateDir,
@@ -77,10 +88,7 @@ export function resolvePortableCache({
   platform = process.platform,
   env = process.env,
 } = {}) {
-  const cacheId = readOrCreateCacheId(stateDir);
-  // 有 UUID 用 UUID，否则退而用 U 盘路径做身份（仍稳定，只是换盘符会换目录）
-  const identity = cacheId ? `portable-id:${cacheId}` : String(usbRoot || stateDir || 'u-claw').toLowerCase();
-  const slot = createHash('sha256').update(identity).digest('hex').slice(0, 16);
+  const { cacheId, slot } = resolveCacheSlot({ stateDir, usbRoot });
 
   let root;
   try {

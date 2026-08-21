@@ -142,6 +142,10 @@ Pure-Node, zero-dependency `.mjs` modules (use `fetch` + `node:zlib` only). All 
 | `loading.html` | 启动首屏（splash）：双击启动后立刻打开，给即时反馈消除"黑窗假死"。本页每秒 fetch `/ready`，gateway 真就绪后自动 `location.replace` 跳 Dashboard——天然规避"gateway 没起就开 Dashboard 拒连"(issue #46/#48)。端口经 `?port=` 传入。 |
 | `wait-gateway.bat` | Windows 兜底：现由 `loading.html` 首屏轮询并自动跳转；本脚本退居兜底——万一首屏 `file://` fetch 被浏览器拦，仍轮询端口、就绪后开 Dashboard。 |
 | `maintain.sh` | Maintenance/diagnostics script. |
+| `atomic-file.mjs` | 原子写（临时文件 → rename，同目录）。给 active.json / 钱包 / 设置这类"写坏了就毁一天"的小文件用。 |
+| `runtime-channel.mjs` | 读 `portable/config/runtime-channel.json`（Node 版本 + 官方 SHA256 + 镜像 + 复用开关）。**内核版本不在通道里** —— `OPENCLAW_VERSION` 是唯一真相源，通道只用 `kernel.versionFrom` 指过去，避免和 track-upstream.yml 漂移。 |
+| `runtime-paths.mjs` | **v3 状态边界**：① 随盘走 `<usb>/data/`（配置/会话/钱包）② 本机共享 `<host>/shared/`（Node/内核/npm 缓存，跨 U 盘复用）③ 本机按盘隔离 `<host>/<slot16>/`（浏览器/编译缓存/日志/锁）。纯计算无副作用；建目录用 `prepareHostDirs()`，返回 `ok:false` 时必须降级回落 U 盘而不是报错。 |
+| `runtime-probe.mjs` | **影核动作 `runtime.probe`**：只读探测本机已有的 Node 与内核。Node 顺序＝本机托管 → U 盘 v2 遗留 → 同门产品(`~/.uking/runtime/node`) → U 盘 seed → 系统 PATH(默认关)；内核同理，但**客户自己 `npm i -g` 的 openclaw 只报告绝不使用**（那份没有随包预装的渠道插件）。CLI：`node lib/runtime-probe.mjs <U盘根> [--json]`，退出码 0 就绪 / 2 有办法 / 3 卡住 / 1 探测出错。 |
 
 ### 启动加速（吸收自 v2 u-clawx 4.0 的工程经验，2026-06-17）
 
