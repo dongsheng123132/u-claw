@@ -268,6 +268,8 @@ bootable/
 │   ├── format-persistence.sh      格式化持久化镜像
 │   ├── setup-openclaw.sh          一键安装 OpenClaw
 │   ├── start-openclaw.sh          启动脚本
+│   ├── enable-ssh.sh              装 SSH server 并设密码，供远程排障
+│   ├── test-installation.sh       安装后自检
 │   └── openclaw.desktop           桌面快捷方式
 └── ventoy/
     └── ventoy.json                Ventoy 持久化配置

@@ -30,6 +30,29 @@
 2. 默认持久化大小为20GB，可以修改脚本中的 `$PersistenceSizeGB` 变量
 3. 最小建议值：8GB
 
+#### 3b. persistence.dat 没格式化 → 启动卡在 initramfs
+
+**症状**: Ventoy 能进菜单，选 Ubuntu 后卡在 `initramfs` 提示符，进不了桌面。
+
+**根因**: `persistence.dat` 是个 20GB 的**空文件**，里面没有 ext4 文件系统。
+`3-create-persistence.ps1` 在找不到可用的标准 WSL 时会走 Method B，只 `dd` 出一个
+稀疏空文件。Ventoy 读 `ventoy.json` → 尝试挂载这个空文件 → mount 失败 → 掉进 initramfs。
+
+**判断**: 读文件 offset 1080 处两字节，是 `53 EF`（小端 `0xEF53`，ext4 magic）才算有效。
+
+**修复**（用 docker-desktop 的 WSL 也能做）:
+```bash
+# 在 WSL 内创建稀疏文件并格式化
+dd if=/dev/zero of=/tmp/persistence.dat bs=1M count=0 seek=20480
+/sbin/mkfs.ext4 -F -L casper-rw /tmp/persistence.dat
+# docker-desktop WSL 访问不了 E: 盘，需先复制到 C: 再移到 U 盘
+```
+
+或者在 Linux 启动后直接跑仓库里的 `format-persistence.sh`，然后重启。
+
+**已做的代码改进**: Method B 现在会尝试用 docker-desktop WSL 格式化，并加了 ext4
+magic number 验证；只有完全没有任何 WSL 时才降级成未格式化的空文件。
+
 ### 4. Linux启动后无法进入桌面
 
 **问题**: 从U盘启动后黑屏或卡住

@@ -186,37 +186,45 @@ AI 设置不能再保存第二份钱包 Key；实际模型调用所用的托管 
 
 ## 6. 影核动作边界
 
-页面只做展示和输入，所有业务动作通过稳定 Action ID 执行：
+### 6.1 现状：动作核心已经存在，别重写
+
+**`refactor/action-parity` 分支上已有一套完整实现**（2026-07-26，3531 行 / 25 文件，53/53 测试通过，CLI 可跑）。2026-08-22 复核过，是活的：
 
 ```text
-ai.provider.list
-ai.provider.save
-ai.provider.remove
-ai.provider.test
-ai.models.refresh
-ai.route.get
-ai.route.set
-ai.settings.backup
-ai.settings.restore
-wallet.bind
-wallet.rotate
-wallet.adopt
-wallet.reset_local
-runtime.probe          # 本机有什么 Node/内核、会用哪个、为什么（诊断入口）
-runtime.seed           # 从 U 盘 vendor/ 解压安装
-runtime.install        # 联网安装指定版本内核
-runtime.activate       # 切激活指针
-runtime.gc             # 清理旧内核，显示占用
-runtime.purge_host     # 从本机彻底移除 U-Claw 缓存
-runtime.start
-runtime.stop
-runtime.status
-task.create
-task.inspect
-task.resume
+portable/lib/core/
+  index.mjs        动作注册表（唯一清单来源）
+  runtime.mjs      execute / defineAction / validateSchema / redact
+  manifest.mjs     导出机器可发现的清单
+  logger.mjs       动作执行日志
+  paths.mjs
+  actions/         config / doctor / bugreport / wechat / gateway / log
+portable/uclaw.mjs           CLI 投影
+portable/action-parity.json  717 行清单，spec_version 0.3.0，AP-1
+tests/action-core.test.mjs / action-log.test.mjs / action-parity.test.mjs
 ```
 
-GUI、CLI、MCP、OpenClaw Skill 和测试都调用同一套动作核心，不能在界面里再实现一份配置逻辑。工具链直接用 u-dsh 的 `action-parity.config.json` + `generated/` 那套，不重写。仓库里已有的 `refactor/action-parity` 分支先盘一遍，能接就接。
+已有动作：`bug.collect`、`config.get`、`config.set`、`doctor.diagnose`、`gateway.start`、`gateway.stop`、`lock.clean`、`log.tail`、`plugin.wechat.install`。
+
+其中 `lock.clean` 正是「gateway already running (pid XXXX)」那个老问题的动作化解法，`clean-stale-lock.mjs` 也在这个分支上。
+
+**所以 v3 的影核工作不是"从零建"，是"合进来 + 扩展"。** 原计划把它列成 Phase 3 待办是错的。
+
+### 6.2 命名必须对齐，不许并存两套词汇
+
+原计划自己拟了一套 ID（`runtime.start` / `wallet.reset_local` 等），和已有的撞了。两套动作词汇并存就是宪法第 8 条说的漂移。**以已有实现的约定为准**，新能力按它的形状扩展：
+
+| 原计划拟的 | 定为 | 理由 |
+|---|---|---|
+| `runtime.start` / `stop` / `status` | ~~删~~，用已有的 `gateway.start` / `gateway.stop` | 网关进程的生命周期已经有主了 |
+| `runtime.probe` / `seed` / `install` / `activate` / `gc` | 保留 | 这些管的是 Node/内核本身，和网关进程是两回事 |
+| `runtime.purge_host` | `runtime.host.purge` | 三段式对齐 `plugin.wechat.install` |
+| `wallet.reset_local` | `wallet.local.reset` | 同上；且全仓库不用 snake_case |
+| `ai.*`（供应商库 / 路由 / 备份） | 保留 | 与已有 `config.get/set` 分工：`config.*` 读写 openclaw.json 原始配置，`ai.*` 是供应商/路由层，**且是唯一被允许写 provider 配置的一层** |
+| `task.*` | 推迟到 Phase 5 | 跟本象/本境一起 |
+
+新动作一律注册进 `portable/lib/core/index.mjs` 的 `ACTIONS`，由 `tests/action-parity.test.mjs` 断言注册表与 `action-parity.json` 对齐——那条测试已经在了，白拿。
+
+GUI、CLI、MCP、OpenClaw Skill 和测试都调用同一套核心，不能在界面里再实现一份配置逻辑。
 
 危险动作（换 Key、移除钱包、`runtime.purge_host`）需主进程确认；CLI 使用时显式传 `--yes`。密钥禁止作为命令行参数或普通 JSON 输出，填入 Key 只接受标准输入或文件。
 
@@ -296,7 +304,34 @@ v3 走独立分支后，每日 cron 只碰 main，与 v3 无冲突，CI 一行�
 
 **Phase 4 切换动作（按序）**：main 打 `v2-final` tag → 推 `v2` 维护分支 → `v3` 合入 main → `track-upstream.yml` 改指 `v2`。
 
-**v3 开发期间 main 不能静默。** 距上次发版已 26 天，#52「为什么不更新下载包了呢？」还开着。至少在 main 上修一次 #48 并发个小版本，维持社区感知。
+**v3 开发期间 main 不能静默。** #52「为什么不更新下载包了呢？」还开着。（#48/#46 已于 2026-08-22 关闭——查证发现 `270cf4b` 早在 v2.1.10 就修了并已随各版本发布，只是 issue 一直没关。）
+
+### 9.1 开发路径：干活之前先看这张表
+
+**工作副本只留两个**，别再开第三个：
+
+| 路径 | 分支 | 干什么 |
+|---|---|---|
+| `v1-开源/u-claw/` | `main` | v2 生产线：修 bug、发版、跟 upstream |
+| `v1-开源/u-claw-v3-wt/` | `v3` | 新架构：瘦壳、钱包、AI 设置、影核 |
+
+临时 worktree 用完即撤（`git worktree remove`），不留过夜——三个副本同时在，就会有人在错的那个里改。
+
+### 9.2 分支清点（2026-08-22 核过）
+
+| 分支 | 状态 | 处置 |
+|---|---|---|
+| `main` | 活 | 保留 |
+| `v3` | 活 | 保留 |
+| `refactor/action-parity` | **活且完整**，53/53 通过 | **合进 v3**，见 §6.1。这是最有价值的一条 |
+| `fix/no-proxy-public-hosts` | 未并，2 个提交（NO_PROXY 范围 + 发布页死链） | 真实待办，评估后并入 main |
+| `fix/portable-stability-and-config` | 3 个提交**已被 `refactor/action-parity` 完全包含**（`git cherry` 验过） | 冗余，可删 |
+| `fix/xiapan-cloud-card` | 功能（虾盘云首选卡）**已由另一条路径进 main** | 过时，可删 |
+| `chore/opensource-cleanup` | 已并入 main | 可删 |
+| `chore/drop-desktop-electron` | 已并入 main，仅本地 | 可删 |
+| `fix/deepseek-v4-model-id` | 已并入 main，仅本地 | 可删 |
+
+规矩：**分支合了就删**。上面五条躺了两个月，直接后果是 `refactor/action-parity` 这份完整成果被埋在噪音里一个月没人合。
 
 ## 10. 开发阶段
 
@@ -341,10 +376,11 @@ v3 走独立分支后，每日 cron 只碰 main，与 v3 无冲突，CI 一行�
 - 钱包和 AI 设置分离；
 - 断网、只读 U 盘、进程中断、换机恢复测试。
 
-### Phase 3：影核收口
+### Phase 3：影核收口（多数已完成，主要是合并）
 
-- 动作清单全量落地，GUI / CLI / MCP 共用动作核心；
-- ActionParity 工具链接入 CI；
+- **合并 `refactor/action-parity`**（已完成的 3531 行，见 §6.1）——这是本阶段最大的一块，不是新写；
+- 按 §6.2 对齐命名，把 Phase 0.5/1/2 的新能力注册进 `lib/core/index.mjs`；
+- ActionParity 工具链接入 CI（`action-parity.test.mjs` 已有，接上跑即可）；
 - 多实例 / 多 slot（回应 #53）。
 
 ### Phase 4：重新打包发行版
