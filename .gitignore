@@ -1,6 +1,9 @@
 # ── Runtime dependencies (too large for git, download on build) ──
 portable/app/
 portable/data/
+# v3 离线 seed：Node 官方包 + 装好的内核整棵树，加起来 150-250MB。
+# 由 CI（或本地 portable/scripts/build-seed.mjs）现产，绝不能进 git。
+portable/vendor/
 u-claw-app/node_modules/
 u-claw-app/release/
 
