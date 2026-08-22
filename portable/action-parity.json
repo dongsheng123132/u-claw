@@ -1,0 +1,717 @@
+{
+  "spec_version": "0.3.0",
+  "conformance_targets": [
+    "AP-1"
+  ],
+  "application": {
+    "id": "org.u-claw.portable",
+    "name": "U-Claw Portable",
+    "version": "2026.7.1-2",
+    "description": "便携 U 盘版 OpenClaw。业务动作集中在 portable/lib/core，GUI / CLI / 启动器共用同一实现。",
+    "homepage": "https://github.com/dongsheng123132/u-claw"
+  },
+  "surfaces": [
+    {
+      "id": "cli",
+      "kind": "cli",
+      "required_for_parity": true,
+      "reachability": "external",
+      "description": "node portable/uclaw.mjs <action.id>。远程排障和自动化的入口。"
+    },
+    {
+      "id": "gui",
+      "kind": "gui",
+      "required_for_parity": false,
+      "reachability": "local-ipc",
+      "description": "配置中心（Config.html + config-server）与启动器。",
+      "test_driver": "node-http"
+    }
+  ],
+  "actions": [
+    {
+      "id": "bug.collect",
+      "title": "收集 bug 报告",
+      "description": "收集版本、环境、诊断结果和脱敏后的日志片段，生成一份可直接贴到 GitHub issue 的 Markdown 报告。只写本地文件，不上传任何数据。",
+      "tags": [
+        "diagnostics",
+        "support"
+      ],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "note": {
+            "type": "string",
+            "description": "用户对问题的描述，会原样（脱敏后）写进报告"
+          },
+          "out": {
+            "type": "string",
+            "description": "报告输出路径；默认写到 data/logs/bug-report-<时间戳>.md"
+          }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "report_path": {
+            "type": "string"
+          },
+          "json_path": {
+            "type": "string"
+          },
+          "markdown": {
+            "type": "string"
+          },
+          "issue_url": {
+            "type": "string"
+          },
+          "healthy": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "report_path",
+          "markdown",
+          "issue_url",
+          "healthy"
+        ]
+      },
+      "effects": {
+        "class": "write",
+        "risk": "low",
+        "reversible": true,
+        "confirmation": "never",
+        "audit_required": true
+      },
+      "execution": {
+        "headless": true,
+        "idempotent": false,
+        "cancellable": true,
+        "timeout_ms": 90000,
+        "progress_events": true,
+        "headless_evidence": "tests/action-core.test.mjs"
+      },
+      "bindings": [
+        {
+          "surface": "cli",
+          "target": "uclaw bug.collect --note <text> --json",
+          "test": "tests/action-core.test.mjs"
+        },
+        {
+          "surface": "gui",
+          "target": "config-server POST /api/bug-report",
+          "test": "tests/action-parity.test.mjs"
+        }
+      ]
+    },
+    {
+      "id": "config.get",
+      "title": "读取配置",
+      "description": "读取 openclaw.json 的当前内容。返回值中的 API Key 等密钥字段一律脱敏。",
+      "tags": [
+        "config"
+      ],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "exists": {
+            "type": "boolean"
+          },
+          "path": {
+            "type": "string"
+          },
+          "config": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "exists",
+          "path",
+          "config"
+        ]
+      },
+      "effects": {
+        "class": "read",
+        "risk": "low",
+        "reversible": true,
+        "confirmation": "never",
+        "audit_required": false
+      },
+      "execution": {
+        "headless": true,
+        "idempotent": true,
+        "cancellable": false,
+        "timeout_ms": 5000,
+        "progress_events": false,
+        "headless_evidence": "tests/action-core.test.mjs"
+      },
+      "bindings": [
+        {
+          "surface": "cli",
+          "target": "uclaw config.get --json",
+          "test": "tests/action-core.test.mjs"
+        },
+        {
+          "surface": "gui",
+          "target": "config-server GET /api/config",
+          "test": "tests/action-parity.test.mjs"
+        }
+      ]
+    },
+    {
+      "id": "config.set",
+      "title": "写入配置",
+      "description": "把一份配置片段合并进 openclaw.json。默认深合并，不会冲掉调用方没提到的字段（如 channels / plugins）。写前自动留底、原子落盘。",
+      "tags": [
+        "config"
+      ],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "patch"
+        ],
+        "properties": {
+          "patch": {
+            "type": "object",
+            "description": "要合并进去的配置片段"
+          },
+          "mode": {
+            "enum": [
+              "merge",
+              "replace"
+            ],
+            "description": "merge=深合并（默认，安全）；replace=整份替换（危险，需确认）"
+          },
+          "unset": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "要删除的键路径（点分，如 \"agent\" 或 \"models.providers.foo\"）。深合并表达不了删除，所以删除必须显式声明——避免\"少传一个字段\"被误当成删除（那正是原来整份覆盖的祸根）。"
+          }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "backup": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "changed_keys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "config": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "path",
+          "changed_keys",
+          "config"
+        ]
+      },
+      "effects": {
+        "class": "write",
+        "risk": "medium",
+        "reversible": true,
+        "confirmation": "conditional",
+        "audit_required": true
+      },
+      "execution": {
+        "headless": true,
+        "idempotent": false,
+        "cancellable": false,
+        "timeout_ms": 10000,
+        "progress_events": false,
+        "headless_evidence": "tests/action-core.test.mjs"
+      },
+      "bindings": [
+        {
+          "surface": "cli",
+          "target": "uclaw config.set --patch <json> --json",
+          "test": "tests/action-core.test.mjs"
+        },
+        {
+          "surface": "gui",
+          "target": "config-server POST /api/config",
+          "test": "tests/action-parity.test.mjs"
+        }
+      ]
+    },
+    {
+      "id": "doctor.diagnose",
+      "title": "健康诊断",
+      "description": "无界面检查 U-Claw 的运行时、依赖、配置、网关、插件和残留锁，返回结构化 findings。只读，不修改任何东西。远程排障的第一条命令。",
+      "tags": [
+        "diagnostics"
+      ],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "scope": {
+            "type": "array",
+            "description": "只查指定范围；留空=全查",
+            "items": {
+              "enum": [
+                "runtime",
+                "core",
+                "config",
+                "gateway",
+                "plugin",
+                "lock"
+              ]
+            }
+          }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "healthy": {
+            "type": "boolean"
+          },
+          "platform": {
+            "type": "string"
+          },
+          "findings": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "summary": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "healthy",
+          "platform",
+          "findings",
+          "summary"
+        ]
+      },
+      "effects": {
+        "class": "read",
+        "risk": "low",
+        "reversible": true,
+        "confirmation": "never",
+        "audit_required": false
+      },
+      "execution": {
+        "headless": true,
+        "idempotent": true,
+        "cancellable": true,
+        "timeout_ms": 60000,
+        "progress_events": true,
+        "headless_evidence": "tests/action-core.test.mjs"
+      },
+      "bindings": [
+        {
+          "surface": "cli",
+          "target": "uclaw doctor.diagnose --json",
+          "test": "tests/action-core.test.mjs"
+        },
+        {
+          "surface": "gui",
+          "target": "config-server GET /api/doctor",
+          "test": "tests/action-parity.test.mjs"
+        }
+      ]
+    },
+    {
+      "id": "gateway.start",
+      "title": "启动网关",
+      "description": "在 18789-18799 找一个空闲端口启动 OpenClaw 网关。启动前自动清理失效锁。默认后台运行并等待端口就绪后返回。",
+      "tags": [
+        "gateway"
+      ],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "port": {
+            "type": "number",
+            "description": "指定端口；留空=自动挑一个空闲的"
+          },
+          "wait_ms": {
+            "type": "number",
+            "description": "等待就绪的毫秒数，默认 90000"
+          }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "port": {
+            "type": "number"
+          },
+          "pid": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "ready": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "port",
+          "ready"
+        ]
+      },
+      "effects": {
+        "class": "external",
+        "risk": "medium",
+        "reversible": true,
+        "confirmation": "never",
+        "audit_required": true
+      },
+      "execution": {
+        "headless": true,
+        "idempotent": false,
+        "cancellable": true,
+        "timeout_ms": 120000,
+        "progress_events": true,
+        "headless_evidence": "tests/action-core.test.mjs"
+      },
+      "bindings": [
+        {
+          "surface": "cli",
+          "target": "uclaw gateway.start --json",
+          "test": "tests/action-core.test.mjs"
+        }
+      ],
+      "parity_exceptions": [
+        {
+          "surface": "gui",
+          "reason": "便携版由 Windows-Start.bat / Mac-Start.command 拉起，非配置中心职责。",
+          "owner": "dongsheng123132",
+          "review_by": "2026-12-31"
+        }
+      ]
+    },
+    {
+      "id": "gateway.stop",
+      "title": "停止网关",
+      "description": "停止本盘配置对应的 OpenClaw 网关进程（按锁文件里的 pid 定位，不误杀别的实例）。",
+      "tags": [
+        "gateway"
+      ],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "force": {
+            "type": "boolean",
+            "description": "SIGKILL 而非 SIGTERM"
+          }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "stopped": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "not_found": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "stopped",
+          "not_found"
+        ]
+      },
+      "effects": {
+        "class": "destructive",
+        "risk": "high",
+        "reversible": true,
+        "confirmation": "always",
+        "audit_required": true
+      },
+      "execution": {
+        "headless": true,
+        "idempotent": true,
+        "cancellable": false,
+        "timeout_ms": 30000,
+        "progress_events": false,
+        "headless_evidence": "tests/action-core.test.mjs"
+      },
+      "bindings": [
+        {
+          "surface": "cli",
+          "target": "uclaw gateway.stop --yes --json",
+          "test": "tests/action-core.test.mjs"
+        }
+      ],
+      "parity_exceptions": [
+        {
+          "surface": "gui",
+          "reason": "高危动作，便携版通过关闭启动器窗口完成，不在网页上放停服按钮。",
+          "owner": "dongsheng123132",
+          "review_by": "2026-12-31"
+        }
+      ]
+    },
+    {
+      "id": "lock.clean",
+      "title": "清理失效网关锁",
+      "description": "删掉崩溃 / 拔盘残留、持有进程已不存在的 gateway 锁，修复 \"gateway already running (pid XXXX)\" 拒启动。只删死锁，活着的实例一律不动。",
+      "tags": [
+        "gateway",
+        "repair"
+      ],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "lock_dir": {
+            "type": "string"
+          },
+          "scanned": {
+            "type": "number"
+          },
+          "removed": {
+            "type": "number"
+          },
+          "alive_same_config": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "lock_dir",
+          "scanned",
+          "removed",
+          "alive_same_config"
+        ]
+      },
+      "effects": {
+        "class": "destructive",
+        "risk": "low",
+        "reversible": false,
+        "confirmation": "conditional",
+        "audit_required": true
+      },
+      "execution": {
+        "headless": true,
+        "idempotent": true,
+        "cancellable": false,
+        "timeout_ms": 10000,
+        "progress_events": false,
+        "headless_evidence": "tests/action-core.test.mjs"
+      },
+      "bindings": [
+        {
+          "surface": "cli",
+          "target": "uclaw lock.clean --json",
+          "test": "tests/action-core.test.mjs"
+        }
+      ],
+      "parity_exceptions": [
+        {
+          "surface": "gui",
+          "reason": "由 gateway.start 内部调用，属修复细节，不单独暴露给用户。",
+          "owner": "dongsheng123132",
+          "review_by": "2026-12-31"
+        }
+      ]
+    },
+    {
+      "id": "log.tail",
+      "title": "读取动作执行日志",
+      "description": "返回最近的动作执行记录（JSONL 解析后的对象数组），含动作 ID、来源 Surface、成功与否、耗时、错误码。密钥在写入时已脱敏。远程排障用。",
+      "tags": [
+        "diagnostics",
+        "support"
+      ],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "limit": {
+            "type": "number",
+            "description": "返回条数，默认 50，上限 500"
+          },
+          "action_id": {
+            "type": "string",
+            "description": "只看某个动作的记录"
+          },
+          "failed_only": {
+            "type": "boolean",
+            "description": "只看失败的"
+          }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "entries": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "count": {
+            "type": "number"
+          },
+          "log_dir": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "entries",
+          "count",
+          "log_dir"
+        ]
+      },
+      "effects": {
+        "class": "read",
+        "risk": "low",
+        "reversible": true,
+        "confirmation": "never",
+        "audit_required": false
+      },
+      "execution": {
+        "headless": true,
+        "idempotent": true,
+        "cancellable": false,
+        "timeout_ms": 15000,
+        "progress_events": false,
+        "headless_evidence": "tests/action-log.test.mjs"
+      },
+      "bindings": [
+        {
+          "surface": "cli",
+          "target": "uclaw log.tail --json",
+          "test": "tests/action-core.test.mjs"
+        },
+        {
+          "surface": "gui",
+          "target": "config-server GET /api/logs",
+          "test": "tests/action-parity.test.mjs"
+        }
+      ]
+    },
+    {
+      "id": "plugin.wechat.install",
+      "title": "铺设微信插件",
+      "description": "把内置的微信插件铺到 OpenClaw 实际加载的目录（OPENCLAW_STATE_DIR/extensions），并补齐插件缺失的 zod 依赖。版本不一致时自动重铺。幂等，每次启动都可以跑。",
+      "tags": [
+        "plugin",
+        "wechat"
+      ],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "force": {
+            "type": "boolean",
+            "description": "忽略版本比对，强制重铺"
+          }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "installed": {
+            "type": "boolean"
+          },
+          "action": {
+            "enum": [
+              "none",
+              "installed",
+              "upgraded",
+              "zod-repaired",
+              "skipped-no-source"
+            ]
+          },
+          "source_version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "installed_version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "path": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "installed",
+          "action"
+        ]
+      },
+      "effects": {
+        "class": "write",
+        "risk": "low",
+        "reversible": true,
+        "confirmation": "never",
+        "audit_required": true
+      },
+      "execution": {
+        "headless": true,
+        "idempotent": true,
+        "cancellable": true,
+        "timeout_ms": 120000,
+        "progress_events": true,
+        "headless_evidence": "tests/action-core.test.mjs"
+      },
+      "bindings": [
+        {
+          "surface": "cli",
+          "target": "uclaw plugin.wechat.install --json",
+          "test": "tests/action-core.test.mjs"
+        }
+      ],
+      "parity_exceptions": [
+        {
+          "surface": "gui",
+          "reason": "由启动器在每次启动时自动调用，用户无需手动触发；配置中心暂不暴露按钮。",
+          "owner": "dongsheng123132",
+          "review_by": "2026-12-31"
+        }
+      ]
+    }
+  ]
+}

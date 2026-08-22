@@ -128,6 +128,13 @@ if [ ! -d "$CORE_DIR/node_modules" ]; then
     echo ""
 fi
 
+# ---- 7a. Pre-stage WeChat plugin ----
+# 交给 plugin.wechat.install 动作。这段逻辑以前在 5 个文件里各写一遍
+# （Windows/Mac × Start/Install + config-server），改一次要同步 4 处，
+# 漏掉哪条路径，哪条路径的客户就修不好（zod 那次就是这么来的）。
+echo -e "  ${CYAN}Checking WeChat plugin...${NC}"
+"$NODE_BIN" "$UCLAW_DIR/uclaw.mjs" plugin.wechat.install --quiet || true
+
 # ---- 7b. Async update check (non-blocking, 5s timeout, silent failure) ----
 # Writes data/.openclaw/update-available.json if a newer version is on OSS.
 # Welcome.html / Config.html read this file and show a banner.
@@ -175,6 +182,10 @@ sleep 1
 # ---- 10. Start gateway ----
 echo -e "  ${CYAN}Starting OpenClaw on port $PORT...${NC}"
 echo ""
+
+# 清理上次崩溃 / 拔盘残留的 gateway 锁，避免 OpenClaw 报 "gateway already running"。
+# 只删持有进程已不在的死锁；活动实例的锁不动。静默、非阻塞。
+"$NODE_BIN" "$UCLAW_DIR/uclaw.mjs" lock.clean --quiet || true
 
 cd "$CORE_DIR"
 OPENCLAW_MJS="$CORE_DIR/node_modules/openclaw/openclaw.mjs"

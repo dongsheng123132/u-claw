@@ -161,12 +161,15 @@ if exist "!QQ_DIR!" (
 )
 
 REM ---- Copy extensions (WeChat plugin etc.) ----
-if exist "%APP_DIR%\extensions\openclaw-weixin\openclaw.plugin.json" (
-    echo   Installing WeChat plugin...
-    xcopy /s /e /q /y "%APP_DIR%\extensions\openclaw-weixin" "%INSTALL_TARGET%\extensions\openclaw-weixin\" >nul
-    REM Also install to ~/.openclaw/extensions/ for Gateway
-    mkdir "%USERPROFILE%\.openclaw\extensions" 2>nul
-    xcopy /s /e /q /y "%APP_DIR%\extensions\openclaw-weixin" "%USERPROFILE%\.openclaw\extensions\openclaw-weixin\" >nul
+REM WeChat plugin staging -- delegated to the plugin.wechat.install action.
+REM Source comes from this USB (resolved relative to the action core); the
+REM destination follows OPENCLAW_STATE_DIR, which we point at the install target.
+REM Same single implementation the launchers and config-server use.
+echo   Installing WeChat plugin...
+set "OPENCLAW_HOME=%INSTALL_TARGET%\data"
+set "OPENCLAW_STATE_DIR=%INSTALL_TARGET%\data\.openclaw"
+set "OPENCLAW_CONFIG_PATH=%INSTALL_TARGET%\data\.openclaw\openclaw.json"
+"%UCLAW_DIR%app\runtime\node-win-x64\node.exe" "%UCLAW_DIR%uclaw.mjs" plugin.wechat.install --quiet
     echo   WeChat plugin installed!
 )
 

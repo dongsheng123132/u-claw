@@ -256,6 +256,13 @@ input:focus { border-color: #ff6b35; }
             </div>
         </div>
 
+        <!-- 本地模型自动发现（Ollama / LM Studio）：竞品 U 盘没有的纯离线卖点 -->
+        <div id="localModelsBox" style="display:none; margin-top:6px;">
+            <h3 style="color:#4caf50; font-size:0.95em; margin:12px 0 4px;">💻 检测到本机本地模型 <span class="tag free">离线·免费</span></h3>
+            <p class="desc" style="margin-bottom:10px;">无需 API Key，纯本地推理，点选即用：</p>
+            <div class="model-grid" id="localModelGrid"></div>
+        </div>
+
         <div class="btn-row">
             <button class="btn btn-primary" id="nextStep1" disabled>下一步 →</button>
         </div>
@@ -350,21 +357,6 @@ input:focus { border-color: #ff6b35; }
                             </div>
                         </div>
                     </div>
-                    <div class="model-card channel-card" onclick="toggleChannel(this, 'wecom')">
-                        <h4>🏢 企业微信</h4>
-                        <p>接入企业微信机器人</p>
-                        <div class="channel-form" id="form-wecom" onclick="event.stopPropagation()">
-                            <div class="form-group">
-                                <label>Bot ID</label>
-                                <input type="text" id="ch-wecom-botid" placeholder="aib...">
-                            </div>
-                            <div class="form-group">
-                                <label>Secret</label>
-                                <input type="text" id="ch-wecom-secret" placeholder="密钥">
-                                <p class="hint"><a href="https://work.weixin.qq.com" target="_blank">→ 从企业微信管理后台获取</a></p>
-                            </div>
-                        </div>
-                    </div>
                     <div class="model-card channel-card" style="grid-column: 1 / -1; border-color: #07c160;" onclick="startWeChatLogin(event)">
                         <h4>💬 微信 <span class="tag" style="background:rgba(7,193,96,0.2);color:#07c160;">个人微信</span></h4>
                         <p>扫码接入个人微信，用微信聊天控制 AI</p>
@@ -435,6 +427,7 @@ input:focus { border-color: #ff6b35; }
 let selectedProvider = null;
 let selectedBase = '';
 let selectedModel = '';
+let selectedLocal = false;  // 选中的是本地模型（Ollama/LM Studio）则免 Key
 
 // --- Model cards ---
 document.querySelectorAll('#step1 .model-card').forEach(card => {
@@ -445,6 +438,7 @@ document.querySelectorAll('#step1 .model-card').forEach(card => {
         selectedProvider = card.dataset.provider;
         selectedBase = card.dataset.base;
         selectedModel = card.dataset.model;
+        selectedLocal = false;  // 点云端卡片 → 取消本地标记
         document.getElementById('nextStep1').disabled = false;
     });
 });
@@ -467,7 +461,8 @@ const PROVIDER_NAMES = {
     'uclaw-cloud': '虾盘云', minimax: 'MiniMax', kimi: 'Kimi (月之暗面)', deepseek: 'DeepSeek',
     zai: '智谱 GLM', qwen: '通义千问', doubao: '豆包',
     openai: 'OpenAI', anthropic: 'Anthropic Claude', groq: 'Groq',
-    siliconflow: '硅基流动', custom: '自定义'
+    siliconflow: '硅基流动', custom: '自定义',
+    ollama: 'Ollama（本地）', lmstudio: 'LM Studio（本地）'
 };
 
 function setupStep2() {
@@ -475,7 +470,11 @@ function setupStep2() {
     document.getElementById('customFields').style.display = isCustom ? 'block' : 'none';
 
     var name = PROVIDER_NAMES[selectedProvider] || selectedProvider;
-    document.getElementById('step2desc').textContent = '请填写 ' + name + ' 的 API Key';
+    document.getElementById('step2desc').textContent = selectedLocal
+        ? name + ' 是本地模型，无需 API Key，直接点「保存并继续」即可'
+        : '请填写 ' + name + ' 的 API Key';
+    // 本地模型隐藏「获取/充值 Key」信息框
+    document.getElementById('buyInfo').style.display = selectedLocal ? 'none' : 'block';
 
     var card = document.querySelector('#step1 .model-card[data-provider="' + selectedProvider + '"]');
     var buyLink = card ? card.querySelector('.buy-link') : null;
@@ -539,7 +538,9 @@ function buildConfig(provider, base, model, apiKey) {
 // --- Save model config ---
 async function saveConfig() {
     var apiKey = document.getElementById('apiKey').value.trim();
-    if (!apiKey) { showToast('请填写 API Key', true); return; }
+    // 本地模型（Ollama/LM Studio）无需真实 Key，但 OpenClaw 配置结构仍要求 apiKey 字段。
+    if (selectedLocal) { if (!apiKey) apiKey = 'local'; }
+    else if (!apiKey) { showToast('请填写 API Key', true); return; }
 
     var base = selectedBase;
     var model = selectedModel;
@@ -553,12 +554,7 @@ async function saveConfig() {
     var config = buildConfig(selectedProvider, base, model, apiKey);
 
     try {
-        var res = await fetch('/api/config', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(config)
-        });
-        if (!res.ok) throw new Error('保存失败');
+        await apiSaveConfig(config);
         showToast('配置已保存！');
         goStep(3);
     } catch (e) {
@@ -692,22 +688,10 @@ async function saveChannelsAndOpen() {
     var fsSecret = document.getElementById('ch-feishu-secret').value.trim();
     if (fsId && fsSecret) channels.feishu = { enabled: true, appId: fsId, appSecret: fsSecret };
 
-    var wcBotId = document.getElementById('ch-wecom-botid').value.trim();
-    var wcSecret = document.getElementById('ch-wecom-secret').value.trim();
-    if (wcBotId && wcSecret) channels.wecom = { enabled: true, botId: wcBotId, secret: wcSecret };
-
     if (Object.keys(channels).length > 0) {
         try {
-            var res = await fetch('/api/config');
-            var existing = res.ok ? await res.json() : {};
-            // 清除旧版废弃键，防止 OpenClaw 报 "agent.* was moved" 错误
-            delete existing.agent;
-            existing.channels = Object.assign(existing.channels || {}, channels);
-            await fetch('/api/config', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(existing)
-            });
+            // 服务端是深合并，只 POST 增量即可（少一次往返，也不会把脱敏 Key 写回去）
+            await apiSaveConfig({ channels: channels });
             showToast('渠道配置已保存');
         } catch(e) {}
     }
@@ -715,11 +699,55 @@ async function saveChannelsAndOpen() {
     window.open(gatewayUrl(), '_blank');
 }
 
+
+// --- 影核动作端点封装 ---
+// /api/config 绑定 config.get / config.set，返回 {ok, data, error} 信封。
+// config.get 出口会脱敏密钥，所以只用来判断"是否已配置"，绝不回填输入框再存回去。
+var REDACTED_RE = /^\*{3}$|…/;
+var savedKeyProvider = null;
+
+async function apiGetConfig() {
+    var res = await fetch('/api/config');
+    var r = await res.json();
+    return (r && r.ok && r.data) ? (r.data.config || {}) : {};
+}
+
+async function apiSaveConfig(patch) {
+    var res = await fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(patch)
+    });
+    var r = await res.json();
+    if (!r || !r.ok) throw new Error((r && r.error && r.error.message) || '保存失败');
+    return r.data;
+}
+
+/** 已存过 Key 时只提示、不回填脱敏值（回填再存回去会毁掉真 Key）。 */
+function markSavedKey(value, provider) {
+    if (!value) return;
+    var input = document.getElementById('apiKey');
+    if (!input) return;
+    if (REDACTED_RE.test(value)) {
+        input.placeholder = '已保存 Key（' + value + '），留空即沿用，重填则替换';
+        savedKeyProvider = provider;
+    } else {
+        input.value = value;
+    }
+}
+
+function stripApiKeyFields(node) {
+    if (!node || typeof node !== 'object') return;
+    Object.keys(node).forEach(function (k) {
+        if (k === 'apiKey' || k === 'ZAI_API_KEY') delete node[k];
+        else stripApiKeyFields(node[k]);
+    });
+}
+
 // --- View config ---
 async function viewConfig() {
     try {
-        var res = await fetch('/api/config');
-        var config = await res.json();
+        var config = await apiGetConfig();
         var text = JSON.stringify(config, null, 2);
         var w = window.open('', '_blank');
         w.document.write('<pre style="background:#111;color:#eee;padding:20px;font-size:14px;">' +
@@ -774,13 +802,12 @@ async function checkGateway() {
 // --- Load existing config ---
 async function loadConfig() {
     try {
-        var res = await fetch('/api/config');
-        var cfg = await res.json();
+        var cfg = await apiGetConfig();
 
         if (cfg.env && cfg.env.ZAI_API_KEY) {
             var card = document.querySelector('#step1 .model-card[data-provider="zai"]');
             if (card) card.click();
-            document.getElementById('apiKey').value = cfg.env.ZAI_API_KEY;
+            markSavedKey(cfg.env.ZAI_API_KEY, 'zai');
             return;
         }
 
@@ -790,13 +817,54 @@ async function loadConfig() {
                 var p = cfg.models.providers[providerName];
                 var card = document.querySelector('#step1 .model-card[data-provider="' + providerName + '"]');
                 if (card) card.click();
-                if (p.apiKey) document.getElementById('apiKey').value = p.apiKey;
+                markSavedKey(p.apiKey, providerName);
             }
         }
     } catch(e) {}
 }
 
-loadConfig();
+// --- 本地模型自动发现（Ollama / LM Studio）---
+// 后端 /api/local-models 探测本机已运行的本地推理服务；探测到就生成卡片，
+// 无需 API Key、纯离线即可点选。这是竞品（雷克沙 U 盘）所没有的能力。
+// 注：此前后端已实现该接口，但页面从未调用 —— 属于「功能已写但用户看不到」的 bug，现补上。
+async function discoverLocalModels() {
+    try {
+        var res = await fetch('/api/local-models');
+        if (!res.ok) return;
+        var data = await res.json();
+        var providers = (data && data.providers) || [];
+        if (!providers.length) return;
+        var grid = document.getElementById('localModelGrid');
+        grid.innerHTML = '';
+        providers.forEach(function(p) {
+            (p.models || []).slice(0, 6).forEach(function(modelId) {
+                var card = document.createElement('div');
+                card.className = 'model-card';
+                card.dataset.provider = p.provider;   // ollama / lmstudio
+                card.dataset.base = p.base;
+                card.dataset.model = modelId;
+                card.dataset.local = '1';
+                card.innerHTML = '<span class="check">✓</span>' +
+                    '<h4>🖥️ ' + p.label + ' <span class="tag free">本地</span></h4>' +
+                    '<p>' + modelId + '</p>';
+                card.addEventListener('click', function() {
+                    document.querySelectorAll('#step1 .model-card').forEach(function(c) { c.classList.remove('selected'); });
+                    card.classList.add('selected');
+                    selectedProvider = p.provider;
+                    selectedBase = p.base;
+                    selectedModel = modelId;
+                    selectedLocal = true;
+                    document.getElementById('nextStep1').disabled = false;
+                });
+                grid.appendChild(card);
+            });
+        });
+        document.getElementById('localModelsBox').style.display = 'block';
+    } catch (e) { /* 无本地模型或探测失败：静默忽略，不影响页面 */ }
+}
+
+// 先探测本地模型，再回填已存配置（保证保存过的本地 provider 能被重新选中）。
+discoverLocalModels().then(loadConfig);
 checkGateway();
 setInterval(checkGateway, 10000);
 </script>

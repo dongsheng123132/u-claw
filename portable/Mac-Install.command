@@ -177,6 +177,16 @@ PKGEOF
         ;;
 esac
 
+# ---- Stage WeChat plugin ----
+# 交给 plugin.wechat.install 动作。源在本 U 盘（动作核心按自身位置解析），
+# 目标跟随 OPENCLAW_STATE_DIR —— 这里指向安装目标目录。
+# 与启动器、config-server 共用同一份实现。
+echo -e "  ${CYAN}Installing WeChat plugin...${NC}"
+OPENCLAW_HOME="$INSTALL_TARGET/data" \
+  OPENCLAW_STATE_DIR="$INSTALL_TARGET/data/.openclaw" \
+  OPENCLAW_CONFIG_PATH="$INSTALL_TARGET/data/.openclaw/openclaw.json" \
+  "$APP_DIR/runtime/node-mac-arm64/bin/node" "$UCLAW_DIR/uclaw.mjs" plugin.wechat.install --quiet || true
+
 # ---- Default config ----
 CONFIG_PATH="$INSTALL_TARGET/data/.openclaw/openclaw.json"
 if [ ! -f "$CONFIG_PATH" ]; then

@@ -122,18 +122,13 @@ if exist "%VERSION_FILE%" (
 )
 
 
-REM Auto-install WeChat plugin if available
-set "WECHAT_PLUGIN_SRC=%APP_DIR%\extensions\openclaw-weixin"
-set "WECHAT_PLUGIN_DST=%USERPROFILE%\.openclaw\extensions\openclaw-weixin"
-if exist "%WECHAT_PLUGIN_SRC%\openclaw.plugin.json" (
-    if not exist "%WECHAT_PLUGIN_DST%\openclaw.plugin.json" (
-        echo   Installing WeChat plugin...
-        mkdir "%USERPROFILE%\.openclaw\extensions" 2>nul
-        xcopy /s /e /q /y "%WECHAT_PLUGIN_SRC%" "%WECHAT_PLUGIN_DST%\" >nul
-        echo   WeChat plugin installed!
-        echo.
-    )
-)
+REM WeChat plugin staging -- delegated to the plugin.wechat.install action.
+REM This logic used to be copy-pasted into 5 files (Windows/Mac x Start/Install,
+REM plus config-server). A single fix therefore had to be applied 5 times, and
+REM missing one meant that path stayed broken for real customers (see the zod
+REM incident). Now every entry point calls the same action core.
+echo   Checking WeChat plugin...
+"%NODE_BIN%" "%UCLAW_DIR%uclaw.mjs" plugin.wechat.install --quiet
 
 REM Start Config Server in background
 echo   Starting Config Center on port 18788...
@@ -163,13 +158,17 @@ set PORT=18789
 :check_port
 netstat -an | findstr ":%PORT% " | findstr "LISTENING" >nul 2>&1
 if %errorlevel%==0 (
-    echo   Port %PORT% in use, trying next...
-    set /a PORT+=1
-    if %PORT% gtr 18799 (
+    REM Bounds check BEFORE the increment. cmd expands %PORT% once when it parses
+    REM the whole IF block, so a check placed after `set /a` would still read the
+    REM pre-increment value -- the guard never fired and the gateway could bind
+    REM 18800, outside the documented range.
+    if %PORT% geq 18799 (
         echo   No available port 18789-18799
         pause
         exit /b 1
     )
+    echo   Port %PORT% in use, trying next...
+    set /a PORT+=1
     goto :check_port
 )
 
@@ -206,6 +205,11 @@ echo   Config Center is open for model, key, recharge, and channel setup.
 echo   DO NOT close this window while using U-Claw!
 echo   ========================================
 echo.
+
+REM Clean stale gateway lock from a previous crash / USB yank so OpenClaw won't
+REM refuse to start with "gateway already running (pid XXXX)". Only locks whose
+REM owning process is gone (or corrupt) are removed; a live instance is left alone.
+"%NODE_BIN%" "%UCLAW_DIR%uclaw.mjs" lock.clean --quiet
 
 cd /d "%CORE_DIR%"
 set "OPENCLAW_MJS=%CORE_DIR%\node_modules\openclaw\openclaw.mjs"
