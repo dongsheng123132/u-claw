@@ -48,13 +48,20 @@ function parseArgv(argv) {
   return opts;
 }
 
-/** 把 --key value 按动作的 input_schema 转成正确类型（CLI 传进来全是字符串）。 */
+/**
+ * 把 --key value 按动作的 input_schema 转成正确类型（CLI 传进来全是字符串）。
+ *
+ * 保留标志只在**动作没声明同名输入**时才吞掉。否则 runtime.activate 这种
+ * 输入里就叫 `version` 的动作永远收不到 `--version`——那个值会被全局
+ * "打印内核版本" 抢走，动作静默不执行，用户只看到一行版本号，最难查的那种。
+ * 动作自己声明了的字段，动作说了算。
+ */
 function coerceInput(action, flags) {
   const props = action.input_schema?.properties || {};
   const reserved = new Set(['json', 'quiet', 'verbose', 'no_input', 'yes', 'dry_run', 'version', 'help']);
   const input = {};
   for (const [key, raw] of Object.entries(flags)) {
-    if (reserved.has(key)) continue;
+    if (reserved.has(key) && !props[key]) continue;
     const schema = props[key];
     if (!schema) { input[key] = raw; continue; } // 交给 runtime 的 schema 校验去报错
 
@@ -91,7 +98,9 @@ async function main() {
   const { _, flags } = parseArgv(argv);
   const cmd = _[0];
 
-  if (flags.version) {
+  // 全局 --version 只在**没给动作**时才是"打印内核版本"。给了动作，--version
+  // 就是那个动作的参数（见 coerceInput 的说明）。
+  if (flags.version && !cmd) {
     const paths = resolvePaths();
     const v = existsSync(paths.versionFile) ? readFileSync(paths.versionFile, 'utf8').trim() : '未知';
     process.stdout.write(`${v}\n`);

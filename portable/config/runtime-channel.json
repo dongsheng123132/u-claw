@@ -7,32 +7,36 @@
     "内核版本不写在这里 —— OPENCLAW_VERSION 文件是唯一真相源（track-upstream.yml 每天改它）。",
     "这里只用 kernel.versionFrom 指过去，避免同一事实存两份而漂移。",
     "sha256 取自 nodejs.org 官方 SHASUMS256.txt，镜像只加速下载、不改变校验基准。",
-    "node.minimumVersion 跟着 openclaw 的 engines.node 走（当前 >=22.14.0），不是拍脑袋定的。"
+    "node.minimumVersion 跟着 openclaw 的 engines.node 走，不是拍脑袋定的：",
+    "openclaw 2026.7.1-2 要求 >=22.22.3 <23 || >=24.15.0 <25 || >=25.9.0。",
+    "2026-08-22 撞过一次：这里曾钉 22.22.1 / minimum 22.14.0，seed 装完网关直接拒启，",
+    "报 'Node.js >=22.22.3 ... is required'。engines 会随内核升级收紧，升 OPENCLAW_VERSION",
+    "时必须回来核这两个值 —— build-seed.mjs 会拿装好的内核 engines 卡住这条，漂了就构建失败。"
   ],
 
   "node": {
-    "version": "22.22.1",
-    "minimumVersion": "22.14.0",
+    "version": "22.23.2",
+    "minimumVersion": "22.22.3",
     "mirrors": [
       "https://npmmirror.com/mirrors/node",
       "https://nodejs.org/dist"
     ],
     "targets": {
       "win-x64": {
-        "archive": "node-v22.22.1-win-x64.zip",
-        "sha256": "877cb93829e14fffbbc7903e7d8037336c9a79f3ea43c5d0b8c2379b79da56de",
+        "archive": "node-v22.23.2-win-x64.zip",
+        "sha256": "1177b4137ba5adaa56354ae40f1080c7450e8ae09cecb47da459d1c52ac99f97",
         "nodeRelativePath": "node.exe",
         "npmCliRelativePath": "node_modules/npm/bin/npm-cli.js"
       },
       "darwin-arm64": {
-        "archive": "node-v22.22.1-darwin-arm64.tar.gz",
-        "sha256": "679ad4966339e4ef4900f57996714864e4211b898825bb840c3086c419fbcef2",
+        "archive": "node-v22.23.2-darwin-arm64.tar.gz",
+        "sha256": "61130f394c1630d211dd50aecc4353d379480f36d3ac913cd85dbba1aed585c6",
         "nodeRelativePath": "bin/node",
         "npmCliRelativePath": "lib/node_modules/npm/bin/npm-cli.js"
       },
       "linux-x64": {
-        "archive": "node-v22.22.1-linux-x64.tar.gz",
-        "sha256": "07c8aafa60644fb81adefa1ee7da860eb1920851ffdc9a37020ab0be47fbc10e",
+        "archive": "node-v22.23.2-linux-x64.tar.gz",
+        "sha256": "b294a556e639d64338823920e5866c21c02741742d2e1529ee1a225c1ec9252a",
         "nodeRelativePath": "bin/node",
         "npmCliRelativePath": "lib/node_modules/npm/bin/npm-cli.js"
       }

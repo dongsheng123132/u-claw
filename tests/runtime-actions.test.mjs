@@ -17,6 +17,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, existsSync, rmSync, readFileSync
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { spawnSync } from 'node:child_process';
 
 import { execute, getAction, ACTIONS } from '../portable/lib/core/index.mjs';
 import { resolveRuntimePaths } from '../portable/lib/runtime-paths.mjs';
@@ -236,6 +237,33 @@ test('gc 是破坏性动作，但不能声明 confirmation:never —— 启动�
   const gc = getAction('runtime.gc');
   assert.equal(gc.effects.class, 'destructive');
   assert.equal(gc.effects.confirmation, 'conditional');
+});
+
+// ── CLI 参数与全局标志的冲突 ────────────────────────────────────────────────
+
+test('runtime.activate --version 是动作参数，不能被全局 --version 吞掉', () => {
+  // 2026-08-22 真机撞到：`uclaw runtime.activate --version 2026.7.1-2` 只打印了一行
+  // 内核版本号就退出，动作压根没跑 —— uclaw.mjs 把 version 列进保留标志，
+  // 于是任何输入里叫 version 的动作都收不到值。这类失败最难查：退出码 0、有输出、
+  // 看起来像成功。
+  const home = mkdtempSync(join(tmpdir(), 'uclaw-cli-'));
+  try {
+    const cli = fileURLToPath(new URL('../portable/uclaw.mjs', import.meta.url));
+    const env = { ...process.env, OPENCLAW_HOME: home, LOCALAPPDATA: home };
+
+    const acted = spawnSync(process.execPath, [cli, 'runtime.activate', '--version', '2026.9.99', '--json'], { env, encoding: 'utf8' });
+    const envelope = JSON.parse(acted.stdout);
+    assert.equal(envelope.action_id, 'runtime.activate', '动作没被执行，--version 又被全局标志抢走了');
+    assert.equal(envelope.ok, false, '2026.9.99 没装，本就该失败');
+    assert.equal(envelope.error.code, 'ACTIVATE_FAILED');
+
+    // 但没给动作时，`uclaw --version` 仍然要是"打印内核版本"
+    const bare = spawnSync(process.execPath, [cli, '--version'], { env, encoding: 'utf8' });
+    assert.equal(bare.status, 0);
+    assert.match(bare.stdout.trim(), /^\d{4}\.\d+\.\d+/, `期望内核版本号，实得：${bare.stdout}`);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
 });
 
 // ── runtime.probe ───────────────────────────────────────────────────────────
