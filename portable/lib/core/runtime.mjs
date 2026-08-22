@@ -32,23 +32,31 @@ function maskValue(value) {
 /**
  * 递归脱敏。返回新对象，不改原对象（调用方可能还要拿原值去写文件）。
  * 循环引用用 seen 兜住，避免 bug.collect 收集到自引用结构时栈溢出。
+ *
+ * seen 里装的是**当前这条路径上的祖先**，进去加、出来删 —— 不是"访问过的全部对象"。
+ * 差别很要命：同一个对象被引用两次（不是环）在结果里很常见，
+ * 比如 runtime.probe 的 node.chosen 就是 node.candidates 里的某一项。
+ * 按"访问过就算环"来判，第二次出现会被整块换成 '[Circular]'，数据凭空少一半。
  */
-export function redact(node, seen = new WeakSet()) {
+export function redact(node, seen = new Set()) {
   if (node === null || typeof node !== 'object') return node;
   if (seen.has(node)) return '[Circular]';
   seen.add(node);
+  try {
+    if (Array.isArray(node)) return node.map((item) => redact(item, seen));
 
-  if (Array.isArray(node)) return node.map((item) => redact(item, seen));
-
-  const out = {};
-  for (const [key, value] of Object.entries(node)) {
-    if (SECRET_KEY_RE.test(key)) {
-      out[key] = maskValue(value);
-    } else {
-      out[key] = redact(value, seen);
+    const out = {};
+    for (const [key, value] of Object.entries(node)) {
+      if (SECRET_KEY_RE.test(key)) {
+        out[key] = maskValue(value);
+      } else {
+        out[key] = redact(value, seen);
+      }
     }
+    return out;
+  } finally {
+    seen.delete(node);
   }
-  return out;
 }
 
 // ── 极简 JSON Schema 校验 ───────────────────────────────────────────────────

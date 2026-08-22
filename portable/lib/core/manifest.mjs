@@ -23,6 +23,11 @@ const BINDINGS = {
   'gateway.start':         { cli: 'uclaw gateway.start --json',                    gui: null },
   'gateway.stop':          { cli: 'uclaw gateway.stop --yes --json',               gui: null },
   'log.tail':              { cli: 'uclaw log.tail --json',                        gui: 'config-server GET /api/logs' },
+  'runtime.probe':         { cli: 'uclaw runtime.probe --json',                    gui: null },
+  'runtime.seed':          { cli: 'uclaw runtime.seed --json',                     gui: null },
+  'runtime.install':       { cli: 'uclaw runtime.install --json',                  gui: null },
+  'runtime.activate':      { cli: 'uclaw runtime.activate --version <v> --json',   gui: null },
+  'runtime.gc':            { cli: 'uclaw runtime.gc --json',                       gui: null },
 };
 
 // GUI 尚未接入的动作，按 §8.3 明确登记豁免——不许悄悄少写一条绑定。
@@ -31,6 +36,11 @@ const EXCEPTIONS = {
   'lock.clean':            '由 gateway.start 内部调用，属修复细节，不单独暴露给用户。',
   'gateway.start':         '便携版由 Windows-Start.bat / Mac-Start.command 拉起，非配置中心职责。',
   'gateway.stop':          '高危动作，便携版通过关闭启动器窗口完成，不在网页上放停服按钮。',
+  'runtime.probe':         'v3 首启流程与诊断页尚未接入；当前由启动器和远程排障走 CLI，配置中心接入排在 Phase 1。',
+  'runtime.seed':          'v3 首启流程由启动器在无界面阶段调用，此时配置中心还没起来，天然没有 GUI 入口。',
+  'runtime.install':       'v3 首启流程由启动器在无界面阶段调用，此时配置中心还没起来，天然没有 GUI 入口。',
+  'runtime.activate':      '换内核版本属运维动作，配置中心的「检查更新」接入排在 Phase 1，先只给 CLI。',
+  'runtime.gc':            '清理旧内核属空间治理，配置中心的存储页排在 Phase 1，先只给 CLI 和启动器。',
 };
 
 export function buildManifest() {

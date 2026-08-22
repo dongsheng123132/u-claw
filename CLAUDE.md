@@ -130,6 +130,30 @@ Both portable and desktop versions auto-find a free port in range 18789–18799 
   the **config-server** (`config-server/server.js`, 18788–18798). The config-server backs
   `Config.html` — it writes `openclaw.json`, drives WeChat QR login, and exposes update-status.
 
+## 动作核心（影核 / ActionParity）—— 改业务逻辑先看这里
+
+`portable/lib/core/` 是**唯一**的业务实现处。GUI（Config.html + config-server）、CLI
+（`portable/uclaw.mjs`）、启动器（`.bat`/`.command`）都是它的调用方，不是第二份实现（宪法 #13）。
+
+```
+lib/core/index.mjs        动作注册表（唯一清单来源）
+        runtime.mjs       execute / defineAction / schema 校验 / 确认策略 / 超时 / 密钥脱敏
+        manifest.mjs      从注册表生成 action-parity.json（含 Surface 绑定表与豁免登记）
+        paths.mjs         路径唯一真相源
+        logger.mjs        动作执行日志（每个动作都记，只读动作也记）
+        actions/*.mjs     动作实现：config / doctor / bugreport / wechat / gateway / log / runtime
+```
+
+- 调：`node portable/uclaw.mjs <action.id> [--key value] [--json] [--yes] [--dry-run]`；
+  `list` 列全部动作，`manifest` 出机器可读清单。
+- **加/改动作后必须重新生成清单**，否则 `tests/action-parity.test.mjs` 立刻红：
+  `node portable/lib/core/manifest.mjs > portable/action-parity.json`
+- 新动作要在 `manifest.mjs` 的 `BINDINGS` 里登记 CLI/GUI 入口；GUI 还没接就在 `EXCEPTIONS`
+  里写明理由（§8.3 要求四要素齐全，理由太敷衍测试也会红）。
+- 破坏性/高危动作不许 `confirmation:'never'`；确认在**表现层之下**强制——GUI 不弹窗一样过不去。
+- `runtime.probe / seed / install / activate / gc` 管的是 **Node 和内核本身**；
+  网关**进程**的起停归 `gateway.start / gateway.stop`。两组别混（开发计划 §6.2 对齐表）。
+
 ## lib/ Helpers (portable)
 
 Pure-Node, zero-dependency `.mjs` modules (use `fetch` + `node:zlib` only). All are designed to

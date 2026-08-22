@@ -712,6 +712,436 @@
           "review_by": "2026-12-31"
         }
       ]
+    },
+    {
+      "id": "runtime.activate",
+      "title": "切换内核版本",
+      "description": "把激活指针指向某个已安装的内核版本；切之前先验证那份树真的能用，验不过就不写指针。rollback=true 则回退到上一版 —— 新内核起不来时不需要重装，旧版本还在盘上。",
+      "tags": [
+        "runtime"
+      ],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "usb_root": {
+            "type": "string",
+            "description": "U 盘根目录；留空=当前 U-Claw 目录"
+          },
+          "version": {
+            "type": "string",
+            "description": "要激活的版本；rollback=true 时忽略"
+          },
+          "rollback": {
+            "type": "boolean",
+            "description": "回退到上一版"
+          }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "version": {
+            "type": "string"
+          },
+          "previous": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "root": {
+            "type": "string"
+          },
+          "entry": {
+            "type": "string"
+          },
+          "rolled_back": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "version",
+          "rolled_back"
+        ]
+      },
+      "effects": {
+        "class": "write",
+        "risk": "medium",
+        "reversible": true,
+        "confirmation": "never",
+        "audit_required": true
+      },
+      "execution": {
+        "headless": true,
+        "idempotent": true,
+        "cancellable": false,
+        "timeout_ms": 30000,
+        "progress_events": false,
+        "headless_evidence": "tests/runtime-actions.test.mjs"
+      },
+      "bindings": [
+        {
+          "surface": "cli",
+          "target": "uclaw runtime.activate --version <v> --json",
+          "test": "tests/action-core.test.mjs"
+        }
+      ],
+      "parity_exceptions": [
+        {
+          "surface": "gui",
+          "reason": "换内核版本属运维动作，配置中心的「检查更新」接入排在 Phase 1，先只给 CLI。",
+          "owner": "dongsheng123132",
+          "review_by": "2026-12-31"
+        }
+      ]
+    },
+    {
+      "id": "runtime.gc",
+      "title": "清理旧内核",
+      "description": "删掉本机上不再需要的旧内核，保留：当前激活的、上一版（回退要用）、通道锁定的。每台插过 U 盘的电脑会留约 1 GB，不给清理入口就是在慢慢塞满客户的 C 盘。--dry-run 只报不删。",
+      "tags": [
+        "runtime",
+        "maintenance"
+      ],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "usb_root": {
+            "type": "string",
+            "description": "U 盘根目录；留空=当前 U-Claw 目录"
+          }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "kept": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "removed": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "freed_bytes": {
+            "type": "number"
+          },
+          "dry_run": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "kept",
+          "removed",
+          "freed_bytes",
+          "dry_run"
+        ]
+      },
+      "effects": {
+        "class": "destructive",
+        "risk": "low",
+        "reversible": false,
+        "confirmation": "conditional",
+        "audit_required": true
+      },
+      "execution": {
+        "headless": true,
+        "idempotent": true,
+        "cancellable": false,
+        "timeout_ms": 120000,
+        "progress_events": false,
+        "headless_evidence": "tests/runtime-actions.test.mjs"
+      },
+      "bindings": [
+        {
+          "surface": "cli",
+          "target": "uclaw runtime.gc --json",
+          "test": "tests/action-core.test.mjs"
+        }
+      ],
+      "parity_exceptions": [
+        {
+          "surface": "gui",
+          "reason": "清理旧内核属空间治理，配置中心的存储页排在 Phase 1，先只给 CLI 和启动器。",
+          "owner": "dongsheng123132",
+          "review_by": "2026-12-31"
+        }
+      ]
+    },
+    {
+      "id": "runtime.install",
+      "title": "安装运行时",
+      "description": "保证本机有可用的 Node 和内核。顺序固定：已装 → U 盘离线 seed → 网络（镜像回退）。全程\"临时目录 → 校验 → 原子改名\"，装坏了不会污染正在用的那份。默认装完切换激活指针。",
+      "tags": [
+        "runtime"
+      ],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "usb_root": {
+            "type": "string",
+            "description": "U 盘根目录；留空=当前 U-Claw 目录"
+          },
+          "version": {
+            "type": "string",
+            "description": "内核版本；留空=OPENCLAW_VERSION 锁定的那个"
+          },
+          "activate": {
+            "type": "boolean",
+            "description": "装完是否切换激活指针，默认 true"
+          }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "node": {
+            "type": "object"
+          },
+          "kernel": {
+            "type": "object"
+          },
+          "version": {
+            "type": "string"
+          },
+          "previous": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "activated": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "node",
+          "kernel",
+          "version",
+          "activated"
+        ]
+      },
+      "effects": {
+        "class": "external",
+        "risk": "medium",
+        "reversible": true,
+        "confirmation": "never",
+        "audit_required": true
+      },
+      "execution": {
+        "headless": true,
+        "idempotent": true,
+        "cancellable": true,
+        "timeout_ms": 900000,
+        "progress_events": true,
+        "headless_evidence": "tests/runtime-actions.test.mjs"
+      },
+      "bindings": [
+        {
+          "surface": "cli",
+          "target": "uclaw runtime.install --json",
+          "test": "tests/action-core.test.mjs"
+        }
+      ],
+      "parity_exceptions": [
+        {
+          "surface": "gui",
+          "reason": "v3 首启流程由启动器在无界面阶段调用，此时配置中心还没起来，天然没有 GUI 入口。",
+          "owner": "dongsheng123132",
+          "review_by": "2026-12-31"
+        }
+      ]
+    },
+    {
+      "id": "runtime.probe",
+      "title": "探测运行时",
+      "description": "只读探测这台机器上已有的 Node 与 OpenClaw 内核（本机托管 → U 盘 v2 遗留 → 同门产品 → U 盘 seed → 系统 PATH），给出下一步该做什么：ready / seed / download / blocked。不装任何东西、不建目录、不碰客户自己装的 openclaw。",
+      "tags": [
+        "runtime",
+        "diagnostics"
+      ],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "usb_root": {
+            "type": "string",
+            "description": "U 盘根目录；留空=当前 U-Claw 目录"
+          }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "ready": {
+            "type": "boolean"
+          },
+          "next_action": {
+            "enum": [
+              "ready",
+              "seed",
+              "download",
+              "blocked"
+            ]
+          },
+          "platform": {
+            "type": "string"
+          },
+          "arch": {
+            "type": "string"
+          },
+          "target": {
+            "type": "string"
+          },
+          "channel": {
+            "type": "object"
+          },
+          "paths": {
+            "type": "object"
+          },
+          "host": {
+            "type": "object"
+          },
+          "node": {
+            "type": "object"
+          },
+          "kernel": {
+            "type": "object"
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "ready",
+          "next_action",
+          "target",
+          "node",
+          "kernel",
+          "warnings"
+        ]
+      },
+      "effects": {
+        "class": "read",
+        "risk": "low",
+        "reversible": true,
+        "confirmation": "never",
+        "audit_required": false
+      },
+      "execution": {
+        "headless": true,
+        "idempotent": true,
+        "cancellable": false,
+        "timeout_ms": 60000,
+        "progress_events": false,
+        "headless_evidence": "tests/runtime-actions.test.mjs"
+      },
+      "bindings": [
+        {
+          "surface": "cli",
+          "target": "uclaw runtime.probe --json",
+          "test": "tests/action-core.test.mjs"
+        }
+      ],
+      "parity_exceptions": [
+        {
+          "surface": "gui",
+          "reason": "v3 首启流程与诊断页尚未接入；当前由启动器和远程排障走 CLI，配置中心接入排在 Phase 1。",
+          "owner": "dongsheng123132",
+          "review_by": "2026-12-31"
+        }
+      ]
+    },
+    {
+      "id": "runtime.seed",
+      "title": "离线安装运行时",
+      "description": "只用 U 盘 vendor/ 里的离线包安装 Node 和内核，全程不联网 —— release note 承诺的\"解压即用、零网络依赖\"就靠它。缺哪个 seed 就明确报错，绝不偷偷回落到下载。装完不切换激活指针，由 runtime.activate 决定。",
+      "tags": [
+        "runtime",
+        "offline"
+      ],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "usb_root": {
+            "type": "string",
+            "description": "U 盘根目录；留空=当前 U-Claw 目录"
+          },
+          "version": {
+            "type": "string",
+            "description": "内核版本；留空=OPENCLAW_VERSION 锁定的那个"
+          }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "node": {
+            "type": "object"
+          },
+          "kernel": {
+            "type": "object"
+          },
+          "version": {
+            "type": "string"
+          },
+          "activated": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "node",
+          "kernel",
+          "version",
+          "activated"
+        ]
+      },
+      "effects": {
+        "class": "write",
+        "risk": "medium",
+        "reversible": true,
+        "confirmation": "never",
+        "audit_required": true
+      },
+      "execution": {
+        "headless": true,
+        "idempotent": true,
+        "cancellable": true,
+        "timeout_ms": 600000,
+        "progress_events": true,
+        "headless_evidence": "tests/runtime-actions.test.mjs"
+      },
+      "bindings": [
+        {
+          "surface": "cli",
+          "target": "uclaw runtime.seed --json",
+          "test": "tests/action-core.test.mjs"
+        }
+      ],
+      "parity_exceptions": [
+        {
+          "surface": "gui",
+          "reason": "v3 首启流程由启动器在无界面阶段调用，此时配置中心还没起来，天然没有 GUI 入口。",
+          "owner": "dongsheng123132",
+          "review_by": "2026-12-31"
+        }
+      ]
     }
   ]
 }

@@ -10,6 +10,7 @@ import bugActions from './actions/bugreport.mjs';
 import wechatActions from './actions/wechat.mjs';
 import gatewayActions from './actions/gateway.mjs';
 import logActions from './actions/log.mjs';
+import runtimeActions from './actions/runtime.mjs';
 
 export { execute, redact, ActionError, validateSchema, defineAction } from './runtime.mjs';
 export { resolvePaths } from './paths.mjs';
@@ -23,6 +24,7 @@ export const ACTIONS = [
   ...wechatActions,
   ...gatewayActions,
   ...logActions,
+  ...runtimeActions,
 ].sort((a, b) => a.id.localeCompare(b.id));
 
 export const ACTIONS_BY_ID = new Map(ACTIONS.map((a) => [a.id, a]));
