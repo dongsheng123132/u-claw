@@ -387,4 +387,58 @@ export const runtimeGc = defineAction({
   },
 });
 
-export default [runtimeProbe, runtimeSeed, runtimeInstall, runtimeActivate, runtimeGc];
+// ── runtime.host.purge ──────────────────────────────────────────────────────
+
+export const runtimeHostPurge = defineAction({
+  id: 'runtime.host.purge',
+  title: '清空本机残留',
+  description:
+    '把这台电脑上 U-Claw 留下的本机文件整个删掉（Node、各版本内核、npm 缓存、浏览器 profile、编译缓存、日志、锁），' +
+    '让机器恢复到没插过 U 盘的样子。U 盘上的配置、会话、钱包一律不动。' +
+    'scope=slot 只清当前这支 U 盘的槽位，共享的 Node 和内核留着（同一台机还插着别的 U 盘时用）。' +
+    '--dry-run 只报会删多少、不动手。',
+  tags: ['runtime', 'maintenance', 'privacy'],
+  input_schema: {
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+      ...USB_ROOT_PROP,
+      scope: {
+        type: 'string',
+        enum: ['all', 'slot'],
+        description: 'all=整个本机目录（默认）；slot=只清当前 U 盘的槽位',
+      },
+    },
+  },
+  output_schema: {
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+      scope: { type: 'string' },
+      target: { type: 'string' },
+      existed: { type: 'boolean' },
+      freed_bytes: { type: 'number' },
+      dry_run: { type: 'boolean' },
+    },
+    required: ['scope', 'target', 'existed', 'freed_bytes', 'dry_run'],
+  },
+  // 和 runtime.gc 的关键差别：gc 只删「没人指向的旧内核」，安全边界由动作自己守死，
+  // 所以可以 conditional；purge 删的是**整棵树，含当前正在用的那一版**，
+  // 删完这台机下次启动要重新 seed。这种事必须每次都问人（宪法 #6）。
+  effects: { class: 'destructive', risk: 'high', reversible: false, confirmation: 'always', audit_required: true },
+  execution: { headless: true, idempotent: true, cancellable: false, timeout_ms: 300000, progress_events: false, headless_evidence: 'tests/runtime-host-purge.test.mjs' },
+  async run(input, ctx) {
+    const rt = runtimeContext(input, ctx);
+    const manager = makeManager(rt);
+    const result = await manager.hostPurge({ dryRun: !!ctx.dryRun, scope: input.scope || 'all' });
+    return {
+      scope: result.scope,
+      target: result.target,
+      existed: result.existed,
+      freed_bytes: result.freedBytes,
+      dry_run: !!result.dryRun,
+    };
+  },
+});
+
+export default [runtimeProbe, runtimeSeed, runtimeInstall, runtimeActivate, runtimeGc, runtimeHostPurge];

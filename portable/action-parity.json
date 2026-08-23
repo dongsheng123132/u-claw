@@ -877,6 +877,92 @@
       ]
     },
     {
+      "id": "runtime.host.purge",
+      "title": "清空本机残留",
+      "description": "把这台电脑上 U-Claw 留下的本机文件整个删掉（Node、各版本内核、npm 缓存、浏览器 profile、编译缓存、日志、锁），让机器恢复到没插过 U 盘的样子。U 盘上的配置、会话、钱包一律不动。scope=slot 只清当前这支 U 盘的槽位，共享的 Node 和内核留着（同一台机还插着别的 U 盘时用）。--dry-run 只报会删多少、不动手。",
+      "tags": [
+        "runtime",
+        "maintenance",
+        "privacy"
+      ],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "usb_root": {
+            "type": "string",
+            "description": "U 盘根目录；留空=当前 U-Claw 目录"
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "all",
+              "slot"
+            ],
+            "description": "all=整个本机目录（默认）；slot=只清当前 U 盘的槽位"
+          }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "scope": {
+            "type": "string"
+          },
+          "target": {
+            "type": "string"
+          },
+          "existed": {
+            "type": "boolean"
+          },
+          "freed_bytes": {
+            "type": "number"
+          },
+          "dry_run": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "scope",
+          "target",
+          "existed",
+          "freed_bytes",
+          "dry_run"
+        ]
+      },
+      "effects": {
+        "class": "destructive",
+        "risk": "high",
+        "reversible": false,
+        "confirmation": "always",
+        "audit_required": true
+      },
+      "execution": {
+        "headless": true,
+        "idempotent": true,
+        "cancellable": false,
+        "timeout_ms": 300000,
+        "progress_events": false,
+        "headless_evidence": "tests/runtime-host-purge.test.mjs"
+      },
+      "bindings": [
+        {
+          "surface": "cli",
+          "target": "uclaw runtime.host.purge --yes --json",
+          "test": "tests/action-core.test.mjs"
+        }
+      ],
+      "parity_exceptions": [
+        {
+          "surface": "gui",
+          "reason": "不可逆地删除本机整棵运行时树，误点代价是下次启动要重新 seed；配置中心的存储页（含二次确认与占用量展示）排在 Phase 1，在那之前不放网页按钮，只给 CLI 和 Windows-Uninstall / Mac-Uninstall 脚本调用。",
+          "owner": "dongsheng123132",
+          "review_by": "2026-12-31"
+        }
+      ]
+    },
+    {
       "id": "runtime.install",
       "title": "安装运行时",
       "description": "保证本机有可用的 Node 和内核。顺序固定：已装 → U 盘离线 seed → 网络（镜像回退）。全程\"临时目录 → 校验 → 原子改名\"，装坏了不会污染正在用的那份。默认装完切换激活指针。",

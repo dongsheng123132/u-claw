@@ -151,7 +151,11 @@ lib/core/index.mjs        动作注册表（唯一清单来源）
 - 新动作要在 `manifest.mjs` 的 `BINDINGS` 里登记 CLI/GUI 入口；GUI 还没接就在 `EXCEPTIONS`
   里写明理由（§8.3 要求四要素齐全，理由太敷衍测试也会红）。
 - 破坏性/高危动作不许 `confirmation:'never'`；确认在**表现层之下**强制——GUI 不弹窗一样过不去。
-- `runtime.probe / seed / install / activate / gc` 管的是 **Node 和内核本身**；
+- `runtime.probe / seed / install / activate / gc / host.purge` 管的是 **Node 和内核本身**；
+  `host.purge` 是一键清空本机残留（**发版硬约束：没有清理入口不许发版**）——
+  `confirmation:'always'`、不可逆，删 `<hostRoot>` 整棵树但 U 盘 `data/`（配置/会话/钱包）一律不动；
+  `--scope slot` 只清当前 U 盘的槽位。边界写死在 `kernel-manager.mjs` 的 `assertSafePurgeTarget()`，
+  别在调用方另写一份。
   网关**进程**的起停归 `gateway.start / gateway.stop`。两组别混（开发计划 §6.2 对齐表）。
 
 ## lib/ Helpers (portable)

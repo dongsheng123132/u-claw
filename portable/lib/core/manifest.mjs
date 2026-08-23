@@ -28,6 +28,7 @@ const BINDINGS = {
   'runtime.install':       { cli: 'uclaw runtime.install --json',                  gui: null },
   'runtime.activate':      { cli: 'uclaw runtime.activate --version <v> --json',   gui: null },
   'runtime.gc':            { cli: 'uclaw runtime.gc --json',                       gui: null },
+  'runtime.host.purge':    { cli: 'uclaw runtime.host.purge --yes --json',         gui: null },
 };
 
 // GUI 尚未接入的动作，按 §8.3 明确登记豁免——不许悄悄少写一条绑定。
@@ -41,6 +42,7 @@ const EXCEPTIONS = {
   'runtime.install':       'v3 首启流程由启动器在无界面阶段调用，此时配置中心还没起来，天然没有 GUI 入口。',
   'runtime.activate':      '换内核版本属运维动作，配置中心的「检查更新」接入排在 Phase 1，先只给 CLI。',
   'runtime.gc':            '清理旧内核属空间治理，配置中心的存储页排在 Phase 1，先只给 CLI 和启动器。',
+  'runtime.host.purge':    '不可逆地删除本机整棵运行时树，误点代价是下次启动要重新 seed；配置中心的存储页（含二次确认与占用量展示）排在 Phase 1，在那之前不放网页按钮，只给 CLI 和 Windows-Uninstall / Mac-Uninstall 脚本调用。',
 };
 
 export function buildManifest() {

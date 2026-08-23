@@ -38,6 +38,42 @@ function assertChild(root, candidate) {
   }
 }
 
+/**
+ * purge 是全仓库唯一一个会 rm -rf 整棵树的动作，所以边界写死在这里，
+ * 而不是散在调用方。任何一条不满足就拒绝执行 —— 路径算错时宁可报错不干活，
+ * 也绝不能把客户的盘删了（宪法 #6、#10）。
+ */
+function assertSafePurgeTarget(target, paths) {
+  const resolved = path.resolve(String(target || ''));
+
+  // 1. 不许是盘符根 / 文件系统根。path.dirname 到了根会返回自己。
+  if (path.dirname(resolved) === resolved) {
+    throw new Error(`拒绝清理文件系统根：${resolved}`);
+  }
+
+  // 2. 目录名必须是我们自己造的那两个之一。挡住 hostRoot 被配错成
+  //    %LOCALAPPDATA% 本身（那一删，客户整个 AppData\Local 就没了）。
+  const name = path.basename(resolved);
+  const slotName = path.basename(path.resolve(paths.slotDir));
+  if (name !== 'U-Claw' && name !== 'host' && name !== slotName) {
+    throw new Error(`拒绝清理不像 U-Claw 本机目录的路径：${resolved}`);
+  }
+
+  // 3. 用户数据一根汗毛都不许动。portable-strict 下 hostRoot 在 U 盘上
+  //    （<usb>/host），和 <usb>/data 是兄弟；但只要哪天路径算错让 data
+  //    落进了删除范围，这里必须拦住 —— 钱包和会话删了没法重建。
+  for (const key of ['dataDir', 'stateDir', 'uclawStateDir', 'vendorDir']) {
+    const guarded = paths[key];
+    if (!guarded) continue;
+    const full = path.resolve(guarded);
+    const relative = path.relative(resolved, full);
+    const inside = relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
+    if (inside) {
+      throw new Error(`拒绝执行：清理范围 ${resolved} 会连带删除用户数据 ${full}`);
+    }
+  }
+}
+
 function run(command, args, { timeoutMs = 8 * 60_000, ...options } = {}) {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
@@ -489,6 +525,36 @@ export function createKernelManager({
     return { kept: [...keep], removed, dryRun };
   }
 
+  /**
+   * 把这台机器上的本机残留整个删掉（影核动作 runtime.host.purge）。
+   *
+   * 「留东西」可以接受，「留了还删不掉」不可以 —— 这是发版硬约束。
+   * 客户借的电脑、公司管控机、网吧，都得能一键还干净。
+   *
+   * scope:
+   *   'all'  （默认）整个 <hostRoot>：共享的 Node/内核/npm 缓存 + 所有 U 盘的槽位
+   *   'slot' 只删当前这支 U 盘的槽位（浏览器 profile / 编译缓存 / 日志 / 锁），
+   *          共享的 Node 和内核留着 —— 同一台机还插着别的 U 盘时用这个
+   *
+   * **绝不碰 U 盘上的第 1 层数据**（openclaw.json / 会话 / 钱包）。
+   * portable-strict 模式下 hostRoot 本身就在 U 盘上（<usb>/host），
+   * 那也照删不误 —— 它装的仍然只是可重建的东西；但 <usb>/data 一根汗毛都不许动。
+   */
+  async function hostPurge({ dryRun = false, scope = 'all' } = {}) {
+    if (scope !== 'all' && scope !== 'slot') {
+      throw new Error(`未知的清理范围：${scope}（只接受 all / slot）`);
+    }
+    const target = scope === 'all' ? paths.hostRoot : paths.slotDir;
+    assertSafePurgeTarget(target, paths);
+
+    if (!existsSync(target)) {
+      return { scope, target, existed: false, freedBytes: 0, dryRun };
+    }
+    const freedBytes = await directorySize(target);
+    if (!dryRun) await rm(target, { recursive: true, force: true });
+    return { scope, target, existed: true, freedBytes, dryRun };
+  }
+
   async function status() {
     const installed = await listInstalled();
     return {
@@ -504,11 +570,11 @@ export function createKernelManager({
   }
 
   return {
-    activate, activeVersion, ensure, ensureNode, gc,
+    activate, activeVersion, ensure, ensureNode, gc, hostPurge,
     installKernel, listInstalled, resolveKernel, rollback, status,
     // 导出给测试用
     _internal: { validateKernelAt, kernelSeedArchive, locateRoot },
   };
 }
 
-export { EXACT_VERSION };
+export { EXACT_VERSION, assertSafePurgeTarget };
