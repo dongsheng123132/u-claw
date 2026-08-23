@@ -552,7 +552,7 @@ function parseArgv(argv) {
     if (next === undefined || next.startsWith('--')) flags[key] = true;
     else { flags[key] = next; i += 1; }
   }
-  const known = new Set(['target', 'out', 'skip_node', 'skip_kernel', 'json', 'help', 'node_timeout_ms', 'npm_timeout_ms', 'tar_timeout_ms']);
+  const known = new Set(['target', 'out', 'skip_node', 'skip_kernel', 'allow_cross', 'json', 'help', 'node_timeout_ms', 'npm_timeout_ms', 'tar_timeout_ms']);
   for (const key of Object.keys(flags)) {
     if (!known.has(key)) throw new UsageError(`不认识的参数：--${key.replace(/_/g, '-')}`);
   }
@@ -567,6 +567,7 @@ function printHelp() {
   log('  --out <dir>        产物目录，默认 portable/vendor');
   log('  --skip-node        不产 Node 包');
   log('  --skip-kernel      不产内核树');
+  log('  --allow-cross      允许在非目标平台上打内核（默认拒绝：原生依赖跟构建机走，跨平台包起不来）');
   log('  --json             以 JSON 信封输出结果到 stdout');
   log('  --node-timeout-ms  Node 单次下载超时（默认 180000）');
   log('  --npm-timeout-ms   npm install 单次超时（默认 600000）');
@@ -599,6 +600,20 @@ async function main() {
   // bsdtar 打包几万个小文件（内核树 + 5 个渠道插件）比 npm install 更吃时间，
   // 单独给一个更宽松的超时，别让打包步骤被 npm 那档超时误杀。
   const tarTimeoutMs = flags.tar_timeout_ms ? Number(flags.tar_timeout_ms) : 20 * 60_000;
+
+  // 跨平台守卫：--target 只决定 Node 包和文件名，内核树是拿本机 npm 装出来的，
+  // 里面的原生 optionalDependency（sqlite-vec 等）跟着**构建机**走，不跟着 --target 走。
+  // 在 ubuntu 上 `--target win-x64` 会产出一个"名字写着 win-x64、里面是 Linux 二进制"
+  // 的 seed —— 打包不报错、上传不报错、客户断网首启时才炸，而那时无网可救。
+  // 所以默认只允许打本机平台；真要跨平台打（比如只想要 Node 包）必须显式 --allow-cross。
+  const hostTarget = resolveTarget();
+  if (target !== hostTarget && !flags.allow_cross && !flags.skip_kernel) {
+    log(`${C.red}拒绝跨平台打内核 seed：--target ${target}，但本机是 ${hostTarget}。${C.off}`);
+    log('内核树的原生依赖跟构建机走，跨平台打出来的包在目标机上起不来。');
+    log(`办法：① 在 ${target} 的机器/runner 上打（CI 的 seed job 就是按平台矩阵跑的）；`);
+    log('     ② 只要 Node 包就加 --skip-kernel；③ 明知后果仍要打加 --allow-cross。');
+    return EXIT_USAGE;
+  }
 
   let channel;
   try {

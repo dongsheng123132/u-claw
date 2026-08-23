@@ -271,6 +271,67 @@ jobs:
           name: portable-windows-full
           path: dist/u-claw-portable-windows-*.zip
 
+  # ── v3 离线 seed ──────────────────────────────────────────────────────────
+  # v3 瘦壳把 Node 和内核装到本机，U 盘只留 vendor/ 里的离线 seed。这个 job 产它。
+  #
+  # **必须按平台在对应 runner 上打，不能在 ubuntu 上交叉打。**
+  # build-seed.mjs 的 --target 只决定 Node 包和文件名；内核树是拿 runner 上的 npm
+  # 装出来的，里面的原生 optionalDependency（sqlite-vec 等）跟着构建机走。交叉打出来
+  # 的包名字对、内容错，客户断网首启时才炸，而那时无网可救。脚本里已有守卫会直接拒绝
+  # （退出码 2），这里的矩阵是让守卫永远不被触发的那一半。
+  #
+  # 产物不进 v2 便携 zip（那个 zip 仍然预装 app/），是独立 artifact，给 v3 消费。
+  # publish job **故意不 needs 这个 job**：v3 还没发版，seed 挂了不该拦住 v2 出货
+  # （宪法第 3 条，出货链路优先）。等 v3 切成主线时再把它挂进 publish 的 needs 和资产列表。
+  seed:
+    name: Offline seed (${{ matrix.target }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: win-x64
+            runs-on: windows-latest
+          - target: darwin-arm64
+            runs-on: macos-latest
+    runs-on: ${{ matrix.runs-on }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Build seed
+        shell: bash
+        run: |
+          node portable/scripts/build-seed.mjs \
+            --target "${{ matrix.target }}" \
+            --out "dist/seed-${{ matrix.target }}" \
+            --json > "seed-${{ matrix.target }}.json"
+          cat "seed-${{ matrix.target }}.json"
+
+      # 校验和自检：SHA256SUMS 是客户断网首启时唯一的完整性依据，
+      # 生成完立刻按它重算一遍，防止"写了个对不上的校验和"这种发出去就没救的错。
+      - name: Verify SHA256SUMS
+        shell: bash
+        run: |
+          cd "dist/seed-${{ matrix.target }}"
+          ls -lh
+          if [ ! -f SHA256SUMS ]; then
+            echo "::error::seed 里没有 SHA256SUMS"
+            exit 1
+          fi
+          if command -v sha256sum >/dev/null 2>&1; then
+            sha256sum -c SHA256SUMS
+          else
+            shasum -a 256 -c SHA256SUMS
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: seed-${{ matrix.target }}
+          path: dist/seed-${{ matrix.target }}/*
+
   publish:
     name: Publish GitHub Release
     needs: [portable-windows-full]
