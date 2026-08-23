@@ -522,6 +522,25 @@ async function writeChecksums(outDir, updates) {
   }
   for (const [name, hash] of updates) existing.set(name, hash);
 
+  // 补齐：outDir 里**存在但没被任何一次构建记进来**的产物，在这里现算补上。
+  //
+  // 2026-08-23 踩到的：第一次构建在打包步骤超时挂掉，那次已经下好并校验过的
+  // node-v22.23.2-win-x64.zip 留在了目录里，但 writeChecksums 从没被调用过；
+  // 第二次带 --skip-node 重跑，只记了内核。结果 vendor 目录里躺着两个包，
+  // SHA256SUMS 却只覆盖其中一个 —— 而 `sha256sum -c SHA256SUMS` 只校验**列出来的**
+  // 文件，所以它照样全绿。一个"看着齐全、实际只保了一半"的完整性文件，
+  // 比没有更危险：下游（CI 的 Verify 步骤、客户首启）都会把它当成全覆盖。
+  for (const name of await readdir(outDir)) {
+    if (name === 'SHA256SUMS' || name.startsWith('.')) continue;
+    if (existing.has(name)) continue;
+    const full = path.join(outDir, name);
+    let info;
+    try { info = await stat(full); } catch { continue; }
+    if (!info.isFile()) continue;
+    log(`${C.yellow}[checksums] 补算漏记的产物：${name}（多半是上一次构建中途失败留下的）${C.off}`);
+    existing.set(name, await sha256File(full));
+  }
+
   // 丢掉指向已不存在文件的条目。合并保留旧条目是为了 --skip-node / --skip-kernel
   // 这类只产一半的构建，但升 Node 版本时旧包会被换掉（文件名带版本号），
   // 留着旧条目会让 `sha256sum -c SHA256SUMS` 直接报 "No such file"，
@@ -693,4 +712,4 @@ if (isMain) {
     });
 }
 
-export { satisfiesRange, PRUNE_DIRS };
+export { satisfiesRange, PRUNE_DIRS, writeChecksums };
