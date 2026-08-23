@@ -356,8 +356,20 @@ v3 走独立分支后，每日 cron 只碰 main，与 v3 无冲突，CI 一行�
 - `atomic-file.js`；
 - 运行时探测与复用（§3），含 `runtime.probe` 输出；
 - 离线 seed 首启解压路径（`kernel-manager.mjs`：seed → 校验 → 原子落地 → 激活/回退/gc）；
-- **CI 产出 seed**：把现在 release zip 里的 `app/core/` 改打成 `vendor/openclaw-<version>-<target>`；
+- ~~**CI 产出 seed**~~ ✅ 2026-08-23（`ab49ed3`）：`release.yml` 的 `seed` job，
+  矩阵 `win-x64→windows-latest` / `darwin-arm64→macos-latest`，跑 `portable/scripts/build-seed.mjs`。
+  **注意实现与原计划不同**：不是"把 release zip 里的 `app/core/` 改打成 vendor"，而是独立 job 重新装一棵干净的树。
+  原因是 v2 那个 zip 仍要继续出货（1543 次下载是活的渠道），改它的产物等于拿出货链路做实验。
+  `publish` 故意不 `needs: seed`，v3 的 seed 挂了不拦 v2 发版；v3 切主线时再连（`tests/seed-ci.test.mjs` 会提醒补另一半）。
+
+  > **必须按平台在对应 runner 上打，不能在 ubuntu 上交叉打。** `--target` 只决定 Node 包和文件名；
+  > 内核树的原生 optionalDependency（`sqlite-vec` 等）跟着构建机走。交叉打出来的包名字对、内容错，
+  > 全程不报错（连 SHA256 都对得上，校验的是那个错包自己），客户断网首启时才炸——而那时无网可救。
+  > 两道防线：`build-seed.mjs` 里的运行时守卫（退出码 2）+ `tests/seed-ci.test.mjs` 断言矩阵配对。
 - 首启进度界面（扩现有 `loading.html`，不得黑窗）。
+- [ ] **干净机验断网首启**（Phase 0.5 唯一剩项）：`aliyun-clean-windows-test` skill 起一台干净 Windows，
+  断网解 seed → `runtime.seed/activate` → 起网关。本地沙箱已端到端跑通（`c42a3b9`，109 秒），
+  但**开发机有代理、有缓存、有装过的 Node**，那不算数（宪法第 4 条）。
 
 > 踩到的坑，记在这里免得再踩：Windows 上解 tar.gz **必须点名 `%SystemRoot%\System32\tar.exe`**（bsdtar）。
 > 客户机和开发机的 PATH 上常有 GNU tar，它把 `C:\...` 的冒号当 `host:path` 分隔符，直接
