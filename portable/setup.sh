@@ -13,7 +13,7 @@ CORE_DIR="$APP_DIR/core"
 RUNTIME_DIR="$APP_DIR/runtime"
 MIRROR="https://registry.npmmirror.com"
 NODE_MIRROR="https://npmmirror.com/mirrors/node"
-NODE_VERSION="v22.22.1"
+NODE_VERSION="v22.22.3"
 ALL_PLATFORMS=false
 [ "$1" = "--all-platforms" ] && ALL_PLATFORMS=true
 

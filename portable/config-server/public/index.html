@@ -148,6 +148,21 @@ input:focus { border-color: #ff6b35; }
 .status-text { flex: 1; font-size: 0.9em; }
 .status-text a { color: #ff6b35; text-decoration: none; }
 
+/* Wallet card (虾盘云设备钱包) */
+.wallet-card { background: linear-gradient(160deg, rgba(255,107,53,0.12), #1a1a1a 55%); border: 2px solid #ff6b35; border-radius: 12px; padding: 18px; margin-bottom: 18px; }
+.wallet-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 6px; }
+.wallet-head h3 { color: #fff; font-size: 1.05em; }
+.wallet-key { color: #ffb38a; font-size: 0.85em; font-family: monospace; }
+.wallet-balance { display: flex; align-items: center; gap: 10px; margin: 8px 0; font-size: 0.92em; color: #e0e0e0; }
+.btn-mini { background: #2d2d2d; border: 1px solid #444; color: #ccc; border-radius: 6px; padding: 4px 10px; font-size: 0.8em; cursor: pointer; }
+.btn-mini:hover { background: #3a3a3a; }
+.wallet-danger { margin-top: 16px; padding-top: 12px; border-top: 1px dashed #444; }
+.wallet-danger .btn { margin-bottom: 6px; }
+details#advancedModelsBox { background: #161616; border: 1px solid #333; border-radius: 10px; padding: 4px 16px; margin-bottom: 16px; }
+details#advancedModelsBox summary { cursor: pointer; padding: 12px 0; color: #ccc; font-size: 0.92em; user-select: none; }
+details#advancedModelsBox summary:hover { color: #ff6b35; }
+details#advancedModelsBox[open] summary { border-bottom: 1px solid #333; margin-bottom: 12px; }
+
 /* Skills section */
 .skills-section { margin-top: 8px; }
 .skill-list { display: flex; flex-direction: column; gap: 8px; }
@@ -178,8 +193,52 @@ input:focus { border-color: #ff6b35; }
     <!-- Step 1: Select Model -->
     <div class="section active" id="step1">
         <h2>选择 AI 模型</h2>
-        <p class="desc">最省心：用「虾盘云」一个 Key 调用国内外全部大模型（中转站）。也可用下面各家自己的官方 Key。</p>
+        <p class="desc">最省心：一键领取虾盘云额度，联网就能用；也可以展开下方「高级」用自己的 API Key。</p>
 
+        <!-- 虾盘云 · 设备钱包 —— 只在用户点击按钮之后才会联网，绝不在打开这个页面时自动请求。 -->
+        <div class="wallet-card" id="walletCard">
+            <div class="wallet-head">
+                <h3>🦞 虾盘云 · 设备钱包</h3>
+                <span class="wallet-key" id="walletKeyDisplay">联网后可一键领取</span>
+            </div>
+            <div class="wallet-balance" id="walletBalanceRow" style="display:none;">
+                <span id="walletBalanceText">余额 —</span>
+                <button class="btn-mini" id="walletRefreshBtn" onclick="walletRefreshBalance()">刷新余额</button>
+            </div>
+            <p class="hint" id="walletHint">你的密钥就是你的钱包，请自行截图/复制备份——重装、换电脑都要靠它找回余额。没有钱包也完全不影响使用，可以直接用下方「高级」配置本地模型或自己的 API Key。</p>
+
+            <div class="btn-row" id="walletClaimRow" style="justify-content:flex-start;">
+                <button class="btn btn-primary" id="walletClaimBtn" onclick="walletClaim()">🚀 一键领取额度</button>
+            </div>
+
+            <div id="walletManageBox" style="display:none;">
+                <div class="btn-row" style="justify-content:flex-start; flex-wrap:wrap;">
+                    <button class="btn btn-primary" onclick="walletRecharge()">💰 一键充值</button>
+                    <button class="btn btn-secondary" onclick="walletCopyKey()">📋 复制密钥</button>
+                    <button class="btn btn-secondary" onclick="walletRotateConfirm()">🔄 换一把</button>
+                </div>
+
+                <div class="form-group" style="margin-top:14px;">
+                    <label>填入已有密钥（换电脑 / 这台机器上的另一份安装 / 官网自己生成的那把）</label>
+                    <div class="input-wrap">
+                        <input type="text" id="walletAdoptInput" placeholder="sk-...">
+                        <button class="toggle-pw" id="walletPasteBtn" onclick="walletPasteKey()">粘贴</button>
+                    </div>
+                    <div class="btn-row" style="justify-content:flex-start; margin-top:8px;">
+                        <button class="btn btn-secondary" onclick="walletAdopt()">启用这把密钥</button>
+                    </div>
+                </div>
+
+                <div class="wallet-danger">
+                    <p class="hint" style="color:#f44336;">危险区</p>
+                    <button class="btn btn-secondary" style="border:1px solid #f44336;color:#f44336;" onclick="walletResetLocal()">移除本机钱包</button>
+                    <p class="hint">只清本机记录，旧钱包余额不受影响，凭密钥可在任意机器重新启用；执行前请先确认已复制备份密钥——重新领取的新钱包从 0 开始，旧余额不会自动进新钱包。</p>
+                </div>
+            </div>
+        </div>
+
+        <details id="advancedModelsBox">
+        <summary>🔧 高级：使用自己的 API Key（DeepSeek / 通义 / OpenAI / 自定义…）</summary>
         <div class="model-grid">
             <!-- MODELS:BEGIN 由 models.json 生成，勿手改；改 models.json 后跑 node lib/sync-models.mjs -->
             <div class="model-card" data-provider="uclaw-cloud" data-base="https://api.u-claw.org/v1" data-model="deepseek-v4-flash">
@@ -194,10 +253,10 @@ input:focus { border-color: #ff6b35; }
                 <p>deepseek-v4-flash / deepseek-v4-pro，超低价格</p>
                 <a class="buy-link" href="https://platform.deepseek.com/" target="_blank">→ 获取 API Key</a>
             </div>
-            <div class="model-card" data-provider="minimax" data-base="https://api.minimax.chat/v1" data-model="MiniMax-M2.7">
+            <div class="model-card" data-provider="minimax" data-base="https://api.minimaxi.com/v1" data-model="MiniMax-M3">
                 <span class="check">✓</span>
                 <h4>MiniMax <span class="tag cn">国内</span></h4>
-                <p>MiniMax-M2.7，速度快，性价比高</p>
+                <p>MiniMax-M3，百万级上下文，支持图片/视频输入</p>
                 <a class="buy-link" href="https://platform.minimaxi.com/" target="_blank">→ 获取 API Key</a>
             </div>
             <div class="model-card" data-provider="kimi" data-base="https://api.moonshot.cn/v1" data-model="kimi-k2.6">
@@ -266,6 +325,7 @@ input:focus { border-color: #ff6b35; }
         <div class="btn-row">
             <button class="btn btn-primary" id="nextStep1" disabled>下一步 →</button>
         </div>
+        </details>
     </div>
 
     <!-- Step 2: API Key -->
@@ -476,7 +536,8 @@ function setupStep2() {
     // 本地模型隐藏「获取/充值 Key」信息框
     document.getElementById('buyInfo').style.display = selectedLocal ? 'none' : 'block';
 
-    var card = document.querySelector('#step1 .model-card[data-provider="' + selectedProvider + '"]');
+    // 取当前点亮的卡片（选中态），同一 provider 多张卡时也不会选错
+    var card = document.querySelector('#step1 .model-card.selected');
     var buyLink = card ? card.querySelector('.buy-link') : null;
     var linksDiv = document.getElementById('providerLinks');
     linksDiv.innerHTML = '';
@@ -495,6 +556,32 @@ function togglePw(id) {
     var btn = inp.parentElement.querySelector('.toggle-pw');
     if (inp.type === 'password') { inp.type = 'text'; btn.textContent = '隐藏'; }
     else { inp.type = 'password'; btn.textContent = '显示'; }
+}
+
+// --- 按模型能力生成正确的模型定义（reasoning / 多模态 / 上下文窗口）---
+// 旧代码不管什么模型一律写 reasoning:false, contextWindow:128000，明显不对。
+// 定价字段核不准就不填，宁可留 0 也不能瞎填（计费显示错比没有更糟）。
+function buildModelDefinition(provider, model) {
+    var definition = {
+        id: model,
+        name: model,
+        reasoning: false,
+        input: ['text'],
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+        contextWindow: 128000,
+        maxTokens: 8192
+    };
+
+    if (provider !== 'minimax') return definition;
+
+    var miniMaxProfiles = {
+        'MiniMax-M3': {
+            reasoning: true,
+            input: ['text', 'image', 'video'],
+            contextWindow: 1000000
+        }
+    };
+    return Object.assign(definition, miniMaxProfiles[model] || {});
 }
 
 // --- Build OpenClaw config ---
@@ -519,15 +606,7 @@ function buildConfig(provider, base, model, apiKey) {
         baseUrl: base,
         apiKey: apiKey,
         api: 'openai-completions',
-        models: [{
-            id: model,
-            name: model,
-            reasoning: false,
-            input: ['text'],
-            cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-            contextWindow: 128000,
-            maxTokens: 8192
-        }]
+        models: [buildModelDefinition(provider, model)]
     };
     return Object.assign({}, baseConfig, {
         models: { mode: 'merge', providers: providers },
@@ -815,7 +894,13 @@ async function loadConfig() {
             var providerName = Object.keys(cfg.models.providers)[0];
             if (providerName) {
                 var p = cfg.models.providers[providerName];
-                var card = document.querySelector('#step1 .model-card[data-provider="' + providerName + '"]');
+                // 同一 provider 可能有多张卡，按 base+model 三元组精确匹配，避免回填选错卡
+                var modelId = p.models && p.models[0] ? p.models[0].id : '';
+                var card = Array.from(document.querySelectorAll('#step1 .model-card')).find(function(candidate) {
+                    return candidate.dataset.provider === providerName &&
+                        candidate.dataset.base === (p.baseUrl || '') &&
+                        candidate.dataset.model === modelId;
+                }) || document.querySelector('#step1 .model-card[data-provider="' + providerName + '"]');
                 if (card) card.click();
                 markSavedKey(p.apiKey, providerName);
             }
@@ -867,6 +952,208 @@ async function discoverLocalModels() {
 discoverLocalModels().then(loadConfig);
 checkGateway();
 setInterval(checkGateway, 10000);
+
+// --- 虾盘云 · 设备钱包 -------------------------------------------------------
+// 六个按钮各自对应 config-server 的 /api/wallet/* 路由，路由内部才会真正联网
+// （claim / rotate / adopt）。这里只是渲染状态和转发点击，页面加载时只调用一次
+// 本地状态查询（/api/wallet/status 不联网，纯读本地文件），绝不在加载时自动
+// 领取额度——一键领取必须来自用户点按钮。
+var _walletFullKey = ''; // 复制/展示用；本来就明文存在 openclaw.json 里，不算新增暴露面
+
+function walletMask(key) {
+    if (!key) return '';
+    if (key.length <= 10) return key[0] + '***';
+    return key.slice(0, 6) + '...' + key.slice(-4);
+}
+
+function walletRenderStatus(status) {
+    _walletFullKey = (status && status.apiKey) || '';
+    var keyDisplay = document.getElementById('walletKeyDisplay');
+    var claimRow = document.getElementById('walletClaimRow');
+    var manageBox = document.getElementById('walletManageBox');
+    var balanceRow = document.getElementById('walletBalanceRow');
+
+    if (status && status.hasWallet) {
+        keyDisplay.textContent = walletMask(status.apiKey);
+        claimRow.style.display = 'none';
+        manageBox.style.display = 'block';
+        window._walletRechargeUrl = status.rechargeUrl || '';
+    } else {
+        keyDisplay.textContent = '联网后可一键领取';
+        claimRow.style.display = 'flex';
+        manageBox.style.display = 'none';
+        balanceRow.style.display = 'none';
+    }
+}
+
+async function walletLoadStatus() {
+    try {
+        var res = await fetch('/api/wallet/status');
+        var data = await res.json();
+        walletRenderStatus(data);
+    } catch (e) { /* 静默失败：钱包卡片保持"未领取"初始态，不影响其余配置流程 */ }
+}
+
+async function walletClaim() {
+    var btn = document.getElementById('walletClaimBtn');
+    btn.disabled = true;
+    btn.textContent = '领取中…';
+    try {
+        var res = await fetch('/api/wallet/claim', { method: 'POST' });
+        var data = await res.json();
+        if (!data.ok) { showToast(data.error || '领取失败', true); return; }
+        showToast(data.alreadyClaimed ? '本机已有钱包' : '领取成功！已自动配置模型');
+        await walletLoadStatus();
+        loadConfig(); // 回填 uclaw-cloud provider 的选中态（若用户之后展开高级面板）
+    } catch (e) {
+        showToast('领取失败: ' + e.message, true);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '🚀 一键领取额度';
+    }
+}
+
+async function walletRefreshBalance() {
+    var row = document.getElementById('walletBalanceRow');
+    var text = document.getElementById('walletBalanceText');
+    row.style.display = 'flex';
+    text.textContent = '查询中…';
+    try {
+        var res = await fetch('/api/wallet/balance');
+        var data = await res.json();
+        if (!data.ok) { text.textContent = '余额查询失败'; return; }
+        var avail = data.totalAvailable != null ? data.totalAvailable : '—';
+        text.textContent = '可用 ' + avail + '（已用 ' + (data.totalUsed != null ? data.totalUsed : '—') + '）';
+    } catch (e) {
+        text.textContent = '余额查询失败';
+    }
+}
+
+function walletRecharge() {
+    var url = window._walletRechargeUrl;
+    if (url) { window.open(url, '_blank'); return; }
+    // 没有缓存到充值链接（比如刚刷新页面还没查过状态）：先取一次状态再打开。
+    fetch('/api/wallet/status').then(function(r) { return r.json(); }).then(function(data) {
+        walletRenderStatus(data);
+        if (data.rechargeUrl) window.open(data.rechargeUrl, '_blank');
+        else showToast('还没有钱包，请先领取', true);
+    });
+}
+
+function walletCopyKey() {
+    if (!_walletFullKey) { showToast('还没有可复制的密钥', true); return; }
+    walletCopyText(_walletFullKey, '密钥已复制，请妥善保存——它就是你的钱包');
+}
+
+function walletCopyText(text, okMsg) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function() {
+            showToast(okMsg);
+        }).catch(function() {
+            walletCopyFallback(text, okMsg);
+        });
+    } else {
+        walletCopyFallback(text, okMsg);
+    }
+}
+
+function walletCopyFallback(text, okMsg) {
+    try {
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        showToast(okMsg);
+    } catch (e) {
+        showToast('复制失败，请手动选中密钥复制', true);
+    }
+}
+
+async function walletRotateConfirm() {
+    var ok = window.confirm(
+        '换一把新密钥？\n\n' +
+        '· 旧密钥会立刻失效，别处（其它电脑/脚本）在用旧密钥的地方都要跟着改\n' +
+        '· 余额不受影响，会带到新密钥上\n\n' +
+        '确认要换吗？'
+    );
+    if (!ok) return;
+    try {
+        var res = await fetch('/api/wallet/rotate', { method: 'POST' });
+        var data = await res.json();
+        if (!data.ok) { showToast(data.error || '换密钥失败', true); return; }
+        showToast('已更新密钥，余额已保留');
+        await walletLoadStatus();
+    } catch (e) {
+        showToast('换密钥失败: ' + e.message, true);
+    }
+}
+
+async function walletPasteKey() {
+    var input = document.getElementById('walletAdoptInput');
+    try {
+        if (navigator.clipboard && navigator.clipboard.readText) {
+            var text = await navigator.clipboard.readText();
+            if (text) { input.value = text.trim(); input.focus(); return; }
+        }
+        throw new Error('clipboard API 不可用');
+    } catch (e) {
+        // 剪贴板 API 被浏览器拒绝（权限/非安全上下文）：兜底提示手动粘贴，别让按钮看起来"坏了"。
+        input.focus();
+        showToast('自动粘贴不可用，请在输入框内按 Ctrl+V 手动粘贴', true);
+    }
+}
+
+async function walletAdopt() {
+    var input = document.getElementById('walletAdoptInput');
+    var key = input.value.trim();
+    if (!key) { showToast('请先填入密钥', true); return; }
+    try {
+        var res = await fetch('/api/wallet/adopt', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key: key }),
+        });
+        var data = await res.json();
+        if (!data.ok) { showToast(data.error || '启用失败', true); return; }
+        showToast('已启用这把密钥');
+        input.value = '';
+        await walletLoadStatus();
+        loadConfig();
+    } catch (e) {
+        showToast('启用失败: ' + e.message, true);
+    }
+}
+
+async function walletResetLocal() {
+    var step1 = window.confirm(
+        '移除本机钱包前，请确认你已经用「复制密钥」备份过当前密钥——\n' +
+        '旧密钥之后仍可在任意机器上用「填入已有密钥」找回，但本机这份记录一旦清除就没有了。\n\n' +
+        '确认已经备份了吗？'
+    );
+    if (!step1) return;
+    var step2 = window.confirm(
+        '再确认一次：移除后本机会回到"未领取"状态，重新领取会拿到一个全新的 ¥0 钱包，\n' +
+        '旧余额不会自动转入新钱包（旧密钥本身没有被作废，仍可正常使用/充值）。\n\n' +
+        '确定要移除本机钱包吗？'
+    );
+    if (!step2) return;
+    try {
+        var res = await fetch('/api/wallet/reset-local', { method: 'POST' });
+        var data = await res.json();
+        if (!data.ok) { showToast(data.error || '移除失败', true); return; }
+        showToast('已移除本机钱包');
+        await walletLoadStatus();
+    } catch (e) {
+        showToast('移除失败: ' + e.message, true);
+    }
+}
+
+walletLoadStatus();
 </script>
 </body>
 </html>

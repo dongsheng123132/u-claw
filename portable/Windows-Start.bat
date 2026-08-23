@@ -175,10 +175,20 @@ if %errorlevel%==0 (
 echo   Starting OpenClaw on port %PORT%...
 echo.
 
+REM Auto-open Config Center only on first run (issue #24). The documented design
+REM (repo CLAUDE.md): first run (no model configured) opens Config Center;
+REM configured runs only open the Dashboard. Config Center is still reachable
+REM any time via Windows-Menu.bat -- this only changes what auto-opens here.
+REM Silent-fail helper: any read/parse error is treated as "not configured",
+REM so at worst users see one extra Config Center tab, never zero.
+set "MODEL_CONFIGURED=0"
+for /f "usebackq tokens=1,* delims==" %%a in (`""%NODE_BIN%" "%UCLAW_DIR%lib\check-model-configured.mjs" "%STATE_DIR%\openclaw.json" 2^>nul"`) do (
+    if "%%a"=="UCLAW_MODEL_CONFIGURED" set "MODEL_CONFIGURED=%%b"
+)
+
 REM Do not open Dashboard before the gateway is ready.
 REM Slow USB drives may need tens of seconds to stage bundled deps.
-REM Open the local startup page now, and always open Config Center too.
-REM Config Center lets users change models, recharge/get keys, and connect channels.
+REM Open the local startup page now; Config Center only auto-opens on first run.
 
 REM Open startup page with the gateway port and token in the query string.
 echo   Opening startup screen...
@@ -186,8 +196,12 @@ set "LOADING_PATH=%UCLAW_DIR%lib\loading.html"
 set "LOADING_URL=file:///%LOADING_PATH:\=/%?port=%PORT%&token=uclaw"
 start "" "%LOADING_URL%"
 
-echo   Opening Config Center...
-start "" http://127.0.0.1:%CONFIG_PORT%/
+if "%MODEL_CONFIGURED%"=="1" (
+    echo   Model already configured - Dashboard only, no Config Center popup.
+) else (
+    echo   Opening Config Center...
+    start "" http://127.0.0.1:%CONFIG_PORT%/
+)
 
 REM Fallback watcher: if the startup page cannot poll from file URLs,
 REM keep polling and reopen Config Center after the gateway is ready.

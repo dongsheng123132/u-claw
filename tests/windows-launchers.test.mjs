@@ -45,18 +45,26 @@ test('portable Windows launchers disable OpenClaw bonjour discovery', () => {
   }
 });
 
-test('Windows startup keeps Config Center available even after model setup', () => {
+test('Windows startup only auto-opens Config Center when no model is configured (issue #24)', () => {
+  // Previously Windows-Start.bat force-opened Config Center on every launch,
+  // even for returning users who already picked a model -- that's the "config
+  // page pops up every single time I start it" complaint in issue #24. This
+  // replaced the old "always open Config Center" behavior below with the
+  // design documented in the repo CLAUDE.md: first run (no model configured)
+  // opens Config Center; configured runs land on the Dashboard only. The
+  // config-server itself still always starts, and Windows-Menu.bat still
+  // offers the setup wizard, so Config Center remains reachable manually.
   const script = readRepoFile('portable', 'Windows-Start.bat');
 
   assert.match(
     script,
-    /Opening Config Center[\s\S]*start "" http:\/\/127\.0\.0\.1:%CONFIG_PORT%\//,
-    'Windows-Start.bat should always open Config Center for model/channel changes',
+    /lib\\check-model-configured\.mjs/,
+    'should consult the model-configured helper before deciding whether to auto-open Config Center',
   );
-  assert.doesNotMatch(
+  assert.match(
     script,
-    /if not defined MODEL_CONFIGURED/,
-    'Config Center should not be gated on first-time setup only',
+    /if "%MODEL_CONFIGURED%"=="1" \([\s\S]*\) else \([\s\S]*start "" http:\/\/127\.0\.0\.1:%CONFIG_PORT%\/[\s\S]*\)/,
+    'Config Center should only auto-open in the "not configured" branch',
   );
 });
 
@@ -136,6 +144,21 @@ test('macOS local-model / intranet launchers call the shared cross-platform scri
 test('local-model setup launcher calls setup-local-model.mjs', () => {
   const bat = readRepoFile('portable', 'Windows-LocalModel.bat');
   assert.match(bat, /lib\\setup-local-model\.mjs/);
+});
+
+test('portable menus expose a CLI terminal entry point (issue #53)', () => {
+  // Windows-Menu.bat and Mac-Menu.command are the only menus most users ever
+  // see (Windows-Start.bat / Mac-Start.command only open the web UI); before
+  // this the standalone OpenClaw-CLI.bat / Mac-OpenClaw-CLI.command existed
+  // but had no entry in either menu, so users assumed U-Claw was "web only"
+  // (issue #53). Both menus must offer a way to launch them.
+  const winMenu = readRepoFile('portable', 'Windows-Menu.bat');
+  assert.match(winMenu, /goto :clitool/, 'Windows-Menu.bat menu choice should route to a CLI entry');
+  assert.match(winMenu, /:clitool[\s\S]*OpenClaw-CLI\.bat/, 'Windows-Menu.bat should launch OpenClaw-CLI.bat');
+
+  const macMenu = readRepoFile('portable', 'Mac-Menu.command');
+  assert.match(macMenu, /do_cli/, 'Mac-Menu.command should have a CLI menu action');
+  assert.match(macMenu, /Mac-OpenClaw-CLI\.command/, 'Mac-Menu.command should launch Mac-OpenClaw-CLI.command');
 });
 
 test('OpenClaw doctor launcher is read-only (no destructive repair flags)', () => {

@@ -9,7 +9,7 @@ set "CORE_DIR=%APP_DIR%\core"
 set "RUNTIME_DIR=%APP_DIR%\runtime"
 set "MIRROR=https://registry.npmmirror.com"
 set "NODE_MIRROR=https://npmmirror.com/mirrors/node"
-set "NODE_VERSION=v22.22.1"
+set "NODE_VERSION=v22.22.3"
 set "ALL_PLATFORMS=false"
 if "%~1"=="--all-platforms" set "ALL_PLATFORMS=true"
 

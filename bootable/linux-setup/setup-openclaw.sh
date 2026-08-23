@@ -7,7 +7,7 @@
 set -euo pipefail
 
 # ── All constants defined here (independent of any other project files) ──
-NODE_VERSION="v22.16.0"
+NODE_VERSION="v22.22.3"
 NODE_MIRROR="https://npmmirror.com/mirrors/node"
 NODE_OFFICIAL="https://nodejs.org/dist"
 NPM_MIRROR="https://registry.npmmirror.com"

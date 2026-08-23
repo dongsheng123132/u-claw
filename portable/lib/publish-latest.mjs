@@ -44,6 +44,10 @@ function parseArgs(argv) {
   return args;
 }
 
+/**
+ * OpenClaw 上游版本（pin）。这是 check-update.mjs 用来跟本地 OPENCLAW_VERSION
+ * 比大小的那个数，必须保持是上游版本号，别改成别的。
+ */
 function readVersion() {
   const versionFile = resolve(REPO_ROOT, 'OPENCLAW_VERSION');
   if (!existsSync(versionFile)) {
@@ -52,6 +56,24 @@ function readVersion() {
   const v = readFileSync(versionFile, 'utf8').trim();
   if (!v) throw new Error('OPENCLAW_VERSION is empty');
   return v;
+}
+
+/**
+ * 发布 tag（壳版本）。仓库打的 tag 是 v2.1.16 这种壳版本，**不是** OpenClaw 的
+ * 2026.7.1-2；release.yml 的产物名也跟着 tag 走。
+ *
+ * 早期版本这里直接拿 OPENCLAW_VERSION 当 tag，于是生成的 releasePageUrl
+ * （.../releases/tag/v2026.7.1-2）和 downloadUrl（u-claw-portable-v2026.7.1-2.zip）
+ * 全是死链——就算把 latest.json 传上 OSS，用户点"下载新版"也是 404。
+ */
+function readReleaseTag() {
+  const pkgPath = resolve(REPO_ROOT, 'u-claw-app', 'package.json');
+  if (!existsSync(pkgPath)) {
+    throw new Error(`找不到壳版本文件 ${pkgPath}（release.yml 的 tag 来源）`);
+  }
+  const v = JSON.parse(readFileSync(pkgPath, 'utf8')).version;
+  if (!v) throw new Error('u-claw-app/package.json 里没有 version');
+  return `v${v}`;
 }
 
 function todayIso() {
@@ -64,12 +86,12 @@ function todayIso() {
 
 function main() {
   const args = parseArgs(process.argv);
-  const version = readVersion();
-  const tag = `v${version}`;
+  const version = readVersion();       // OpenClaw 上游版本，供 check-update 比大小
+  const tag = readReleaseTag();        // 壳版本 tag，供拼下载/发布页链接
 
-  // Naming convention matches release.yml:
-  // dist/u-claw-portable-${tag_name}.zip
-  const zipName = `u-claw-portable-${tag}.zip`;
+  // 与 release.yml 的产物命名保持一致：
+  //   zip -qry "u-claw-portable-windows-${tag_name}.zip" ...
+  const zipName = `u-claw-portable-windows-${tag}.zip`;
   const downloadUrl = `${args.ossBase}/${zipName}`;
   const releasePageUrl = `${GH_RELEASES_BASE}/tag/${tag}`;
 
@@ -82,7 +104,7 @@ function main() {
     // Mirror fallback if user wants — check-update.mjs only looks at the top-level fields
     mirrors: {
       oss: downloadUrl,
-      github: `${releasePageUrl}/${zipName}`,
+      github: `${GH_RELEASES_BASE}/download/${tag}/${zipName}`,
     },
   };
 

@@ -177,10 +177,10 @@ input:focus { border-color: #ff6b35; }
                 <p>deepseek-v4-flash / deepseek-v4-pro，超低价格</p>
                 <a class="buy-link" href="https://platform.deepseek.com/" target="_blank">→ 获取 API Key</a>
             </div>
-            <div class="model-card" data-provider="minimax" data-base="https://api.minimax.chat/v1" data-model="MiniMax-M2.7">
+            <div class="model-card" data-provider="minimax" data-base="https://api.minimaxi.com/v1" data-model="MiniMax-M3">
                 <span class="check">✓</span>
                 <h4>MiniMax <span class="tag cn">国内</span></h4>
-                <p>MiniMax-M2.7，速度快，性价比高</p>
+                <p>MiniMax-M3，百万级上下文，支持图片/视频输入</p>
                 <a class="buy-link" href="https://platform.minimaxi.com/" target="_blank">→ 获取 API Key</a>
             </div>
             <div class="model-card" data-provider="kimi" data-base="https://api.moonshot.cn/v1" data-model="kimi-k2.6">
@@ -442,8 +442,8 @@ function setupStep2() {
     // 本地模型隐藏 Key 获取信息框
     document.getElementById('buyInfo').style.display = selectedLocal ? 'none' : 'block';
 
-    // Buy links
-    const card = document.querySelector(`#step1 .model-card[data-provider="${selectedProvider}"]`);
+    // Buy links（选中态取当前点亮的卡片，避免同一 provider 多张卡时选错）
+    const card = document.querySelector('#step1 .model-card.selected');
     const buyLink = card ? card.querySelector('.buy-link') : null;
     const linksDiv = document.getElementById('providerLinks');
     linksDiv.innerHTML = '';
@@ -464,6 +464,32 @@ function setupStep2() {
 function togglePw() {
     const inp = document.getElementById('apiKey');
     inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+// --- 按模型能力生成正确的模型定义（reasoning / 多模态 / 上下文窗口）---
+// 旧代码不管什么模型一律写 reasoning:false, contextWindow:128000，明显不对。
+// 定价字段核不准就不填，宁可留 0 也不能瞎填（计费显示错比没有更糟）。
+function buildModelDefinition(provider, model) {
+    const definition = {
+        id: model,
+        name: model,
+        reasoning: false,
+        input: ['text'],
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+        contextWindow: 128000,
+        maxTokens: 8192
+    };
+
+    if (provider !== 'minimax') return definition;
+
+    const miniMaxProfiles = {
+        'MiniMax-M3': {
+            reasoning: true,
+            input: ['text', 'image', 'video'],
+            contextWindow: 1000000
+        }
+    };
+    return Object.assign(definition, miniMaxProfiles[model] || {});
 }
 
 // --- Generate correct OpenClaw config ---
@@ -495,15 +521,7 @@ function buildOpenClawConfig(provider, base, model, apiKey) {
                     baseUrl: base,
                     apiKey: apiKey,
                     api: 'openai-completions',
-                    models: [{
-                        id: model,
-                        name: model,
-                        reasoning: false,
-                        input: ['text'],
-                        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-                        contextWindow: 128000,
-                        maxTokens: 8192
-                    }]
+                    models: [buildModelDefinition(provider, model)]
                 }
             }
         },
@@ -540,6 +558,25 @@ async function saveConfig() {
     // 沿用旧 Key 时把 apiKey 字段整个摘掉，交给服务端深合并保留原值。
     // 绝不能写空串或脱敏占位值——那等于毁掉用户的 Key。
     if (keepExistingKey) stripApiKeyFields(openclawConfig);
+
+    // 双保险（issue #58）：服务端 /api/config 已经会合并写入、保留 plugins 等 UI 不认识的字段，
+    // 这里前端也顺手把现有配置里的"非模型字段"带上再提交——万一将来换了别的后端实现，或者
+    // 有调试脚本直接糊了一个整体覆盖的服务端，也不会一撞就把用户的微信插件配置冲没。
+    // MANAGED_CONFIG_KEYS 必须和 portable/lib/merge-config.mjs 里的 MANAGED_TOP_LEVEL_KEYS 保持一致。
+    const MANAGED_CONFIG_KEYS = ['gateway', 'commands', 'meta', 'models', 'agents', 'env'];
+    try {
+        const existingRes = await fetch('/api/config');
+        if (existingRes.ok) {
+            const existing = await existingRes.json();
+            if (existing && typeof existing === 'object') {
+                for (const key of Object.keys(existing)) {
+                    if (!MANAGED_CONFIG_KEYS.includes(key) && !(key in openclawConfig)) {
+                        openclawConfig[key] = existing[key];
+                    }
+                }
+            }
+        }
+    } catch (e) { /* 拿不到现有配置就跳过双保险，服务端合并仍会兜底 */ }
 
     try {
         await apiSaveConfig(openclawConfig);
@@ -630,9 +667,16 @@ async function loadConfig() {
             const providerName = Object.keys(cfg.models.providers)[0];
             if (providerName) {
                 const p = cfg.models.providers[providerName];
-                document.querySelectorAll('.model-card').forEach(card => {
-                    if (card.dataset.provider === providerName) card.click();
-                });
+                // 同一 provider 可能有多张卡（如不同端点/模型），按 base+model 三元组精确匹配，
+                // 避免只按 provider 匹配时回填选错卡。
+                const modelId = p.models && p.models[0] ? p.models[0].id : '';
+                const card = Array.from(document.querySelectorAll('.model-card')).find(candidate =>
+                    candidate.dataset.provider === providerName &&
+                    candidate.dataset.base === (p.baseUrl || '') &&
+                    candidate.dataset.model === modelId
+                ) || document.querySelector(`.model-card[data-provider="${providerName}"]`);
+                if (card) card.click();
+                // 走 markSaved：脱敏值只做占位提示、绝不回填进输入框（回填=下次保存把 Key 写坏）
                 markSaved(p.apiKey, providerName);
             }
         }

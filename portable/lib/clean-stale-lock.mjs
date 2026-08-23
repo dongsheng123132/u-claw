@@ -19,18 +19,19 @@
 import os from 'node:os';
 import path from 'node:path';
 import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
-function resolveLockDir() {
+export function resolveLockDir() {
   // 复刻 OpenClaw 的 resolveGatewayLockDir()：tmpdir()/openclaw[-<uid>]
   const uid = typeof process.getuid === 'function' ? process.getuid() : undefined;
   const suffix = uid != null ? `openclaw-${uid}` : 'openclaw';
   return path.join(os.tmpdir(), suffix);
 }
 
-function pidAlive(pid) {
+export function pidAlive(pid) {
   if (!Number.isInteger(pid) || pid <= 0) return false;
   try {
-    process.kill(pid, 0);   // 信号 0：只探测进程是否存在，不真正发信号
+    process.kill(pid, 0); // 信号 0：只探测进程是否存在，不真正发信号
     return true;
   } catch (e) {
     // ESRCH = 进程不存在 → 死；EPERM = 进程在但无权限 → 视为活（保守不删）
@@ -38,39 +39,77 @@ function pidAlive(pid) {
   }
 }
 
-const ourConfig = process.argv[2]
-  ? (() => { try { return path.resolve(process.argv[2]); } catch { return null; } })()
-  : null;
+// 供测试直接调用的核心逻辑：给定锁目录 + 探活函数，返回清理结果，不碰真实文件系统之外的东西。
+export function cleanStaleLocks(dir, { ourConfig = null, isPidAlive = pidAlive, fsImpl = fs } = {}) {
+  let removed = 0;
+  let aliveSameConfig = 0;
 
-let removed = 0;
-let aliveSameConfig = 0;
+  try {
+    const entries = fsImpl.readdirSync(dir).filter((f) => /^gateway\..*\.lock$/.test(f));
+    for (const name of entries) {
+      const full = path.join(dir, name);
+      let payload = null;
+      try {
+        payload = JSON.parse(fsImpl.readFileSync(full, 'utf8'));
+      } catch {
+        /* 损坏/空 */
+      }
 
-try {
-  const dir = resolveLockDir();
-  const entries = fs.readdirSync(dir).filter((f) => /^gateway\..*\.lock$/.test(f));
-  for (const name of entries) {
-    const full = path.join(dir, name);
-    let payload = null;
-    try { payload = JSON.parse(fs.readFileSync(full, 'utf8')); } catch { /* 损坏/空 */ }
+      const pid = payload ? Number(payload.pid) : NaN;
+      const corrupt = !payload || !Number.isFinite(pid);
 
-    const pid = payload ? Number(payload.pid) : NaN;
-    const corrupt = !payload || !Number.isFinite(pid);
+      if (corrupt || !isPidAlive(pid)) {
+        try {
+          fsImpl.rmSync(full, { force: true });
+          removed++;
+        } catch {
+          /* 别的进程正用着，跳过 */
+        }
+        continue;
+      }
 
-    if (corrupt || !pidAlive(pid)) {
-      try { fs.rmSync(full, { force: true }); removed++; } catch { /* 别的进程正用着，跳过 */ }
-      continue;
+      // pid 还活着 → 不删（可能是真在跑的实例）。若锁属于本盘配置，给一句提示。
+      if (ourConfig && payload.configPath) {
+        let lockCfg = null;
+        try {
+          lockCfg = path.resolve(payload.configPath);
+        } catch {
+          /* ignore */
+        }
+        if (lockCfg === ourConfig) aliveSameConfig++;
+      }
     }
-
-    // pid 还活着 → 不删（可能是真在跑的实例）。若锁属于本盘配置，给一句提示。
-    if (ourConfig && payload.configPath) {
-      let lockCfg = null;
-      try { lockCfg = path.resolve(payload.configPath); } catch { /* ignore */ }
-      if (lockCfg === ourConfig) aliveSameConfig++;
-    }
+  } catch {
+    /* 锁目录不存在等 → 无需清理 */
   }
-} catch { /* 锁目录不存在等 → 无需清理 */ }
 
-if (removed) console.error(`[clean-stale-lock] cleaned ${removed} stale lock(s)`);
-if (aliveSameConfig) {
-  console.error('[clean-stale-lock] U-Claw 可能已在运行；若本次启动失败，请先关闭旧的 U-Claw 窗口再试。');
+  return { removed, aliveSameConfig };
+}
+
+// --- CLI entrypoint ---
+const isMain = (() => {
+  try {
+    return process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+  } catch {
+    return false;
+  }
+})();
+
+if (isMain) {
+  const ourConfig = process.argv[2]
+    ? (() => {
+        try {
+          return path.resolve(process.argv[2]);
+        } catch {
+          return null;
+        }
+      })()
+    : null;
+
+  const { removed, aliveSameConfig } = cleanStaleLocks(resolveLockDir(), { ourConfig });
+
+  if (removed) console.error(`[clean-stale-lock] cleaned ${removed} stale lock(s)`);
+  if (aliveSameConfig) {
+    console.error('[clean-stale-lock] U-Claw 可能已在运行；若本次启动失败，请先关闭旧的 U-Claw 窗口再试。');
+  }
 }

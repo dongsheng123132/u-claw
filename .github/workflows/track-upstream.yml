@@ -104,6 +104,61 @@ jobs:
           echo "🆕 发现上游新版: $pinned → $latest"
           echo "changed=true" >> "$GITHUB_OUTPUT"
 
+      # ── 跟随上游之前，先确认我们随包发的 Node 还跑得动它 ──────────────────
+      #
+      # 2026-08-23 的教训：openclaw 2026.7.1 把 engines 从 >=22.19.0 提到
+      # >=22.22.3，而本仓一直 pin 着 Node v22.22.1。这个 workflow 照常自动
+      # bump、自动打 tag、自动发版，于是 v2.1.15/16/17 三个下载包的网关全都
+      # 起不来（客户端报 "OpenClaw exited unexpectedly (code 1)"），
+      # 而这里一路绿灯——因为它只比对版本号，从不看 engines。
+      #
+      # 现在：上游提了 Node 要求而我们没跟上，就**停在这里不发版**，
+      # 让人来决定升 Node 还是暂缓跟随。宁可不发，也不发一个开不了机的包。
+      - name: Guard —— 新版 OpenClaw 的 engines 我们满足吗
+        if: steps.decide.outputs.changed == 'true'
+        run: |
+          latest="${{ steps.upstream.outputs.latest }}"
+
+          # 内置 Node 的真相源：portable/setup.bat（其余脚本由单测断言与它一致）
+          node_version=$(grep -oE 'NODE_VERSION=v[0-9]+\.[0-9]+\.[0-9]+' portable/setup.bat | head -1 | cut -d= -f2)
+          if [ -z "$node_version" ]; then
+            echo "::error::从 portable/setup.bat 里读不出 Node 版本，抓取规则可能失效了"
+            exit 1
+          fi
+
+          engines=$(npm view "openclaw@$latest" engines.node 2>/dev/null)
+          if [ -z "$engines" ]; then
+            echo "::warning::拿不到 openclaw@$latest 的 engines，跳过本检查（release.yml 里还有一道产物闸门兜底）"
+            exit 0
+          fi
+
+          echo "上游新版 openclaw $latest 要求 Node: $engines"
+          echo "我们内置的 Node:                    $node_version"
+
+          node -e '
+            const [ver, range] = [process.argv[1], process.argv[2]];
+            const p = v => { const m = String(v).replace(/^v/,"").match(/^(\d+)\.(\d+)\.(\d+)/); return m && {ma:+m[1],mi:+m[2],pa:+m[3]}; };
+            const cmp = (a,b) => a.ma-b.ma || a.mi-b.mi || a.pa-b.pa;
+            const v = p(ver);
+            const ok = String(range).split("||").some(br =>
+              br.trim().split(/\s+/).filter(Boolean).every(c => {
+                const m = c.match(/^(>=|<=|>|<|=)?\s*v?(\d+(?:\.\d+){0,2})$/);
+                if (!m) return false;
+                const t = m[2].split(".").map(Number);
+                const r = cmp(v, {ma:t[0], mi:t[1]??0, pa:t[2]??0});
+                const op = m[1] || "=";
+                return op===">=" ? r>=0 : op===">" ? r>0 : op==="<=" ? r<=0 : op==="<" ? r<0 : r===0;
+              })
+            );
+            if (!ok) {
+              console.error(`::error::上游 openclaw ${process.env.LATEST} 要求 Node ${range}，但我们随包发的是 ${ver}——直接跟随会发出一个开不了机的包。请先把所有脚本里 pin 的 Node 一起升上去（见 tests/node-version-satisfies-openclaw.test.mjs 里的清单），再手动触发本 workflow。`);
+              process.exit(1);
+            }
+            console.log(`✅ ${ver} 满足 ${range}，可以安全跟随`);
+          ' "$node_version" "$engines"
+        env:
+          LATEST: ${{ steps.upstream.outputs.latest }}
+
       - name: Compute next shell version (patch bump)
         if: steps.decide.outputs.changed == 'true'
         id: nextver

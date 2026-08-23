@@ -25,7 +25,7 @@ RUNTIME_DIR="$UCLAW_DIR/runtime"
 CORE_DIR="$UCLAW_DIR/core"
 DATA_DIR="$UCLAW_DIR/data"
 CONFIG_PATH="$DATA_DIR/.openclaw/openclaw.json"
-NODE_VERSION="v22.16.0"
+NODE_VERSION="v22.22.3"
 MIRROR="https://registry.npmmirror.com"
 NODE_MIRROR="https://npmmirror.com/mirrors/node"
 
@@ -830,8 +830,8 @@ else
                 NEED_KEY=true
                 ;;
             5)
-                MODEL_NAME="MiniMax-M2.7"
-                BASE_URL="https://api.minimax.chat/v1"
+                MODEL_NAME="MiniMax-M3"
+                BASE_URL="https://api.minimaxi.com/v1"
                 PROVIDER="custom"
                 KEY_LABEL="MiniMax API Key"
                 KEY_HINT="获取地址: https://platform.minimaxi.com/"

@@ -93,6 +93,7 @@ show_menu() {
     echo -e "  ${GREEN}[13]${NC} 检查更新"
     echo -e "  ${GREEN}[14]${NC} 清理空间"
     echo -e "  ${GREEN}[15]${NC} 插件管理"
+    echo -e "  ${GREEN}[16]${NC} 进入 CLI 终端（openclaw chat/configure/doctor）"
     echo ""
     echo -e "  ${DIM}[0]  退出${NC}"
     echo ""
@@ -275,10 +276,20 @@ do_sysinfo() {
     echo "  磁盘:  $(df -h "$UCLAW_DIR" | tail -1 | awk '{print $4 " 可用"}')"
 }
 
+# [16] CLI terminal (advanced: openclaw chat/configure/doctor)
+do_cli() {
+    echo ""
+    echo -e "  ${CYAN}${BOLD}━━━ CLI 终端 ━━━${NC}"
+    echo ""
+    echo "  在新的终端窗口打开已配置好环境的 'openclaw' 命令行..."
+    open "$UCLAW_DIR/Mac-OpenClaw-CLI.command" 2>/dev/null || \
+        echo -e "  ${YELLOW}无法自动打开新窗口，请手动双击 Mac-OpenClaw-CLI.command${NC}"
+}
+
 # Main loop
 while true; do
     show_menu
-    read -p "  请选择 [0-15]: " CHOICE
+    read -p "  请选择 [0-16]: " CHOICE
     echo ""
 
     case $CHOICE in
@@ -297,6 +308,7 @@ while true; do
         13) do_update ;;
         14) do_cleanup ;;
         15) do_plugins ;;
+        16) do_cli ;;
         0) echo -e "  ${CYAN}再见!${NC}"; exit 0 ;;
         *) echo -e "  ${RED}无效选择${NC}" ;;
     esac

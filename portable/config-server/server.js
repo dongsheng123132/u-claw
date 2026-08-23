@@ -627,6 +627,116 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // ── 虾盘云 · 设备钱包 ───────────────────────────────────────────────────
+  // 六个接口全部只在被调用时才碰网络（claim/rotate/adopt 内部才发 fetch）——绝不能挂在
+  // 服务器启动或任何计时器上，否则等于变相恢复本仓 CLAUDE.md 删掉的自动开户
+  // （bootstrap-xiapan.mjs，2026-06-17 已移除）。真正联网只发生在用户点了配置页按钮之后，
+  // 这条路由本身只是把浏览器的点击转发给 lib/wallet-client.mjs。
+
+  // API: 本地钱包状态（不联网，配置页首屏用）
+  if (req.url === '/api/wallet/status' && req.method === 'GET') {
+    (async () => {
+      try {
+        const { getStatus, payBaseUrl } = await import('../lib/wallet-client.mjs');
+        const result = await getStatus();
+        if (result.hasWallet && result.apiKey) {
+          result.rechargeUrl = payBaseUrl() + '/recharge?key=' + encodeURIComponent(result.apiKey);
+        }
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(result));
+      } catch (err) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: false, error: err.message, hasWallet: false }));
+      }
+    })();
+    return;
+  }
+
+  // API: 一键领取额度
+  if (req.url === '/api/wallet/claim' && req.method === 'POST') {
+    (async () => {
+      try {
+        const { claimWallet } = await import('../lib/wallet-client.mjs');
+        const result = await claimWallet();
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(result));
+      } catch (err) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: false, error: err.message }));
+      }
+    })();
+    return;
+  }
+
+  // API: 查询余额
+  if (req.url === '/api/wallet/balance' && req.method === 'GET') {
+    (async () => {
+      try {
+        const { getBalance } = await import('../lib/wallet-client.mjs');
+        const result = await getBalance();
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(result));
+      } catch (err) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: false, error: err.message }));
+      }
+    })();
+    return;
+  }
+
+  // API: 换一把（两阶段提交：mint → 只读验证 → commit）
+  if (req.url === '/api/wallet/rotate' && req.method === 'POST') {
+    (async () => {
+      try {
+        const { rotateWallet } = await import('../lib/wallet-client.mjs');
+        const result = await rotateWallet();
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(result));
+      } catch (err) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: false, error: err.message }));
+      }
+    })();
+    return;
+  }
+
+  // API: 填入已有密钥
+  if (req.url === '/api/wallet/adopt' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', () => {
+      (async () => {
+        try {
+          const data = body ? JSON.parse(body) : {};
+          const { adoptWallet } = await import('../lib/wallet-client.mjs');
+          const result = await adoptWallet(data.key);
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify(result));
+        } catch (err) {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ ok: false, error: err.message }));
+        }
+      })();
+    });
+    return;
+  }
+
+  // API: 移除本机钱包（危险区；只清本地 + 清实际消费者，绝不调服务端删钱包/清余额）
+  if (req.url === '/api/wallet/reset-local' && req.method === 'POST') {
+    (async () => {
+      try {
+        const { resetLocalWallet } = await import('../lib/wallet-client.mjs');
+        const result = await resetLocalWallet();
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(result));
+      } catch (err) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: false, error: err.message }));
+      }
+    })();
+    return;
+  }
+
   // ── 静态文件 ──────────────────────────────────────────────────────────────
   // 改造前这里是 path.join(__dirname,'public', req.url)，req.url 未经净化，
   // `GET /../../data/.openclaw/openclaw.json` 直接把配置文件（含 Key）吐出来，

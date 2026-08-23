@@ -71,10 +71,11 @@ echo   [12] Uninstall
 echo   [13] Check for updates
 echo   [14] Disk cleanup
 echo   [15] Plugin management
+echo   [16] Open CLI terminal (openclaw chat/configure/doctor)
 echo.
 echo   [0] Exit
 echo.
-set /p choice="  Choose [0-15]: "
+set /p choice="  Choose [0-16]: "
 
 if "%choice%"=="1" goto :onboard
 if "%choice%"=="2" goto :dashboard
@@ -91,6 +92,7 @@ if "%choice%"=="12" goto :uninstall
 if "%choice%"=="13" goto :checkupdate
 if "%choice%"=="14" goto :diskcleanup
 if "%choice%"=="15" goto :plugins
+if "%choice%"=="16" goto :clitool
 if "%choice%"=="0" exit /b 0
 echo   Invalid choice
 pause
@@ -626,5 +628,15 @@ if "%plgchoice%"=="c" (
         echo   Cancelled.
     )
 )
+pause
+goto :menu
+
+:clitool
+echo.
+echo   === CLI Terminal ===
+echo.
+echo   Opening a new window with 'openclaw' commands ready to use
+echo   (chat / configure / doctor / gateway status)...
+start "" "%UCLAW_DIR%OpenClaw-CLI.bat"
 pause
 goto :menu

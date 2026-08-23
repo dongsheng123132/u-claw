@@ -15,7 +15,7 @@ set "APP_DIR=%UCLAW_DIR%app"
 set "INSTALL_TARGET=%USERPROFILE%\.uclaw"
 set "MIRROR=https://registry.npmmirror.com"
 set "NODE_MIRROR=https://npmmirror.com/mirrors/node"
-set "NODE_VER=v22.22.1"
+set "NODE_VER=v22.22.3"
 
 REM ---- Step 1: Check environment ----
 echo   [1/4] 检查环境...

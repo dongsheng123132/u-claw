@@ -197,8 +197,16 @@ GW_PID=$!
 echo -e "  ${YELLOW}首次启动需准备运行环境，约 30-90 秒，请稍候...${NC}"
 # 用 file:// URL 确保 query string（?port=）能传给浏览器；裸路径 open 会把整串当文件名。
 open "file://$UCLAW_DIR/lib/loading.html?port=$PORT&token=uclaw" 2>/dev/null || true
-# 每次都打开 Config Center，方便改模型、充值/获取 Key、连接微信等渠道。
-open "http://127.0.0.1:18788/" 2>/dev/null || true
+# 只在未配置模型时自动弹 Config Center（issue #24）：首次运行（没配过模型）才自动打开
+# Config Center；已配置则只开 Dashboard。Config Center 仍然常驻在 18788 端口，
+# Mac-Menu.command 的配置向导也还在，手动打开的能力没有被拿掉。
+# 助手静默失败：读不到/解析不了配置就当"未配置"，宁可多弹一次也不能少弹。
+MODEL_CONFIGURED="$("$NODE_BIN" "$UCLAW_DIR/lib/check-model-configured.mjs" "$CONFIG_FILE" 2>/dev/null)"
+if [ "$MODEL_CONFIGURED" = "UCLAW_MODEL_CONFIGURED=1" ]; then
+    echo -e "  ${GREEN}已配置模型，仅打开 Dashboard，不再弹出 Config Center。${NC}"
+else
+    open "http://127.0.0.1:18788/" 2>/dev/null || true
+fi
 
 # ---- 11b. gateway 首轮预热（后台、静默、非阻塞）----
 # 就绪后先唤醒 config/model 子系统，用户首次点发送时不再等。移植自 4.0 first-turn-prewarm。

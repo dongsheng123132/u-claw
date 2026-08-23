@@ -59,8 +59,8 @@ if [ -x "$NODE_BIN" ]; then
     NODE_VERSION=$("$NODE_BIN" --version 2>/dev/null || echo "")
     echo -e "✓ Node.js版本: ${GREEN}$NODE_VERSION${NC}"
     
-    if [ "$NODE_VERSION" != "v22.14.0" ]; then
-        warn "Node.js版本" "Expected v22.14.0, found $NODE_VERSION"
+    if [ "$NODE_VERSION" != "v22.22.3" ]; then
+        warn "Node.js版本" "Expected v22.22.3, found $NODE_VERSION"
     fi
 else
     echo -e "${RED}✗ Node.js未找到或不可执行${NC}"

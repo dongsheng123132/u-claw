@@ -39,14 +39,14 @@
     },
     {
       "id": "minimax",
-      "baseUrl": "https://api.minimax.chat/v1",
-      "model": "MiniMax-M2.7",
+      "baseUrl": "https://api.minimaxi.com/v1",
+      "model": "MiniMax-M3",
       "title": "MiniMax",
       "tags": [{ "cls": "cn", "text": "国内" }],
-      "desc": "MiniMax-M2.7，速度快，性价比高",
+      "desc": "MiniMax-M3，百万级上下文，支持图片/视频输入",
       "link": "https://platform.minimaxi.com/",
-      "verified": "relay-200",
-      "note": "MiniMax-Text-01 / MiniMax-M2 在中转站已 503 下线；直连命名未实测"
+      "verified": "vendor-docs",
+      "note": "国内端点是 api.minimaxi.com（多一个 i，非 minimax.chat）；国际站 api.minimax.io 是区域锁定的另一把 Key，国内注册的 Key 打过去会 401，不在此提供卡片，需要走「自定义」。定价未能核实（PR #57 的 0.6/2.4 与 OpenRouter 的 0.23/0.96 对不上），不在此填写，沿用默认 0"
     },
     {
       "id": "kimi",

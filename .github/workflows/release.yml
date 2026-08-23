@@ -39,7 +39,7 @@ jobs:
           # Absolute paths so `cd "$core_dir"` later doesn't break `du`/`find`
           stage_dir="$(pwd)/dist/u-claw-portable-windows-${tag_name}"
           openclaw_version=$(tr -d '[:space:]' < OPENCLAW_VERSION)
-          node_version="v22.22.1"
+          node_version="v22.22.3"
           mirror_node="https://npmmirror.com/mirrors/node"
           mirror_npm="https://registry.npmmirror.com"
 
@@ -168,6 +168,64 @@ jobs:
 
           du -sh "$stage_dir"
           echo "Portable bundle staged: $stage_dir"
+
+      # ── 发版闸门 ──────────────────────────────────────────────────────────
+      # v2.1.15/16/17 三个版本发出去的产物网关根本起不来：openclaw 2026.7.1 把
+      # engines 提到 >=22.22.3，而我们一直 pin 着 Node v22.22.1，差两个补丁号。
+      # 构建绿、CI 绿、发布成功，客户下下来打不开——因为这个仓库此前**在 CI 里
+      # 一个测试都不跑**，而 track-upstream.yml 每天自动跟随上游发版时，
+      # 也从不检查随包发出去的 Node 还够不够新。自动化只跟了一半。
+      #
+      # 这一步对着**打包好的产物本身**验（不是对着源码），不通过就不许发。
+      - name: Verify bundle can actually run (engines gate)
+        run: |
+          tag_name="${GITHUB_REF_NAME:-${{ github.event.inputs.tag }}}"
+          stage_dir="$(pwd)/dist/u-claw-portable-windows-${tag_name}"
+          pkg="$stage_dir/app/core/node_modules/openclaw/package.json"
+
+          if [ ! -f "$pkg" ]; then
+            echo "::error::产物里找不到 openclaw：$pkg"
+            exit 1
+          fi
+
+          # 产物里实际打进去的那个 Node（不是 runner 上的 node）
+          bundled_node="$stage_dir/app/runtime/node-win-x64/node.exe"
+          if [ ! -f "$bundled_node" ]; then
+            echo "::error::产物里找不到内置 Node：$bundled_node"
+            exit 1
+          fi
+          node_version="v22.22.3"   # 与 Pre-install 步骤保持一致
+
+          engines=$(node -p "JSON.parse(require('fs').readFileSync('$pkg','utf8')).engines.node")
+          openclaw_version=$(node -p "JSON.parse(require('fs').readFileSync('$pkg','utf8')).version")
+          echo "产物内 openclaw: $openclaw_version"
+          echo "它要求 Node:     $engines"
+          echo "产物内 Node:     $node_version"
+
+          node -e '
+            const [ver, range] = [process.argv[1], process.argv[2]];
+            const p = v => { const m = String(v).replace(/^v/,"").match(/^(\d+)\.(\d+)\.(\d+)/); return m && {ma:+m[1],mi:+m[2],pa:+m[3]}; };
+            const cmp = (a,b) => a.ma-b.ma || a.mi-b.mi || a.pa-b.pa;
+            const v = p(ver);
+            const ok = String(range).split("||").some(br =>
+              br.trim().split(/\s+/).filter(Boolean).every(c => {
+                const m = c.match(/^(>=|<=|>|<|=)?\s*v?(\d+(?:\.\d+){0,2})$/);
+                if (!m) return false;
+                const t = m[2].split(".").map(Number);
+                const r = cmp(v, {ma:t[0], mi:t[1]??0, pa:t[2]??0});
+                const op = m[1] || "=";
+                return op===">=" ? r>=0 : op===">" ? r>0 : op==="<=" ? r<=0 : op==="<" ? r<0 : r===0;
+              })
+            );
+            if (!ok) {
+              console.error(`::error::内置 Node ${ver} 跑不动这个 openclaw（要求 ${range}）。发出去的包会直接报 "OpenClaw exited unexpectedly (code 1)"。请同步升级所有脚本里 pin 的 Node 版本。`);
+              process.exit(1);
+            }
+            console.log(`✅ ${ver} 满足 ${range}`);
+          ' "$node_version" "$engines"
+
+      - name: Run test suite (含 Node/engines 一致性守卫)
+        run: node --test "tests/*.test.mjs"
 
       - name: Normalize line endings (CRLF for Windows scripts, LF for shell)
         run: |
