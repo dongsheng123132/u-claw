@@ -51,6 +51,7 @@ export function resolveRuntimePaths({
   platform = process.platform,
   arch = process.arch,
   env = process.env,
+  hostRoot: hostRootOverride,
 } = {}) {
   const target = resolveTarget(platform, arch);
   const root = String(usbRoot || '');
@@ -63,7 +64,12 @@ export function resolveRuntimePaths({
 
   // ── 第 2、3 层：本机 ───────────────────────────────────────
   const { cacheId, slot } = resolveCacheSlot({ stateDir, usbRoot: root });
-  const hostRoot = join(systemCacheRoot(platform, env), PRODUCT_DIR);
+  // hostRoot 可被覆盖：降级到 portable-strict 时整个第 2、3 层搬到 U 盘上。
+  // 覆盖只换根，槽位算法和目录结构一律不变 —— 降级不是换一套布局，
+  // 是同一套布局换个落点，否则升回本机时缓存全成孤儿。
+  const hostRoot = hostRootOverride
+    ? String(hostRootOverride)
+    : join(systemCacheRoot(platform, env), PRODUCT_DIR);
   const sharedDir = join(hostRoot, 'shared');
   const slotDir = join(hostRoot, slot);
 
@@ -119,8 +125,13 @@ export function kernelRoot(paths, version) {
 
 /**
  * 建本机目录。返回 { ok, root } —— ok=false 表示本机根不可写
- * （组策略限制、漫游配置文件同步都会造成），调用方必须降级回落 U 盘运行，
- * 不许直接启动失败（开发计划 §3 空间治理最后一条）。
+ * （组策略限制、deny ACL、漫游配置文件同步都会造成）。
+ *
+ * **ok:false 分两层处理，别混：**
+ *  - 安装类动作（runtime.seed / runtime.install）**就该硬报错**。客户明确要求
+ *    "装到本机"，装不了却假装成功，比报错更坏。
+ *  - **启动器**必须降级回落 U 盘直跑，不许启动失败（开发计划 §3 空间治理最后一条）。
+ *    启动器别自己写这个 if —— 调 prepareRuntimePaths()，它把两次尝试和落点都算好了。
  */
 export function prepareHostDirs(paths) {
   const dirs = [
@@ -134,4 +145,57 @@ export function prepareHostDirs(paths) {
   } catch (error) {
     return { ok: false, root: paths.hostRoot, error: error?.message || String(error) };
   }
+}
+
+/**
+ * portable-strict 模式下第 2、3 层的落点：U 盘上的 <usbRoot>/host/。
+ *
+ * 刻意**不**放进 data/ —— data/ 是第 1 层"换机器要带走的东西"，
+ * 混进几百 MB 可重建的运行时，用户备份 data/ 就会连带拷一堆垃圾。
+ */
+export function usbFallbackHostRoot(usbRoot) {
+  return join(String(usbRoot || ''), 'host');
+}
+
+/**
+ * 解析路径**并**建好本机目录，本机不可写就自动降级回落 U 盘。
+ *
+ * 这是启动器该调的入口：一次调用拿到"最终该用哪套路径"，
+ * 调用方不需要知道降级是怎么发生的，只需要看 mode 决定要不要提示用户。
+ *
+ * 返回：
+ *   { ok:true,  mode:'host',            paths }                       正常：跑本机
+ *   { ok:true,  mode:'portable-strict', paths, degradedFrom, reason } 降级：全跑 U 盘
+ *   { ok:false, mode:'failed',          paths, reason, hostReason }   U 盘也写不了
+ *
+ * ok:false 是真的没救了（U 盘只读/拔了），这时候才允许启动失败。
+ */
+export function prepareRuntimePaths(opts = {}) {
+  const paths = resolveRuntimePaths(opts);
+  const host = prepareHostDirs(paths);
+  if (host.ok) return { ok: true, mode: 'host', paths };
+
+  // 本机根不可写 —— 换 U 盘落点重算一遍，布局不变（见 hostRoot 覆盖处注释）。
+  const strictPaths = resolveRuntimePaths({
+    ...opts,
+    hostRoot: usbFallbackHostRoot(paths.usbRoot),
+  });
+  const strict = prepareHostDirs(strictPaths);
+  if (strict.ok) {
+    return {
+      ok: true,
+      mode: 'portable-strict',
+      paths: strictPaths,
+      degradedFrom: paths.hostRoot,
+      reason: host.error,
+    };
+  }
+
+  return {
+    ok: false,
+    mode: 'failed',
+    paths: strictPaths,
+    hostReason: host.error,
+    reason: strict.error,
+  };
 }
