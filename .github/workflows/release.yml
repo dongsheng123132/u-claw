@@ -294,6 +294,11 @@ jobs:
           - target: darwin-arm64
             runs-on: macos-latest
     runs-on: ${{ matrix.runs-on }}
+    # 打包这一步是真的慢：prune 后内核树仍有 ~7.5 万个文件 / 756 MB，Windows 上
+    # Defender 逐文件实时扫描，2026-08-23 实测 20 分钟只写出约 49 MB gz。
+    # build-seed.mjs 的 tar 默认超时已因此提到 45 分钟，job 这层再留一倍余量，
+    # 免得卡死的 job 占着 runner 跑满 GitHub 默认的 6 小时。
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
 

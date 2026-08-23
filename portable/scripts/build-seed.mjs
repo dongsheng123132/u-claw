@@ -599,7 +599,13 @@ async function main() {
   const npmTimeoutMs = flags.npm_timeout_ms ? Number(flags.npm_timeout_ms) : 10 * 60_000;
   // bsdtar 打包几万个小文件（内核树 + 5 个渠道插件）比 npm install 更吃时间，
   // 单独给一个更宽松的超时，别让打包步骤被 npm 那档超时误杀。
-  const tarTimeoutMs = flags.tar_timeout_ms ? Number(flags.tar_timeout_ms) : 20 * 60_000;
+  //
+  // 2026-08-23 实测把默认值从 20 分钟提到 45：Windows 开发机上这棵树 prune 后仍有
+  // **74690 个文件 / 755.9 MB**，bsdtar 跑满 1200 秒只写出约 49 MB gz 就被超时杀掉。
+  // 瓶颈是 Defender 对每个小文件的实时扫描（Linux 上同样的树快一个数量级）。
+  // 20 分钟这个默认值是按"能过"估的，没拿真树量过——量完发现它在 Windows 上必挂，
+  // 而 seed job 恰恰只在 windows-latest / macos-latest 上跑（原生依赖不能交叉打）。
+  const tarTimeoutMs = flags.tar_timeout_ms ? Number(flags.tar_timeout_ms) : 45 * 60_000;
 
   // 跨平台守卫：--target 只决定 Node 包和文件名，内核树是拿本机 npm 装出来的，
   // 里面的原生 optionalDependency（sqlite-vec 等）跟着**构建机**走，不跟着 --target 走。
