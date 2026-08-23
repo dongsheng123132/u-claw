@@ -197,6 +197,20 @@ Ensure-Directory -Path $runtimeDir
 $windowsNodeTarget = Join-Path $runtimeDir "node-win-x64"
 Install-WindowsNode -TargetDir $windowsNodeTarget
 
+# 把便携 Node 放进本进程的 PATH —— 干净机（没装过 Node）上不加这行，setup 必挂。
+#
+# 我们是用绝对路径调 npm.cmd 的，但 npm 跑生命周期脚本时会经 cmd.exe 派生裸 `node`，
+# 那条路走的是 PATH。openclaw 2026.7.x 带了 preinstall（scripts/preinstall-package-manager-warning.mjs），
+# 于是在全新 Windows 上必然 "'node' is not recognized" → npm error code 1 → 一个包都装不上。
+#
+# 2026-08-24 在阿里云全新 Windows Server 2022 上实测：同一条 npm install，
+# 唯一差别就是这行 PATH —— 不加装不上，加了装成 301 个包（openclaw 2026.7.1-2）。
+#
+# setup.sh（Mac/Linux）当初用 --ignore-scripts 绕过同一个坑（见那边注释），
+# Windows 这边不能照抄：QQ 插件那步要跑 `npm run build`，build 脚本本身就要 node，
+# 光跳过 scripts 救不了它。改 PATH 是一处修好全部 4 个 npm 调用点。
+$env:PATH = $windowsNodeTarget + [IO.Path]::PathSeparator + $env:PATH
+
 if ($AllPlatforms) {
     Install-TarNodeRuntime -Platform "darwin-arm64" -NodeDirName "node-mac-arm64"
     Install-TarNodeRuntime -Platform "darwin-x64" -NodeDirName "node-mac-x64"
