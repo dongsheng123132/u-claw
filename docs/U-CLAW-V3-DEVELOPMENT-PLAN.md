@@ -367,9 +367,31 @@ v3 走独立分支后，每日 cron 只碰 main，与 v3 无冲突，CI 一行�
   > 全程不报错（连 SHA256 都对得上，校验的是那个错包自己），客户断网首启时才炸——而那时无网可救。
   > 两道防线：`build-seed.mjs` 里的运行时守卫（退出码 2）+ `tests/seed-ci.test.mjs` 断言矩阵配对。
 - 首启进度界面（扩现有 `loading.html`，不得黑窗）。
-- [ ] **干净机验断网首启**（Phase 0.5 唯一剩项）：`aliyun-clean-windows-test` skill 起一台干净 Windows，
-  断网解 seed → `runtime.seed/activate` → 起网关。本地沙箱已端到端跑通（`c42a3b9`，109 秒），
-  但**开发机有代理、有缓存、有装过的 Node**，那不算数（宪法第 4 条）。
+- ~~**干净机验断网首启**~~ ✅ 2026-08-23，阿里云干净 Windows Server 2022，全绿。
+
+  | 环节 | 结果 |
+  |---|---|
+  | 机器干净 | `node`/`npm`/`npx`/`openclaw`/`git`/`claude` 全不存在；无 `%ProgramFiles%\nodejs`、无 `~/.openclaw` |
+  | seed 完整性 | `node-v22.23.2-win-x64.zip`(34MB) + `openclaw-2026.7.1-2-win-x64.tar.gz`(155.8MB) 两条 SHA256 全对 |
+  | **断网证据（反向对照）** | hosts 封 8 个下载源 + 防火墙按 exe 路径封出站；**先证明封住了才继续**：`NET=BLOCKED ENOENT` |
+  | `runtime.seed` | **201 秒**，Node 与内核均 `source: "usb-seed"`、`reused: false` —— 全部来自 U 盘，没碰网络 |
+  | `runtime.activate` | 44ms，`rolled_back: false` |
+  | **真起网关** | **88 秒 ready，`GET /ready` HTTP 200**，8 个插件加载，内核 `openclaw@2026.7.1-2` 跑在 Node `v22.23.2` 上 |
+  | 状态边界 | 业务数据（`identity`/`state/openclaw.sqlite`/配置）落 U 盘 `data/`；Node、内核、缓存落本机 **850.8 MB** |
+  | 宿主机污染 | `~/.openclaw`、`%APPDATA%\npm`、`~/.npm`、`%ProgramFiles%\nodejs` 全部 clean |
+
+  > 「装上了」不等于「能用」—— v2.1.15~17 就是装得好好的、一起网关就秒退 code 1。
+  > 所以判据必须是**真起进程 + 真打 `/ready` 拿到 200**，不是 `activate` 返回 ok。
+
+  **同时撞出的三件事**（都已修，见 `d977f35` / `851e26d`）：
+  1. `build-seed.mjs` 的 tar 默认超时 20 分钟在 Windows 上**必挂** —— prune 后仍有 74690 个文件 /
+     755.9 MB，Defender 逐文件扫描，1200 秒只写出约 49 MB gz。默认提到 45 分钟，job 加 `timeout-minutes: 90`。
+  2. 构建中途失败会留下**没被记进 SHA256SUMS 的产物**，而 `sha256sum -c` 只校验列出来的文件 →
+     一份「看着齐全、实际只保一半」的完整性文件照样全绿。已改成补算整个 vendor。
+  3. **还缺一个非 JS 的引导器**：`uclaw.mjs` 是 JS，要 Node 才能跑，而干净机上没有 Node。
+     本次测试是手工从 seed 里解出 Node 代劳的。真产品需要 `.bat`/`.exe` 先解 seed 里的 Node —— 
+     就是下面「首启进度界面」那条的前置，两条一起做。
+  4. 已知待办复现确认：网关日志仍写到宿主机 `C:\Windows\TEMP\openclaw\`（`os.tmpdir()`，`OPENCLAW_*` 管不到）。
 
 > 踩到的坑，记在这里免得再踩：Windows 上解 tar.gz **必须点名 `%SystemRoot%\System32\tar.exe`**（bsdtar）。
 > 客户机和开发机的 PATH 上常有 GNU tar，它把 `C:\...` 的冒号当 `host:path` 分隔符，直接
