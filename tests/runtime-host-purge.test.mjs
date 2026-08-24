@@ -17,7 +17,8 @@ import { assertSafePurgeTarget, createKernelManager } from '../portable/lib/kern
 import { resolveRuntimePaths } from '../portable/lib/runtime-paths.mjs';
 import { ACTIONS_BY_ID } from '../portable/lib/core/index.mjs';
 
-const NODE_VERSION = '22.22.1';
+const NODE_VERSION = '22.23.2';   // 跟 runtime-channel.json 的 node.version 对齐
+const PINNED = '2026.7.1-2';     // = OPENCLAW_VERSION,唯一真相源
 
 function scratch() {
   return mkdtempSync(join(tmpdir(), 'uclaw-purge-'));
@@ -94,7 +95,7 @@ test('portable-strict 下 hostRoot 在 U 盘上，仍可清理且不碰 data/', 
 function managerIn(paths) {
   return createKernelManager({
     paths,
-    channel: { node: { version: NODE_VERSION, target: { nodeRelativePath: 'node.exe', npmCliRelativePath: 'npm-cli.js' } }, kernel: { version: '2026.6.8' } },
+    channel: { node: { version: NODE_VERSION, target: { nodeRelativePath: 'node.exe', npmCliRelativePath: 'npm-cli.js' } }, kernel: { version: PINNED } },
     platform: 'win32',
   });
 }

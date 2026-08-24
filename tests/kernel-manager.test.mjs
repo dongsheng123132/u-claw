@@ -16,7 +16,7 @@ import { createKernelManager, tarBinary } from '../portable/lib/kernel-manager.m
 import { resolveRuntimePaths } from '../portable/lib/runtime-paths.mjs';
 
 const PINNED = '2026.7.1-2';
-const NODE_VERSION = '22.22.1';
+const NODE_VERSION = '22.23.2';
 
 const NO_NETWORK = () => {
   throw new Error('测试禁止联网：这条路径必须能在断网时跑通');

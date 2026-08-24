@@ -28,7 +28,7 @@ import {
   usbFallbackHostRoot,
 } from '../portable/lib/runtime-paths.mjs';
 
-const NODE_VERSION = '22.22.1';
+const NODE_VERSION = '22.23.2';
 
 function scratch() {
   return mkdtempSync(join(tmpdir(), 'uclaw-fallback-'));

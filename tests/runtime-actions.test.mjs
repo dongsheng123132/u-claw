@@ -24,7 +24,7 @@ import { resolveRuntimePaths } from '../portable/lib/runtime-paths.mjs';
 
 const PORTABLE_DIR = fileURLToPath(new URL('../portable', import.meta.url));
 const PINNED = '2026.7.1-2';
-const NODE_VERSION = '22.22.1';
+const NODE_VERSION = '22.23.2';
 const RUNTIME_IDS = ['runtime.probe', 'runtime.seed', 'runtime.install', 'runtime.activate', 'runtime.gc'];
 
 const NO_NETWORK = () => { throw new Error('测试禁止联网'); };

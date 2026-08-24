@@ -26,7 +26,7 @@ const WIN_ENV = { LOCALAPPDATA: 'C:\\Users\\Tester\\AppData\\Local', PATH: '' };
 
 function winPaths(overrides = {}) {
   return resolveRuntimePaths({
-    usbRoot: USB, platform: 'win32', arch: 'x64', env: WIN_ENV, nodeVersion: '22.22.1', ...overrides,
+    usbRoot: USB, platform: 'win32', arch: 'x64', env: WIN_ENV, nodeVersion: '22.23.2', ...overrides,
   });
 }
 
@@ -69,7 +69,7 @@ test('运行时与内核全在本机，绝不落 U 盘', () => {
 test('可重建的共享层跨盘复用，机器绑定的按盘隔离', () => {
   const a = winPaths();
   const b = resolveRuntimePaths({
-    usbRoot: 'J:\\U-Claw', platform: 'win32', arch: 'x64', env: WIN_ENV, nodeVersion: '22.22.1',
+    usbRoot: 'J:\\U-Claw', platform: 'win32', arch: 'x64', env: WIN_ENV, nodeVersion: '22.23.2',
   });
   // 两支不同的 U 盘：Node/内核共用一份，省掉第二次下载
   assert.equal(a.sharedDir, b.sharedDir);
@@ -96,7 +96,7 @@ test('仍然认 v2 遗留布局，老 U 盘升上来不至于跑不起来', () =
 
 test('resolveRuntimePaths 是纯计算，不建本机目录', () => {
   const p = resolveRuntimePaths({
-    usbRoot: USB, platform: 'win32', arch: 'x64', nodeVersion: '22.22.1',
+    usbRoot: USB, platform: 'win32', arch: 'x64', nodeVersion: '22.23.2',
     env: { LOCALAPPDATA: 'Z:\\definitely\\not\\writable\\uclaw-test', PATH: '' },
   });
   // 指到一个不存在的盘也不该抛：探测路径上任何副作用都是 Bug

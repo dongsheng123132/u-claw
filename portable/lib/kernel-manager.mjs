@@ -197,7 +197,7 @@ async function removeStaging(parent, prefix) {
   }
 }
 
-// 压缩包解出来可能多一层目录（Node 官方包就是 node-v22.22.1-win-x64/）。
+// 压缩包解出来可能多一层目录（Node 官方包就是 node-v22.23.2-win-x64/）。
 // 找到"真正的根"：要么 staging 本身有标志文件，要么它唯一的子目录有。
 async function locateRoot(staging, marker) {
   if (existsSync(path.join(staging, marker))) return staging;

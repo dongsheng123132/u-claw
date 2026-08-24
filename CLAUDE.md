@@ -121,7 +121,7 @@ Both portable and desktop versions auto-find a free port in range 18789–18799 
 
 - **Node.js discovery**: Portable looks at `app/runtime/node-mac-arm64/bin/node`; Electron looks at `resources/runtime/node-{platform}-{arch}` then falls back to system `node`
 - **China mirrors**: All downloads use `npmmirror.com` — Node.js binaries from `npmmirror.com/mirrors/node`, npm packages from `registry.npmmirror.com`
-- **`OPENCLAW_VERSION` file**: single source of truth for the bundled OpenClaw runtime version (e.g. `2026.6.8`). CI reads it to pin the npm install; it's copied into `portable/` so USB users / `check-update.mjs` can compare installed vs latest. Bump this file to upgrade.
+- **`OPENCLAW_VERSION` file**: single source of truth for the bundled OpenClaw runtime version (当前 `2026.7.1-2`). CI reads it to pin the npm install; it's copied into `portable/` so USB users / `check-update.mjs` can compare installed vs latest. Bump this file to upgrade.
 - **Environment variables**: `OPENCLAW_HOME`, `OPENCLAW_STATE_DIR`, `OPENCLAW_CONFIG_PATH` control where OpenClaw reads config
 - **macOS quarantine**: Mac scripts run `xattr -rd com.apple.quarantine` to remove Gatekeeper blocks
 - **Config format**: `{"gateway":{"mode":"local","auth":{"token":"uclaw"}},"models":{"mode":"merge","providers":{"xxx":{...}}},"agents":{"defaults":{"model":{"primary":"provider/model"}}}}`
