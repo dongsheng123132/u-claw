@@ -176,16 +176,14 @@ U-Claw/                          ← 整个拷到 U 盘
 
 **国际模型：** Claude · GPT · Gemini（需翻墙或中转）
 
-### 支持的聊天平台
+### Windows 便携 Release 离线预装的渠道插件
 
 | 平台 | 状态 | 说明 |
 |------|------|------|
-| QQ | ✅ 已预装 | 输入 AppID + Secret 即可 |
-| 飞书 | ✅ 内置 | 企业首选 |
-| Telegram | ✅ 内置 | 海外推荐 |
-| WhatsApp | ✅ 内置 | Baileys 协议 |
-| Discord | ✅ 内置 | — |
-| 微信 | ⚠️ 暂不可用 | 上游插件兼容问题，修复后随更新恢复 |
+| QQBot | ✅ 已验证离线预装 | `@openclaw-china/qqbot@2026.4.24` |
+| 钉钉 | ✅ 已验证离线预装 | `@openclaw-china/dingtalk@2026.4.24` |
+| 飞书中国版 | ✅ 已验证离线预装 | `@openclaw-china/feishu-china@2026.4.24` |
+| 企业微信 | ✅ 已验证离线预装 | `@openclaw-china/wecom@2026.4.24` |
 
 ### 国内镜像
 
@@ -282,14 +280,6 @@ bash setup.sh
 ```bash
 rsync -aL --progress portable/ /media/YOUR_USB/U-Claw/
 ```
-
-**Q: QQbot 报错 `Unknown channel: qqbot`？**
-Bundle 里的 `@sliverp/qqbot` 是未编译的 TypeScript 源码，需要先编译：
-```bash
-cd portable/app/core/node_modules/@sliverp/qqbot
-npm install && npm run build
-```
-正式 Release 包已修复此问题，建议从 [Releases](https://github.com/dongsheng123132/u-claw/releases) 下载最新版。
 
 <a id="企业服务"></a>
 
@@ -410,7 +400,7 @@ U-Claw/                          ← Copy entire folder to USB
 ├── Config.html                   First-time config page
 ├── setup.sh                      Download dependencies (dev use)
 ├── app/                          ← Large deps (downloaded by setup.sh, not in git)
-│   ├── core/                        OpenClaw + QQ plugin
+│   ├── core/                        OpenClaw + verified offline channel plugins
 │   └── runtime/
 │       ├── node-mac-arm64/          Mac Apple Silicon
 │       ├── node-mac-x64/           Mac Intel
@@ -447,16 +437,14 @@ Based on Ventoy + Ubuntu 24.04 LTS + persistence. 4-step PowerShell scripts on W
 
 **International models:** Claude · GPT · Gemini (VPN or relay required in China)
 
-### Supported Chat Platforms
+### Offline Channel Plugins in the Windows Portable Release
 
 | Platform | Status | Notes |
 |----------|--------|-------|
-| QQ | ✅ Pre-installed | Enter AppID + Secret |
-| Feishu (Lark) | ✅ Built-in | Enterprise favorite |
-| Telegram | ✅ Built-in | International |
-| WhatsApp | ✅ Built-in | Baileys protocol |
-| Discord | ✅ Built-in | — |
-| WeChat | ✅ Community plugin | iPad protocol |
+| QQBot | ✅ Verified pre-installed | `@openclaw-china/qqbot@2026.4.24` |
+| DingTalk | ✅ Verified pre-installed | `@openclaw-china/dingtalk@2026.4.24` |
+| Feishu China | ✅ Verified pre-installed | `@openclaw-china/feishu-china@2026.4.24` |
+| WeCom | ✅ Verified pre-installed | `@openclaw-china/wecom@2026.4.24` |
 
 ### China Mirrors
 
@@ -496,7 +484,7 @@ Need help? We offer remote support and custom development:
 | **Remote Installation** | We remotely install OpenClaw + skills + model config for you | Free |
 | **Troubleshooting** | Startup failures, port conflicts, network issues | From ¥50 |
 | **Model Tuning** | API key setup, model switching, prompt optimization | From ¥50 |
-| **Custom Development** | Custom skills, enterprise private deployment, QQ/WeChat/Feishu bot integration | From ¥200 |
+| **Custom Development** | Custom skills, enterprise private deployment, QQ/Feishu bot integration | From ¥200 |
 | **USB Green Edition** | Pre-built portable USB with your custom skills & models | From ¥100 |
 
 **One-click remote support** — run one command, we connect and fix it:
@@ -579,14 +567,6 @@ Two possibilities: ① The USB drive has a physical write-protect switch on the 
 ```bash
 rsync -aL --progress portable/ /media/YOUR_USB/U-Claw/
 ```
-
-**Q: QQbot error: `Unknown channel: qqbot`?**
-The bundled `@sliverp/qqbot` is uncompiled TypeScript source. Compile it manually:
-```bash
-cd portable/app/core/node_modules/@sliverp/qqbot
-npm install && npm run build
-```
-This is fixed in the latest [Release](https://github.com/dongsheng123132/u-claw/releases) — downloading the pre-built release is recommended.
 
 <a id="enterprise-services"></a>
 

@@ -107,16 +107,12 @@ jobs:
           # 必须显式 --prefix 到 stage 的 core_dir：上面已经 cd 回 workspace，裸 npm
           # install 会把包写进 runner 的仓库根，zip 产物里根本没有。任何一个装不上都
           # 直接失败，不能把「离线预装」的空承诺发给客户。
-          channel_packages=(
-            "@sliverp/qqbot"
-            "@openclaw-china/dingtalk"
-            "@openclaw-china/feishu-china"
-            "@openclaw-china/wecom"
-            "@openclaw-china/qqbot"
+          mapfile -t channel_specs < <(
+            node "$stage_dir/lib/plugin-integrity.mjs" --print-offline-channel-specs
           )
-          for channel_pkg in "${channel_packages[@]}"; do
-            echo "Installing offline channel plugin into staged core: $channel_pkg"
-            npm --prefix "$core_dir" install "${channel_pkg}@latest" \
+          for channel_spec in "${channel_specs[@]}"; do
+            echo "Installing offline channel plugin into staged core: $channel_spec"
+            npm --prefix "$core_dir" install "$channel_spec" \
               --registry="$mirror_npm" \
               --ignore-scripts \
               --no-audit \
@@ -205,27 +201,12 @@ jobs:
           tag_name="${GITHUB_REF_NAME:-${{ github.event.inputs.tag }}}"
           stage_dir="$(pwd)/dist/u-claw-portable-windows-${tag_name}"
           core_dir="$stage_dir/app/core"
-          channel_packages=(
-            "@sliverp/qqbot"
-            "@openclaw-china/dingtalk"
-            "@openclaw-china/feishu-china"
-            "@openclaw-china/wecom"
-            "@openclaw-china/qqbot"
-          )
-
-          for channel_pkg in "${channel_packages[@]}"; do
-            package_json="$core_dir/node_modules/$channel_pkg/package.json"
-            if [ ! -f "$package_json" ]; then
-              echo "::error::离线预装渠道缺失：$channel_pkg（期望在 $package_json）"
-              exit 1
-            fi
-            installed_name=$(node -p "JSON.parse(require('fs').readFileSync('$package_json','utf8')).name")
-            if [ "$installed_name" != "$channel_pkg" ]; then
-              echo "::error::离线预装渠道 package.json 名称不匹配：期望 $channel_pkg，实际 $installed_name"
-              exit 1
-            fi
-            echo "✅ staged offline channel: $installed_name"
-          done
+          # 校验器逐包检查 package.json / openclaw.plugin.json / 非空且唯一的插件 ID，
+          # 并从 manifest.entry（没有才用 package.json main）解析到真实包内文件。
+          # 任何一项失败都非零退出，阻断后续 zip。
+          node "$stage_dir/lib/plugin-integrity.mjs" \
+            --node-modules "$core_dir/node_modules" \
+            --offline-channel-plugins
 
       - name: Run test suite (含 Node/engines 一致性守卫)
         run: node --test "tests/*.test.mjs"
@@ -377,7 +358,7 @@ jobs:
 
             - 打开 Config 选模型、填入自己的 API Key 即可使用，支持 DeepSeek / 通义 / Claude / GPT 等国内外大模型
             - 想用「虾盘云」中转站（一个 Key 调用国内外全部模型、免翻墙）：先到 https://cloud.u-claw.org 注册并创建 Key
-            - **聊天渠道开箱即用**：便携版已离线预装 QQ / qqbot / 钉钉 / 飞书中国版 / 企业微信插件，无需自己 npm 安装；**「个人微信」入口暂不可用**（上游插件兼容问题，等待官方修复，修复后随版本更新自动恢复）
+            - **聊天渠道开箱即用**：便携版已离线预装 QQBot / 钉钉 / 飞书中国版 / 企业微信插件；构建会逐包验证插件 manifest 与入口，无需自己 npm 安装
             - OpenClaw runtime: `${{ steps.openclaw_version.outputs.version }}`
 
             ### 下载

@@ -6,18 +6,11 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { OFFLINE_CHANNEL_PLUGIN_SPECS } from '../portable/lib/plugin-integrity.mjs';
 
 const REPO = dirname(dirname(fileURLToPath(import.meta.url)));
 const workflow = readFileSync(join(REPO, '.github', 'workflows', 'release.yml'), 'utf8');
-
-// 与 release notes 中「离线预装」的 QQ / qqbot / 钉钉 / 飞书中国版 / 企业微信一一对应。
-const OFFLINE_CHANNEL_PACKAGES = [
-  '@sliverp/qqbot',
-  '@openclaw-china/dingtalk',
-  '@openclaw-china/feishu-china',
-  '@openclaw-china/wecom',
-  '@openclaw-china/qqbot',
-];
+const seedBuilder = readFileSync(join(REPO, 'portable', 'scripts', 'build-seed.mjs'), 'utf8');
 
 function step(name) {
   const start = workflow.indexOf(`- name: ${name}`);
@@ -26,33 +19,28 @@ function step(name) {
   return workflow.slice(start, next === -1 ? undefined : next);
 }
 
-function packageArrays(text) {
-  return [...text.matchAll(/channel_packages=\(\s*([\s\S]*?)\n\s*\)/g)].map((match) =>
-    [...match[1].matchAll(/"(@[^"\s]+)"/g)].map((item) => item[1]),
-  );
-}
-
 test('离线渠道只能用 --prefix 安装到 staged core，失败不得放行', () => {
   const installStep = step('Pre-install Node.js (Windows) and OpenClaw deps');
   const channelInstall = installStep.slice(installStep.indexOf('# 5) Pre-install every channel'));
-  const arrays = packageArrays(channelInstall);
-  assert.equal(arrays.length, 1, '安装步骤应只有一份明确的离线渠道清单');
-  assert.deepEqual(arrays[0], OFFLINE_CHANNEL_PACKAGES);
-  assert.match(channelInstall, /npm --prefix "\$core_dir" install "\$\{channel_pkg\}@latest"/);
+  assert.deepEqual(OFFLINE_CHANNEL_PLUGIN_SPECS, [
+    '@openclaw-china/dingtalk@2026.4.24',
+    '@openclaw-china/feishu-china@2026.4.24',
+    '@openclaw-china/wecom@2026.4.24',
+    '@openclaw-china/qqbot@2026.4.24',
+  ]);
+  assert.match(channelInstall, /plugin-integrity\.mjs" --print-offline-channel-specs/);
+  assert.match(channelInstall, /npm --prefix "\$core_dir" install "\$channel_spec"/);
   assert.doesNotMatch(channelInstall, /(^|\n)\s*npm install\b/m, '渠道包不能回退为工作区裸 npm install');
-  assert.doesNotMatch(channelInstall, /channel_pkg[^\n]*(?:\|\|\s*(?:true|echo))/,
+  assert.doesNotMatch(channelInstall, /channel_spec[^\n]*(?:\|\|\s*(?:true|echo))/,
     '任何公开承诺的离线渠道装不上都必须失败');
+  assert.doesNotMatch(channelInstall, /@sliverp\/qqbot|@latest/);
 });
 
-test('zip 前逐个核验所有公开承诺包的 staged package.json', () => {
+test('zip 前复用完整性校验器逐个核验 staged 插件', () => {
   const gate = step('Verify every promised offline channel is in the staged bundle');
-  const arrays = packageArrays(gate);
-  assert.equal(arrays.length, 1, '发布闸门应使用一份明确的离线渠道清单');
-  assert.deepEqual(arrays[0], OFFLINE_CHANNEL_PACKAGES);
-  assert.match(gate, /package_json="\$core_dir\/node_modules\/\$channel_pkg\/package\.json"/);
-  assert.match(gate, /\[ ! -f "\$package_json" \]/);
-  assert.match(gate, /installed_name=\$\(node -p/);
-  assert.match(gate, /\[ "\$installed_name" != "\$channel_pkg" \]/);
+  assert.match(gate, /plugin-integrity\.mjs"/);
+  assert.match(gate, /--node-modules "\$core_dir\/node_modules"/);
+  assert.match(gate, /--offline-channel-plugins/);
   assert.ok(
     workflow.indexOf('- name: Verify every promised offline channel is in the staged bundle')
       < workflow.indexOf('- name: Zip portable bundle'),
@@ -60,13 +48,19 @@ test('zip 前逐个核验所有公开承诺包的 staged package.json', () => {
   );
 });
 
-test('release notes 只承诺已验证的渠道，不再声称个人微信预装', () => {
+test('release notes 只承诺已验证的渠道，不再声称个人微信或已移除 QQ 包', () => {
   const release = step('Create or update release');
-  for (const label of ['QQ', 'qqbot', '钉钉', '飞书中国版', '企业微信']) {
+  for (const label of ['QQBot', '钉钉', '飞书中国版', '企业微信']) {
     assert.ok(release.includes(label), `release notes 应明确承诺 ${label} 离线预装`);
   }
-  assert.match(release, /个人微信.*暂不可用/);
-  assert.doesNotMatch(release, /个人微信.*(?:离线预装|预装)/);
-  assert.doesNotMatch(workflow, /@tencent-weixin\/openclaw-weixin/,
-    '已禁用的个人微信不应再被作为发布时预装包下载');
+  assert.doesNotMatch(release, /个人微信|@sliverp\/qqbot/);
+  assert.doesNotMatch(workflow, /@sliverp\/qqbot|@tencent-weixin\/openclaw-weixin/);
+});
+
+test('build-seed 复用固定清单和完整性校验，渠道安装失败必须终止', () => {
+  assert.match(seedBuilder, /import \{ OFFLINE_CHANNEL_PLUGIN_SPECS, verifyPluginIntegrity \} from '\.\.\/lib\/plugin-integrity\.mjs';/);
+  assert.match(seedBuilder, /const CHANNEL_PLUGINS = OFFLINE_CHANNEL_PLUGIN_SPECS;/);
+  assert.match(seedBuilder, /'install', spec,/);
+  assert.match(seedBuilder, /await verifyPluginIntegrity\(\{[\s\S]*nodeModulesDir: path\.join\(staging, 'node_modules'\),[\s\S]*packageSpecs: CHANNEL_PLUGINS,/);
+  assert.doesNotMatch(seedBuilder, /'install',\s*`\$\{(?:pkg|spec)\}@latest`|@sliverp\/qqbot|pluginsFailed|安装失败（跳过/);
 });

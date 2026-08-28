@@ -22,9 +22,6 @@
 //      pre-install..." 那段注释），否则 seed 会比 v2 整个便携包（150-200MB）
 //      还大一倍多，直接把"U 盘装得下、下得动"这个前提破了。
 //
-// TODO（本次未处理）：微信插件 @tencent-weixin/openclaw-weixin 现在装到
-// app/extensions/，不是内核树的一部分，seed 里不含它——release.yml 另有独立步骤。
-//
 // 契约（宪法第 14 条，写法对齐 portable/uclaw.mjs）：
 //   stdout 只出结果，stderr 出日志/进度；非 TTY 不带颜色。
 //   退出码：0 成功 / 1 运行失败 / 2 用法错误。
@@ -40,6 +37,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { loadChannel } from '../lib/runtime-channel.mjs';
 import { resolveTarget } from '../lib/runtime-paths.mjs';
 import { tarBinary } from '../lib/kernel-manager.mjs';
+import { OFFLINE_CHANNEL_PLUGIN_SPECS, verifyPluginIntegrity } from '../lib/plugin-integrity.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const PORTABLE_DIR = path.join(SCRIPT_DIR, '..');
@@ -61,17 +59,10 @@ function log(message) {
 class BuildError extends Error {}
 class UsageError extends Error {}
 
-// ── 国内渠道插件（额外一项，尽力而为）──────────────────────────────────────
-// 与 .github/workflows/release.yml 里预装的一致：QQ 官方渠道 + 三个非官方
-// openclaw-china 生态包（钉钉/飞书中国版/企业微信）。单个装不上只 warning，
-// 不阻断整个 seed 构建——个别包偶发 404 不该让离线包整体报废。
-const CHANNEL_PLUGINS = [
-  '@sliverp/qqbot',
-  '@openclaw-china/dingtalk',
-  '@openclaw-china/feishu-china',
-  '@openclaw-china/wecom',
-  '@openclaw-china/qqbot',
-];
+// ── 国内渠道插件（发布承诺，必须完整）────────────────────────────────────────
+// 版本与完整性规则都在 lib/plugin-integrity.mjs：release stage 和 seed 共用，
+// 不允许单独发明清单、使用浮动版本，或把安装失败降级成 warning。
+const CHANNEL_PLUGINS = OFFLINE_CHANNEL_PLUGIN_SPECS;
 
 // ── 打包前必须 prune 的大体积目录 ───────────────────────────────────────────
 // 唯一真相源：以后 release.yml 会改成直接调这个脚本，那时它自己那份
@@ -88,7 +79,7 @@ const PRUNE_DIRS = [
   // 删掉之后失去的功能：客户不能在断网、零配置的情况下用"本地跑的 LLM"
   // （clawdbot 本地推理通道）；但客户机原本也没有能跑大模型的 GPU/内存预期，
   // 这条通道本来就要求用户自己另外装（见 lib/setup-local-model.mjs），
-  // 不是开箱可用的功能，删掉不影响"开箱即用"的其它渠道（QQ/钉钉/飞书/企业微信）。
+  // 不是开箱可用的功能，删掉不影响已验证的国内渠道插件。
   '@node-llama-cpp',
   'node-llama-cpp',
 ];
@@ -385,8 +376,7 @@ async function ensureKernelSeed({ channel, target, outDir, timeoutMs, tarTimeout
   const version = channel.kernel.version;
   const finalPath = path.join(outDir, `openclaw-${version}-${target}.tar.gz`);
   const staging = await mkdtemp(path.join(tmpdir(), 'uclaw-seed-'));
-  const pluginsInstalled = [];
-  const pluginsFailed = [];
+  let verifiedPlugins = [];
   try {
     await writeFile(
       path.join(staging, 'package.json'),
@@ -405,20 +395,19 @@ async function ensureKernelSeed({ channel, target, outDir, timeoutMs, tarTimeout
       '--ignore-scripts', '--omit=dev', '--no-audit', '--no-fund', `--registry=${registry}`,
     ], { cwd: staging, timeoutMs, env: { ...process.env, npm_config_update_notifier: 'false' } });
 
-    // 追加安装国内渠道插件——同一棵树、装完主包之后。单个失败只 warning，
-    // 不让个别包偶发 404 拖垮整个离线包（release.yml 里同样的策略）。
-    for (const pkg of CHANNEL_PLUGINS) {
-      log(`${C.dim}[kernel] 安装渠道插件：${pkg}${C.off}`);
-      try {
-        await run(npmCli.command, [...npmCli.prefixArgs, 'install', `${pkg}@latest`,
-          '--ignore-scripts', '--no-audit', '--no-fund', `--registry=${registry}`,
-        ], { cwd: staging, timeoutMs, env: { ...process.env, npm_config_update_notifier: 'false' } });
-        pluginsInstalled.push(pkg);
-      } catch (error) {
-        log(`${C.yellow}[kernel] 渠道插件安装失败（跳过，不阻断）：${pkg} —— ${error.message}${C.off}`);
-        pluginsFailed.push(pkg);
-      }
+    // 追加安装承诺的国内渠道插件——同一棵树、装完主包之后。每个包都固定版本，
+    // 任何一个 npm 失败都由 run() 直接终止构建，不能发出缺渠道的离线 seed。
+    for (const spec of CHANNEL_PLUGINS) {
+      log(`${C.dim}[kernel] 安装渠道插件：${spec}${C.off}`);
+      await run(npmCli.command, [...npmCli.prefixArgs, 'install', spec,
+        '--ignore-scripts', '--no-audit', '--no-fund', `--registry=${registry}`,
+      ], { cwd: staging, timeoutMs, env: { ...process.env, npm_config_update_notifier: 'false' } });
     }
+    verifiedPlugins = await verifyPluginIntegrity({
+      nodeModulesDir: path.join(staging, 'node_modules'),
+      packageSpecs: CHANNEL_PLUGINS,
+    });
+    log(`${C.dim}[kernel] 渠道插件完整性校验通过：${verifiedPlugins.map((p) => p.pluginId).join(', ')}${C.off}`);
 
     // prune：必须在自检和打包**之前**做——照搬 release.yml 的 belt-and-suspenders
     // 那一步（find -maxdepth 3 -prune），删掉 PRUNE_DIRS 里点名的大体积原生依赖
@@ -499,7 +488,7 @@ async function ensureKernelSeed({ channel, target, outDir, timeoutMs, tarTimeout
     log(`${C.green}[kernel] 打包完成并自检通过：${finalPath}${C.off}`);
     return {
       path: finalPath, bytes: (await stat(finalPath)).size, sha256,
-      source: registry, version, pluginsInstalled, pluginsFailed,
+      source: registry, version, pluginsInstalled: verifiedPlugins.map((plugin) => plugin.packageName),
       pruned: { before_bytes: beforePrune.bytes, after_bytes: afterPrune.bytes, removed },
     };
   } finally {
@@ -616,7 +605,7 @@ async function main() {
   const outDir = typeof flags.out === 'string' ? path.resolve(flags.out) : path.join(PORTABLE_DIR, 'vendor');
   const nodeTimeoutMs = flags.node_timeout_ms ? Number(flags.node_timeout_ms) : 3 * 60_000;
   const npmTimeoutMs = flags.npm_timeout_ms ? Number(flags.npm_timeout_ms) : 10 * 60_000;
-  // bsdtar 打包几万个小文件（内核树 + 5 个渠道插件）比 npm install 更吃时间，
+  // bsdtar 打包几万个小文件（内核树 + 4 个渠道插件）比 npm install 更吃时间，
   // 单独给一个更宽松的超时，别让打包步骤被 npm 那档超时误杀。
   //
   // 2026-08-23 实测把默认值从 20 分钟提到 45：Windows 开发机上这棵树 prune 后仍有
