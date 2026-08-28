@@ -9,6 +9,12 @@ const PORT_RANGE_START = 18788;
 const PORT_RANGE_END = 18798;
 
 // ── WeChat Login State ──────────────────────────────────────────────────────
+// ⚠️ 微信接入降级开关（2026-08-27 专家会审定）：OpenClaw 微信插件存在上游 ESM 模块
+// 加载竞态兼容 bug（2026.7.1-2 内核及同系 2026.7.2-beta 仍存在），插件无人维护，
+// 四路 AI 全票判定：等上游明确修复，不为它赌内核升级。
+// 降级期：控制台入口明示「暂不可用」，start 接口直接 503（防浏览器缓存旧页/绕过前端）。
+// 上游修复后：把此处与 index.html 的 WECHAT_ENABLED 同改回 true 即恢复，其余代码不动。
+const WECHAT_ENABLED = false;
 const DEFAULT_WECHAT_BASE_URL = 'https://ilinkai.weixin.qq.com';
 const DEFAULT_ILINK_BOT_TYPE = '3';
 const ACTIVE_LOGIN_TTL_MS = 5 * 60000;
@@ -426,6 +432,11 @@ const server = http.createServer((req, res) => {
 
   // API: WeChat start login
   if (req.url === '/api/wechat/start' && req.method === 'POST') {
+    if (!WECHAT_ENABLED) {
+      res.writeHead(503, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: '微信插件存在上游兼容问题，暂时无法接入，修复后会随更新自动恢复。' }));
+      return;
+    }
     handleWeChatStart()
       .then(result => {
         res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -603,6 +614,58 @@ const server = http.createServer((req, res) => {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ providers: found }));
     })();
+    return;
+  }
+
+  // API: 动态拉取提供商模型目录
+  // Key 只在本次请求内使用，不落盘、不打日志；拒绝重定向，避免 Key 外流。
+  if (req.url === '/api/provider-models' && req.method === 'POST') {
+    readBody(req, 1024 * 1024)
+      .then(async ({ provider, base, apiKey } = {}) => {
+        if (!apiKey) throw new Error('请先填写 API Key 再拉取');
+        let target = String(base || '').trim();
+        if (!target && provider === 'zai') target = 'https://open.bigmodel.cn/api/paas/v4';
+        if (!target) throw new Error('该提供商不支持在线拉取，可直接手填模型名');
+
+        let u;
+        try { u = new URL(target); } catch { throw new Error('API 地址格式不正确'); }
+        if (u.protocol !== 'https:' && u.protocol !== 'http:') throw new Error('仅支持 http(s) 地址');
+        if (u.username || u.password || u.hash) throw new Error('API 地址含不支持的部分');
+
+        const url = u.origin + u.pathname.replace(/\/+$/, '') + '/models';
+        const headers = { Authorization: 'Bearer ' + apiKey };
+        if (/anthropic\.com/.test(u.hostname)) {
+          headers['x-api-key'] = apiKey;
+          headers['anthropic-version'] = '2023-06-01';
+          delete headers.Authorization;
+        }
+
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 15000);
+        let json;
+        try {
+          const response = await fetch(url, { headers, signal: controller.signal, redirect: 'error' });
+          if (!response.ok) throw new Error(response.status === 401 ? 'Key 校验失败(401)，检查是否填对' : '平台返回 HTTP ' + response.status);
+          json = await response.json();
+        } finally { clearTimeout(timer); }
+
+        const seen = new Set();
+        const models = ((json && json.data) || [])
+          .map((model) => String(model && model.id || ''))
+          .filter((id) => id && id.length <= 128 && !seen.has(id) && seen.add(id))
+          .sort()
+          .slice(0, 500);
+        if (!models.length) throw new Error('平台返回了空列表');
+        return { ok: true, models };
+      })
+      .then((result) => {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(result));
+      })
+      .catch((err) => {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: false, error: err.name === 'AbortError' ? '平台响应超时' : String(err.message || err) }));
+      });
     return;
   }
 

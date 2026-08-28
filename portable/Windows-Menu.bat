@@ -172,7 +172,7 @@ echo   === Other Platforms ===
 echo.
 echo   [a] Feishu (Lark)    - Enterprise
 echo   [b] Telegram          - International
-echo   [c] WeChat (plugin)   - iPad protocol
+echo   [c] WeChat (plugin)   - iPad protocol (unavailable)
 echo   [d] Discord
 echo.
 set /p ch_choice="  Choose (a-d, empty to cancel): "
@@ -192,10 +192,9 @@ if "%ch_choice%"=="b" (
 )
 if "%ch_choice%"=="c" (
     echo.
-    echo   Installing WeChat plugin...
-    cd /d "%CORE_DIR%"
-    "%NODE_BIN%" "%OPENCLAW_MJS%" plugins install @icesword760/openclaw-wechat
-    echo   WeChat plugin installed!
+    echo   WeChat plugin is temporarily unavailable:
+    echo   upstream module-loading compatibility issue - see config-server WECHAT_ENABLED.
+    echo   Skip setup until upstream publishes a fix.
 )
 if "%ch_choice%"=="d" (
     echo.

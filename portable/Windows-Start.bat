@@ -28,12 +28,20 @@ REM U-Claw opens the local dashboard directly; disable mDNS discovery on Windows
 REM to avoid OpenClaw/@homebridge ciao crashes during bonjour re-advertise.
 set "OPENCLAW_DISABLE_BONJOUR=1"
 
-REM Check runtime
+REM Check runtime - missing? Auto-run setup (first run on a new PC / incomplete copy).
+REM setup.bat is fully non-interactive on the happy path; only failure branches pause.
 if not exist "%NODE_BIN%" (
-    echo   [ERROR] Node.js runtime not found
-    echo   Please ensure app\runtime\node-win-x64 is complete
-    pause
-    exit /b 1
+    echo   [WARN] Node.js runtime not found. Auto-running setup ^(1-3 min, needs network^)...
+    echo.
+    call "%UCLAW_DIR%setup.bat"
+    if not exist "%NODE_BIN%" (
+        echo   [ERROR] Setup finished but runtime still missing: %NODE_BIN%
+        echo   Retry manually: setup.bat   Logs: data\logs\
+        pause
+        exit /b 1
+    )
+    echo   [OK] Environment ready, continuing startup.
+    echo.
 )
 
 for /f "tokens=*" %%v in ('"%NODE_BIN%" --version') do set NODE_VER=%%v
@@ -58,6 +66,22 @@ for /f "usebackq tokens=1,* delims==" %%a in (`""%NODE_BIN%" "%UCLAW_DIR%lib\por
     if "%%a"=="UCLAW_COMPILE_CACHE_DIR" set "NODE_COMPILE_CACHE=%%b"
     if "%%a"=="UCLAW_CACHE_ROOT" set "UCLAW_CACHE_ROOT=%%b"
 )
+
+REM Strip host-machine provider credential variables before starting the gateway.
+REM If the PC happens to have DASHSCOPE_API_KEY etc. set, OpenClaw treats that
+REM provider as configured, tries to install its plugin during startup migration,
+REM and the plugin install needs a node_modules junction that exFAT cannot create
+REM -- the gateway then never becomes ready ("works on A's PC, dead on B's PC").
+REM Inheriting those vars would also silently spend the host owner's API credits.
+set "UCLAW_STRIP_ENV="
+for /f "usebackq tokens=1,* delims==" %%a in (`""%NODE_BIN%" "%UCLAW_DIR%lib\strip-provider-env.mjs" 2^>nul"`) do (
+    if "%%a"=="UCLAW_STRIP_ENV" set "UCLAW_STRIP_ENV=%%b"
+)
+if defined UCLAW_STRIP_ENV (
+    for %%v in (%UCLAW_STRIP_ENV%) do set "%%v="
+    echo   Stripped host provider env vars: %UCLAW_STRIP_ENV%
+)
+
 if defined NODE_COMPILE_CACHE echo   Cache on local disk: %UCLAW_CACHE_ROOT%
 
 REM Default config (migrate legacy if present, otherwise create)

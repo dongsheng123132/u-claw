@@ -17,10 +17,13 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..');
 
 export const CATALOG_PATH = join(ROOT, 'models.json');
+// 静态卡片区仍由标记生成的页面（旧版引导页）。
+// 配置中心 config-server/public/index.html 已改为运行时渲染 models-catalog.json，
+// 不再包含 MODELS 标记——它的一致性由下方生成的 JSON 文件保证。
 export const TARGETS = [
   join(ROOT, 'Config.html'),
-  join(ROOT, 'config-server', 'public', 'index.html'),
 ];
+export const CATALOG_JSON_PATH = join(ROOT, 'config-server', 'public', 'models-catalog.json');
 
 const BEGIN = '<!-- MODELS:BEGIN 由 models.json 生成，勿手改；改 models.json 后跑 node lib/sync-models.mjs -->';
 const END = '<!-- MODELS:END -->';
@@ -46,6 +49,43 @@ export function renderCards(catalog, indent = '            ') {
   }).join('\n');
 }
 
+// 生成 config-server/public/models-catalog.json（配置中心动态渲染的数据源）。
+// 每家提供商的 models 列表 = models（显式维护的多模型列表）∪ [model]，
+// recommended = model（单一真相源里的主模型永远在下拉里排第一或被选中）。
+// tags 保留 {cls,text} 对象：cls 是样式键，text 是显示文本（"中转站"等无样式标签也保留）。
+export function renderCatalogJson(catalog) {
+  return JSON.stringify({
+    _generated: '本文件由 node lib/sync-models.mjs 从 portable/models.json 生成，勿手改；改 models.json 后重新跑同步脚本。',
+    updated: catalog.updated || '',
+    providers: catalog.providers.map((p) => ({
+      id: p.id,
+      name: p.title,
+      tags: (p.tags || []).map((t) => ({ cls: t.cls || '', text: t.text })),
+      desc: p.desc,
+      base: p.baseUrl,
+      models: Array.from(new Set([p.model, ...(p.models || [])])),
+      recommended: p.model,
+      link: p.link,
+      linkLabel: p.linkText ? p.linkText.replace(/^→\s*/, '') : '获取 API Key',
+      verified: p.verified,
+    })).concat([CUSTOM_CARD]),
+  }, null, 2) + '\n';
+}
+
+// 自定义卡不进 models.json（它没有模型/端点可维护），由生成器固定追加，保证前端必有此卡。
+export const CUSTOM_CARD = {
+  id: 'custom',
+  name: '自定义',
+  tags: [],
+  desc: '填写任意 OpenAI 兼容 API 地址（OpenRouter、API2D、New API、One API 等）',
+  base: '',
+  models: [],
+  recommended: '',
+  link: '',
+  linkLabel: '',
+  verified: 'unverified',
+};
+
 export function applyToText(text, catalog, file) {
   const b = text.indexOf(BEGIN);
   const e = text.indexOf(END);
@@ -68,6 +108,18 @@ function main() {
     if (check) { console.log(`  DRIFT ${file}`); continue; }
     writeFileSync(file, after);
     console.log(`  写入  ${file}`);
+  }
+  // 同步生成配置中心的动态渲染数据源 models-catalog.json
+  const CATALOG_JSON = CATALOG_JSON_PATH;
+  const jsonAfter = renderCatalogJson(catalog);
+  let jsonBefore = '';
+  try { jsonBefore = readFileSync(CATALOG_JSON, 'utf8'); } catch { /* 首次生成 */ }
+  if (jsonBefore === jsonAfter) {
+    console.log(`  ok    config-server/public/models-catalog.json`);
+  } else {
+    drift++;
+    if (check) { console.log(`  DRIFT config-server/public/models-catalog.json`); }
+    else { writeFileSync(CATALOG_JSON, jsonAfter); console.log(`  写入  config-server/public/models-catalog.json`); }
   }
   if (check && drift) {
     console.error(`\n${drift} 个文件与 models.json 不一致。跑 \`node lib/sync-models.mjs\` 同步。`);

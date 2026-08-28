@@ -189,7 +189,7 @@ do_platforms() {
     echo ""
     echo -e "  ${GREEN}[a]${NC} 飞书 Feishu      — 企业首选"
     echo -e "  ${GREEN}[b]${NC} Telegram         — 海外推荐"
-    echo -e "  ${GREEN}[c]${NC} 微信（社区插件） — iPad协议"
+    echo -e "  ${GREEN}[c]${NC} 微信（社区插件） — iPad协议（暂不可用）"
     echo -e "  ${GREEN}[d]${NC} Discord"
     echo ""
     read -p "  选择 (a-d): " -n 1 CH
@@ -200,8 +200,8 @@ do_platforms() {
         a) echo "  飞书: 访问 open.feishu.cn/app 创建应用" ;;
         b) echo "  Telegram: 找 @BotFather 创建机器人" ;;
         c)
-            echo -e "  ${YELLOW}安装微信插件...${NC}"
-            run_oc plugins install @icesword760/openclaw-wechat 2>&1 || true
+            echo -e "  ${YELLOW}微信插件暂不可用：上游模块加载兼容问题（见 config-server 的 WECHAT_ENABLED）。${NC}"
+            echo -e "  等上游修复后再安装，避免白装。"
             ;;
         d) echo "  Discord: 访问 discord.com/developers/applications" ;;
         *) echo "  无效选择" ;;

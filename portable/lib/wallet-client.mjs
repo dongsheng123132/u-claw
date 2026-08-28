@@ -39,6 +39,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { readConfigSafe, saveConfigMerged } from './merge-config.mjs';
+import { fetchWithFailover } from './uclaw-cloud-endpoints.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -150,15 +151,25 @@ function joinUrl(base, p) {
 }
 
 async function devicePost(pathName, payload, fetchImpl, apiBaseOverride) {
-  const base = apiBaseUrl(apiBaseOverride);
-  const res = await fetchImpl(joinUrl(base, pathName), {
+  // 有显式 apiBase（测试注入/高级配置）时保持旧行为直打；
+  // 否则走端点 failover——网络失败 / 5xx / 404 自动切下一个域名，
+  // 401/403/429 是服务端权威判决，不换域名绕过。
+  if (apiBaseOverride || process.env.UCLAW_API_BASE_URL) {
+    const base = apiBaseUrl(apiBaseOverride);
+    const res = await fetchImpl(joinUrl(base, pathName), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload || {}),
+      signal: AbortSignal.timeout(NETWORK_TIMEOUT_MS),
+    });
+    const body = await res.json().catch(() => ({}));
+    return { status: res.status, body: body || {} };
+  }
+  return fetchWithFailover(pathName, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload || {}),
-    signal: AbortSignal.timeout(NETWORK_TIMEOUT_MS),
-  });
-  const body = await res.json().catch(() => ({}));
-  return { status: res.status, body: body || {} };
+  }, { fetch: fetchImpl });
 }
 
 /**
@@ -167,12 +178,19 @@ async function devicePost(pathName, payload, fetchImpl, apiBaseOverride) {
  */
 async function defaultVerifyReadOnly(apiKey, apiBaseOverride, fetchImpl = fetch) {
   try {
-    const base = apiBaseUrl(apiBaseOverride);
-    const res = await fetchImpl(joinUrl(base, '/v1/models'), {
+    // 显式 apiBase（测试注入）时直打；否则带 failover——主端点抖动不再把好 key 误判为无效。
+    if (apiBaseOverride || process.env.UCLAW_API_BASE_URL) {
+      const base = apiBaseUrl(apiBaseOverride);
+      const res = await fetchImpl(joinUrl(base, '/v1/models'), {
+        headers: { Authorization: `Bearer ${apiKey}` },
+        signal: AbortSignal.timeout(NETWORK_TIMEOUT_MS),
+      });
+      return !!(res && res.ok);
+    }
+    const r = await fetchWithFailover('/v1/models', {
       headers: { Authorization: `Bearer ${apiKey}` },
-      signal: AbortSignal.timeout(NETWORK_TIMEOUT_MS),
-    });
-    return !!(res && res.ok);
+    }, { fetch: fetchImpl });
+    return !!r.ok;
   } catch {
     return false;
   }
@@ -182,22 +200,49 @@ async function defaultVerifyReadOnly(apiKey, apiBaseOverride, fetchImpl = fetch)
 // C5 汇流点：换 key 之后必须同步到实际用 key 的地方——只此一处
 // ---------------------------------------------------------------------------
 
+/**
+ * 聊天模型清单 —— 单一真相源是 portable/models.json 的 uclaw-cloud 条目，
+ * 本函数只是把它翻译成 openclaw.json 的 models[] 形状。
+ *
+ * 为什么不在这里硬编码：2026-08-27 实测事故——这里曾经写死 1 个模型，而 models.json
+ * 早就精选了 6 个，结果控制台「换模型」下拉只剩 1 个可选（设备 X 盘同样中招）。
+ * 两处存同一事实必然漂移，所以代码里一个模型 ID 都不留。
+ *
+ * 兜底：models.json 缺失/损坏/没有 uclaw-cloud 条目时退回 DEFAULT_MODEL_ID 单模型，
+ * 绝不让启动/领取链路因此炸掉。
+ */
+function loadCloudModelIds() {
+  try {
+    const catalog = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'models.json'), 'utf8'));
+    const entry = Array.isArray(catalog.providers)
+      ? catalog.providers.find((p) => p && p.id === CLOUD_PROVIDER_ID)
+      : null;
+    const ids = [entry && entry.model, ...(entry && Array.isArray(entry.models) ? entry.models : [])]
+      .filter((s) => typeof s === 'string' && s.trim())
+      .map((s) => s.trim());
+    return Array.from(new Set(ids));
+  } catch {
+    return [DEFAULT_MODEL_ID];
+  }
+}
+
+/** 推理型模型标记（reasoning:true 让网关按推理模型分配思考预算；flash 类保持 false）。 */
+const REASONING_MODEL_IDS = new Set(['deepseek-v4-pro']);
+
 function buildProviderEntry(apiKey, apiBase) {
   return {
     baseUrl: apiBase || `${apiBaseUrl()}/v1`,
     apiKey,
     api: 'openai-completions',
-    models: [
-      {
-        id: DEFAULT_MODEL_ID,
-        name: DEFAULT_MODEL_ID,
-        reasoning: false,
-        input: ['text'],
-        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-        contextWindow: 128000,
-        maxTokens: 8192,
-      },
-    ],
+    models: loadCloudModelIds().map((id) => ({
+      id,
+      name: id,
+      reasoning: REASONING_MODEL_IDS.has(id),
+      input: ['text'],
+      cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+      contextWindow: 128000,
+      maxTokens: 8192,
+    })),
   };
 }
 
@@ -440,11 +485,6 @@ export async function getBalance(deps = {}) {
   if (!state.apiKey) return { ok: false, error: '还没有设备钱包' };
 
   try {
-    const base = apiBaseUrl(deps.apiBase);
-    const headers = {
-      Authorization: `Bearer ${state.apiKey}`,
-      signal: AbortSignal.timeout(NETWORK_TIMEOUT_MS),
-    };
     const today = deps.today || new Date().toISOString().slice(0, 10);
 
     // 两个 OpenAI 兼容的 billing 接口，实测于 api.u-claw.org.cn（2026-08-23）：
@@ -452,22 +492,18 @@ export async function getBalance(deps = {}) {
     //   /v1/dashboard/billing/usage        → { total_usage }   单位是 USD×100
     //   剩余 USD = hard_limit_usd - total_usage / 100
     // 换算：500,000 quota = $1（见虾盘云 docs/api.md）
+    // 走 fetchWithFailover：主端点抖动/被 SNI reset 时自动切国际站，好 key 不再被误拒。
+    const authHeader = { Authorization: `Bearer ${state.apiKey}` };
     const [subRes, usageRes] = await Promise.all([
-      fetchImpl(joinUrl(base, '/v1/dashboard/billing/subscription'), {
-        headers: { Authorization: headers.Authorization },
-        signal: headers.signal,
-      }),
-      fetchImpl(
-        joinUrl(base, `/v1/dashboard/billing/usage?start_date=2020-01-01&end_date=${today}`),
-        { headers: { Authorization: headers.Authorization }, signal: headers.signal }
-      ),
+      fetchWithFailover('/v1/dashboard/billing/subscription', { headers: authHeader }, { fetch: fetchImpl, configPath: deps.configPath }),
+      fetchWithFailover(`/v1/dashboard/billing/usage?start_date=2020-01-01&end_date=${today}`, { headers: authHeader }, { fetch: fetchImpl, configPath: deps.configPath }),
     ]);
 
     if (!subRes.ok) return { ok: false, error: `查询余额失败：HTTP ${subRes.status}` };
     if (!usageRes.ok) return { ok: false, error: `查询用量失败：HTTP ${usageRes.status}` };
 
-    const sub = await subRes.json().catch(() => ({}));
-    const usage = await usageRes.json().catch(() => ({}));
+    const sub = subRes.body || {};
+    const usage = usageRes.body || {};
 
     const hardLimitUsd = Number(sub.hard_limit_usd);
     const totalUsageUsd = Number(usage.total_usage) / 100;

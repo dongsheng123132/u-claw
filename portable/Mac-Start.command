@@ -55,12 +55,39 @@ if xattr -l "$NODE_BIN" 2>/dev/null | grep -q "com.apple.quarantine"; then
     echo -e "  ${GREEN}Done${NC}"
 fi
 
+# ---- 2b. 启动日志收集（bug 证据自动留盘）----
+# 把本次启动的全部输出同时写进 data/logs/startup-YYYYMMDD-HHMMSS.log，
+# 网关异常退出时把尾部快照进 bug-report-*.log。保留最近 10 份，老的自动清。
+# 用户反馈 bug 时：直接把这个文件发来即可，不用截图猜。
+# 注意：必须在 runtime 检查/setup 自动调用之前开启，否则 setup 阶段的失败无日志可查。
+mkdir -p "$DATA_DIR/logs"
+START_LOG="$DATA_DIR/logs/startup-$(date +%Y%m%d-%H%M%S).log"
+exec > >(tee -a "$START_LOG") 2>&1
+echo "U-Claw start $(date) | $(uname -s) $(uname -m) | OPENCLAW $(cat "$UCLAW_DIR/OPENCLAW_VERSION" 2>/dev/null)"
+# 清理旧日志：只留最近 10 个 startup/bug 报告
+ls -t "$DATA_DIR"/logs/startup-*.log "$DATA_DIR"/logs/bug-report-*.log 2>/dev/null | tail -n +11 | xargs rm -f 2>/dev/null || true
+
 # ---- 3. Check runtime ----
 if [ ! -f "$NODE_BIN" ]; then
-    echo -e "  ${RED}Error: Node.js runtime not found${NC}"
-    echo "  Please run: bash setup.sh"
-    read -p "  Press Enter to exit..."
-    exit 1
+    echo -e "  ${YELLOW}首次在这台 Mac 使用 / 运行时缺失，自动补齐（约 1-2 分钟）...${NC}"
+    echo ""
+    if bash "$UCLAW_DIR/setup.sh"; then
+        echo ""
+        if [ -f "$NODE_BIN" ]; then
+            echo -e "  ${GREEN}✓ 环境就绪，继续启动${NC}"
+        else
+            echo -e "  ${RED}setup 完成但仍找不到 $NODE_BIN${NC}"
+            echo "  可手动重试: bash setup.sh   或查看 data/logs/startup-*.log"
+            read -p "  Press Enter to exit..."
+            exit 1
+        fi
+    else
+        echo -e "  ${RED}自动搭建失败（多半是网络问题）。${NC}"
+        echo "  手动重试: bash setup.sh"
+        echo "  完整日志: $START_LOG （反馈 bug 时请一并附上）"
+        read -p "  Press Enter to exit..."
+        exit 1
+    fi
 fi
 
 NODE_VER=$("$NODE_BIN" --version)
@@ -82,6 +109,21 @@ while IFS='=' read -r _k _v; do
     esac
 done < <("$NODE_BIN" "$UCLAW_DIR/lib/portable-cache.mjs" "$STATE_DIR" "$UCLAW_DIR" 2>/dev/null)
 [ -n "$NODE_COMPILE_CACHE" ] && echo -e "  ${GREEN}Cache on local disk:${NC} $UCLAW_CACHE_ROOT"
+
+# ---- 4c. Strip host-machine provider credential variables (parity with Windows) ----
+# If the Mac happens to have DASHSCOPE_API_KEY etc. exported, OpenClaw treats that
+# provider as configured and tries to install its plugin during startup migration,
+# which can fail on read-only/odd media and blocks gateway ready. Inheriting those
+# vars would also silently spend the host owner's API credits.
+_UCLAW_STRIP_ENV="$("$NODE_BIN" "$UCLAW_DIR/lib/strip-provider-env.mjs" 2>/dev/null | sed 's/^UCLAW_STRIP_ENV=//')"
+if [ -n "$_UCLAW_STRIP_ENV" ]; then
+    # shellcheck disable=SC2086
+    for _v in $_UCLAW_STRIP_ENV; do
+        unset "$_v" 2>/dev/null
+    done
+    echo -e "  ${YELLOW}Stripped host provider env vars:${NC} $_UCLAW_STRIP_ENV"
+fi
+unset _UCLAW_STRIP_ENV
 
 # ---- 5. Default config ----
 if [ ! -f "$CONFIG_FILE" ]; then
@@ -248,6 +290,23 @@ GW_EXIT=$?
 # Ctrl+C 走 trap cleanup（exit 0）不会到这；走到这里说明 gateway 自己退了。
 if [ "$GW_EXIT" -ne 0 ]; then
     echo -e "  ${YELLOW}OpenClaw exited unexpectedly (code $GW_EXIT)${NC}"
+    # ---- bug 证据自动留盘：网关异常退出 = 有 bug，把现场快照成一份报告 ----
+    BUG_LOG="$DATA_DIR/logs/bug-report-$(date +%Y%m%d-%H%M%S).log"
+    {
+        echo "U-Claw Bug Report (auto-generated)"
+        echo "时间: $(date)"
+        echo "退出码: $GW_EXIT"
+        echo "版本: OPENCLAW $(cat "$UCLAW_DIR/OPENCLAW_VERSION" 2>/dev/null) / macOS $(sw_vers -productVersion 2>/dev/null) $(uname -m)"
+        echo ""
+        echo "== 本次启动日志尾部（最后 100 行）=="
+        tail -n 100 "$START_LOG" 2>/dev/null
+        echo ""
+        echo "== OpenClaw 自身日志尾部（若有）=="
+        tail -n 50 "$HOME/Library/Caches/U-Claw"/*/openclaw*.log 2>/dev/null || true
+    } > "$BUG_LOG" 2>&1
+    chmod 644 "$BUG_LOG" 2>/dev/null
+    echo -e "  ${CYAN}Bug 报告已自动保存: data/logs/$(basename "$BUG_LOG")${NC}"
+    echo -e "  ${CYAN}反馈时把这个文件发给我们即可。${NC}"
 fi
 kill $CONFIG_PID 2>/dev/null
 echo ""

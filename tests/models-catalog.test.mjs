@@ -16,7 +16,6 @@ const catalog = JSON.parse(readFileSync(join(PORTABLE, 'models.json'), 'utf8'));
 
 const PAGES = [
   join(PORTABLE, 'Config.html'),
-  join(PORTABLE, 'config-server', 'public', 'index.html'),
 ];
 
 function cardsOf(file) {
@@ -53,9 +52,34 @@ test('两个配置页的模型卡片都与 models.json 一致', () => {
   }
 });
 
-test('两个配置页彼此一致（同一份清单，不允许分叉）', () => {
-  const [a, b] = PAGES.map(cardsOf);
-  assert.deepEqual(a, b, '两个配置页的模型卡片分叉了——跑 node portable/lib/sync-models.mjs');
+test('配置中心 index.html 不再内嵌静态卡片区（防止双清单复活）', () => {
+  // index.html 已改为运行时渲染 models-catalog.json。如果有人把 MODELS 标记
+  // 或手写卡片加回去，就会和生成的 JSON 形成两份清单——正是本文件要防的事故。
+  const t = readFileSync(join(PORTABLE, 'config-server', 'public', 'index.html'), 'utf8');
+  assert.ok(!t.includes('MODELS:BEGIN'), 'config-server/public/index.html 不应再有 MODELS:BEGIN 标记');
+  assert.equal((t.match(/class="model-card"/g) || []).length, 0,
+    'config-server/public/index.html 不应手写 model-card，云端卡片由 JS 渲染');
+});
+
+test('配置中心的 models-catalog.json 与 models.json 一致（生成物不许漂移）', () => {
+  const generated = JSON.parse(readFileSync(
+    join(PORTABLE, 'config-server', 'public', 'models-catalog.json'), 'utf8'));
+  // 目录 = models.json 全部提供商 + 生成器固定追加的 custom 卡
+  assert.equal(generated.providers.length, catalog.providers.length + 1,
+    'models-catalog.json 的提供商数与 models.json 不符——跑 node lib/sync-models.mjs');
+  catalog.providers.forEach((p, i) => {
+    const g = generated.providers[i];
+    assert.equal(g.id, p.id, `models-catalog.json 第 ${i} 项 provider 漂移`);
+    assert.equal(g.base, p.baseUrl, `${p.id}: base 漂移`);
+    assert.equal(g.recommended, p.model, `${p.id}: recommended 必须等于单一真相源的主模型`);
+    assert.equal(g.verified, p.verified, `${p.id}: verified 证据字段丢失`);
+    assert.ok(g.models.includes(p.model), `${p.id}: models 列表必须包含主模型 ${p.model}`);
+  });
+  // custom 卡：有且仅有一张，且在末尾（前端依赖它提供「自定义 API」入口）
+  const customs = generated.providers.filter((g) => g.id === 'custom');
+  assert.equal(customs.length, 1, 'models-catalog.json 必须恰好包含一张 custom 卡');
+  assert.equal(generated.providers[generated.providers.length - 1].id, 'custom',
+    'custom 卡必须在目录末尾');
 });
 
 test('安装脚本里出现的模型名都在 models.json 里', () => {

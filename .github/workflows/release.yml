@@ -87,6 +87,10 @@ jobs:
             --no-audit \
             --no-fund \
             --omit=dev
+          # 回到 repo 根：后续步骤（test suite / normalize / zip）都用相对路径，
+          # 这个 step 把 cwd 留在 core/ 的话，"cd dist" 会报 No such file or directory
+          # （v2.1.19 首跑实录：engines gate 和测试都过了，zip 步骤挂在 cd dist）。
+          cd "$GITHUB_WORKSPACE"
 
           # Note: do NOT pre-install OpenClaw's bundled runtime deps.
           # First v2.1.3 attempt did this and the zip ballooned to 540MB
@@ -107,7 +111,7 @@ jobs:
           # 官方镜像默认不带 → U-Claw 离线预置 = 最大差异化价值。国内客户开箱即用，
           # 不用自己 npm install（很多客户机没法翻墙装非镜像包）。
           # 钉钉走 WebSocket 出站免公网 IP，是国内最易接入的渠道。
-          # 全部 || true：装不上不阻断发版（个别包偶发 404 时便携版仍可用微信/QQ）。
+          # 全部 || true：装不上不阻断发版（个别包偶发 404 时便携版仍可用 QQ；微信入口已降级待上游）。
           for cn_pkg in \
             "@openclaw-china/dingtalk" \
             "@openclaw-china/feishu-china" \
@@ -374,7 +378,7 @@ jobs:
 
             - 打开 Config 选模型、填入自己的 API Key 即可使用，支持 DeepSeek / 通义 / Claude / GPT 等国内外大模型
             - 想用「虾盘云」中转站（一个 Key 调用国内外全部模型、免翻墙）：先到 https://cloud.u-claw.org 注册并创建 Key
-            - **聊天渠道开箱即用**：便携版已离线预装 微信 / QQ / 钉钉 / 飞书 / 企业微信 插件，无需自己 npm 安装
+            - **聊天渠道开箱即用**：便携版已离线预装 QQ / 钉钉 / 飞书 / 企业微信 插件，无需自己 npm 安装；**「个人微信」入口暂不可用**（上游插件兼容问题，等待官方修复，修复后随版本更新自动恢复）
             - OpenClaw runtime: `${{ steps.openclaw_version.outputs.version }}`
 
             ### 下载

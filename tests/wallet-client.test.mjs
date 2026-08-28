@@ -387,6 +387,29 @@ test('applyKey 是领取 / rotate / adopt 三条路径共用的同一个写盘�
   });
 });
 
+// ── 防漂移钉子（2026-08-27 事故）：buildProviderEntry 曾经硬编码 1 个模型，跟 models.json ──
+// 的精选清单漂移，控制台「换模型」下拉只剩 1 个可选。现在写入配置的模型集合必须与
+// models.json 的 uclaw-cloud 条目完全一致——谁改了清单不同步测试，这里当场红。
+test('applyKey 写入的模型集合必须等于 models.json 单一真相源（防再次漂移）', async () => {
+  await withTempDir(async (dir) => {
+    const configPath = join(dir, 'openclaw.json');
+    const merged = applyKey(configPath, 'sk-drift...test');
+    const written = merged.models.providers[CLOUD_PROVIDER_ID].models.map((m) => m.id);
+
+    const catalog = JSON.parse(readFileSync(join(process.cwd(), 'portable', 'models.json'), 'utf8'));
+    const entry = catalog.providers.find((p) => p.id === CLOUD_PROVIDER_ID);
+    const expected = Array.from(new Set([entry.model, ...(entry.models || [])]));
+
+    assert.deepEqual(new Set(written), new Set(expected), '写入 openclaw.json 的模型集合必须与 models.json 完全一致');
+    assert.ok(written.length >= 6, `精选聊天模型至少 6 个（当前 ${written.length} 个）——别把清单改回去`);
+    assert.equal(written[0], entry.model, '主模型（推荐项）必须排第一');
+    // 防呆：清单里的每个 ID 都必须真实存在于云端，否则用户点了就是 404。
+    // 这份白名单从 api.u-claw.org.cn/api/pricing 全量清单核出（2026-08-27）。
+    const cloudVerified = new Set(['deepseek-v4-flash', 'deepseek-v4-pro', 'kimi-k2.6', 'kimi-k3', 'glm-5', 'glm-5.2', 'MiniMax-M3', 'qwen3.7-plus', 'claude-sonnet-5', 'gpt-5.4', 'gemini-3.5-flash', 'grok-4.5']);
+    for (const id of written) assert.ok(cloudVerified.has(id), `模型 ${id} 不在云端已核实的名单里，先去 /api/pricing 核对再进清单`);
+  });
+});
+
 // ── 主模型归属：「空位才占」，不抢用户已配好的 provider ────────────────────────
 //
 // 领取额度是给没配过模型的人用的，不该把付费用户设好的 MiniMax/DeepSeek 换掉。

@@ -11,21 +11,43 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { readFileSync, existsSync, rmSync } from 'node:fs';
+import { readFileSync, existsSync, rmSync, mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 const REPO = dirname(dirname(fileURLToPath(import.meta.url)));
 
+// publish-latest.mjs 把 latest.json 写死到 <repo>/dist/latest.json。
+// ⚠️ 绝不能 rmSync(<repo>/dist)：CI（release.yml）的 test suite 步骤跑在
+// 「打包产物已放进 dist/ 之后、zip 之前」，v2.1.19 就是这里把整个
+// dist/ 连同 474MB 的 staged 产物一起删了，导致 zip 步骤 cd dist 失败。
+// 改成把已有 dist 内容挪进临时目录，测完再原样放回。
+const DIST = join(REPO, 'dist');
+
 function generate() {
-  execFileSync(process.execPath, [join(REPO, 'portable', 'lib', 'publish-latest.mjs'), '--notes', 'test'], {
-    cwd: REPO,
-    stdio: 'ignore',
-  });
-  const file = join(REPO, 'dist', 'latest.json');
-  const manifest = JSON.parse(readFileSync(file, 'utf8'));
-  rmSync(join(REPO, 'dist'), { recursive: true, force: true });
-  return manifest;
+  // 若 CI 已有 staged 产物，先整体挪走保命
+  const stash = mkdtempSync(join(tmpdir(), 'publish-latest-test-'));
+  const hadDist = existsSync(DIST);
+  if (hadDist) {
+    execFileSync('mv', [DIST, join(stash, 'dist')]);
+  }
+  try {
+    execFileSync(process.execPath, [join(REPO, 'portable', 'lib', 'publish-latest.mjs'), '--notes', 'test'], {
+      cwd: REPO,
+      stdio: 'ignore',
+    });
+    const file = join(DIST, 'latest.json');
+    const manifest = JSON.parse(readFileSync(file, 'utf8'));
+    return manifest;
+  } finally {
+    // 删掉测试生成的 dist，把原产物原样放回
+    rmSync(DIST, { recursive: true, force: true });
+    if (hadDist) {
+      execFileSync('mv', [join(stash, 'dist'), DIST]);
+    }
+    try { rmSync(stash, { recursive: true, force: true }); } catch {}
+  }
 }
 
 const shellVersion = () => JSON.parse(readFileSync(join(REPO, 'u-claw-app', 'package.json'), 'utf8')).version;

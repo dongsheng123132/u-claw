@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/readme/hero.svg" alt="U-Claw：随身携带的 AI 工作空间" width="100%" />
+  <img src="assets/readme/hero-image2.png" alt="U-Claw：随身携带的 AI 工作空间" width="100%" />
 </p>
 
 <h1 align="center">U-Claw（虾盘）</h1>
@@ -150,6 +150,16 @@ U-Claw/                          ← 整个拷到 U 盘
 - **Mac**：源码在 [`portable/`](portable/) 目录，`bash setup.sh` 自动下载 Node + OpenClaw（国内镜像约 1 分钟），双击 `Mac-Start.command` 启动
 
 > ⚠️ **U 盘请用 NTFS 格式**（不要 exFAT/FAT32）：Node.js 在 exFAT 上 IO 极慢且不支持符号链接，可能导致启动失败。
+>
+> 两种格式的实测差异（v2.1.20，真机验证）：
+>
+> | | exFAT / FAT32 | NTFS |
+> |---|---|---|
+> | 网关启动与对话 | ✅ 正常可用 | ✅ 正常可用 |
+> | V8 编译缓存落本机加速 | ✅ 生效（缓存自动放 `%LOCALAPPDATA%\U-Claw`） | ✅ 同左 |
+> | 浏览器缓存提速 | ⚠️ Windows 目录联接（junction）在 exFAT 上无法创建，缓存留在 U 盘，网页打开偏慢 | ✅ 缓存联接到本机盘，秒开 |
+>
+> 一句话：**exFAT 能用但不快，想要完整体验请把 U 盘格成 NTFS**（Windows 自带「格式化」即可，格前备份数据）。
 
 ### 支持的 AI 模型
 
@@ -175,7 +185,7 @@ U-Claw/                          ← 整个拷到 U 盘
 | Telegram | ✅ 内置 | 海外推荐 |
 | WhatsApp | ✅ 内置 | Baileys 协议 |
 | Discord | ✅ 内置 | — |
-| 微信 | ✅ 社区插件 | iPad 协议 |
+| 微信 | ⚠️ 暂不可用 | 上游插件兼容问题，修复后随更新恢复 |
 
 ### 国内镜像
 
