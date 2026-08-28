@@ -1,168 +1,85 @@
 @echo off
+setlocal DisableDelayedExpansion
 chcp 65001 >nul 2>&1
 title U-Claw - Portable AI Agent
 
-echo.
-echo   ========================================
-echo     U-Claw v1.1 - Portable AI Agent
-echo   ========================================
-echo.
-
 set "UCLAW_DIR=%~dp0"
-set "APP_DIR=%UCLAW_DIR%app"
-
-REM Migration shim: rename old core-win to core for existing USB users
-if exist "%APP_DIR%\core-win" if not exist "%APP_DIR%\core" ren "%APP_DIR%\core-win" core
-
-set "CORE_DIR=%APP_DIR%\core"
 set "DATA_DIR=%UCLAW_DIR%data"
 set "STATE_DIR=%DATA_DIR%\.openclaw"
-set "NODE_DIR=%APP_DIR%\runtime\node-win-x64"
-set "NODE_BIN=%NODE_DIR%\node.exe"
-set "NPM_BIN=%NODE_DIR%\npm.cmd"
-
+set "CHANNEL_FILE=%UCLAW_DIR%config\runtime-channel.json"
+set "STARTUP_STATUS=%STATE_DIR%\startup-status.json"
 set "OPENCLAW_HOME=%DATA_DIR%"
 set "OPENCLAW_STATE_DIR=%STATE_DIR%"
 set "OPENCLAW_CONFIG_PATH=%STATE_DIR%\openclaw.json"
-REM U-Claw opens the local dashboard directly; disable mDNS discovery on Windows
-REM to avoid OpenClaw/@homebridge ciao crashes during bonjour re-advertise.
 set "OPENCLAW_DISABLE_BONJOUR=1"
+if not defined LOCALAPPDATA set "LOCALAPPDATA=%USERPROFILE%\AppData\Local"
 
-REM Check runtime - missing? Auto-run setup (first run on a new PC / incomplete copy).
-REM setup.bat is fully non-interactive on the happy path; only failure branches pause.
-if not exist "%NODE_BIN%" (
-    echo   [WARN] Node.js runtime not found. Auto-running setup ^(1-3 min, needs network^)...
-    echo.
-    call "%UCLAW_DIR%setup.bat"
-    if not exist "%NODE_BIN%" (
-        echo   [ERROR] Setup finished but runtime still missing: %NODE_BIN%
-        echo   Retry manually: setup.bat   Logs: data\logs\
-        pause
-        exit /b 1
-    )
-    echo   [OK] Environment ready, continuing startup.
-    echo.
-)
-
-for /f "tokens=*" %%v in ('"%NODE_BIN%" --version') do set NODE_VER=%%v
-echo   Node.js: %NODE_VER%
+echo.
+echo   ========================================
+echo     U-Claw v3 - Portable AI Agent
+echo   ========================================
 echo.
 
-set "PATH=%NODE_DIR%;%NODE_DIR%\node_modules\.bin;%PATH%"
+if not exist "%DATA_DIR%" mkdir "%DATA_DIR%" >nul 2>&1
+if not exist "%STATE_DIR%" mkdir "%STATE_DIR%" >nul 2>&1
+if not exist "%DATA_DIR%\memory" mkdir "%DATA_DIR%\memory" >nul 2>&1
+if not exist "%DATA_DIR%\backups" mkdir "%DATA_DIR%\backups" >nul 2>&1
+if not exist "%DATA_DIR%\logs" mkdir "%DATA_DIR%\logs" >nul 2>&1
+if not exist "%STATE_DIR%" goto :data_not_writable
+call :write_status bootstrap 0
 
-REM Init data directories
-if not exist "%DATA_DIR%" mkdir "%DATA_DIR%"
-if not exist "%STATE_DIR%" mkdir "%STATE_DIR%"
-if not exist "%DATA_DIR%\memory" mkdir "%DATA_DIR%\memory"
-if not exist "%DATA_DIR%\backups" mkdir "%DATA_DIR%\backups"
-if not exist "%DATA_DIR%\logs" mkdir "%DATA_DIR%\logs"
+REM Show feedback before the first 34 MB Node archive is even unpacked.
+set "LOADING_PATH=%UCLAW_DIR%lib\loading.html"
+set "LOADING_URL=file:///%LOADING_PATH:\=/%?configPort=18788"
+start "" "%LOADING_URL%"
 
-REM Startup cache acceleration.
-REM portable-cache.mjs chooses a local-disk cache slot and redirects
-REM .openclaw\browser there with a junction when possible.
-REM Browser user data and V8 compile cache stay off the USB drive.
-REM If this fails, startup continues with the cache on the USB drive.
-for /f "usebackq tokens=1,* delims==" %%a in (`""%NODE_BIN%" "%UCLAW_DIR%lib\portable-cache.mjs" "%STATE_DIR%" "%UCLAW_DIR%" 2^>nul"`) do (
-    if "%%a"=="UCLAW_COMPILE_CACHE_DIR" set "NODE_COMPILE_CACHE=%%b"
-    if "%%a"=="UCLAW_CACHE_ROOT" set "UCLAW_CACHE_ROOT=%%b"
+if not exist "%CHANNEL_FILE%" goto :channel_missing
+call :read_channel
+if errorlevel 1 goto :channel_invalid
+if not exist "%UCLAW_DIR%vendor\%UCLAW_NODE_ARCHIVE%" goto :node_seed_missing
+
+REM A clean PC has no Node, so this is deliberately the only non-JS install step.
+REM Hash/version are read from runtime-channel.json, never duplicated here.
+set "BOOTSTRAP_HOST=%LOCALAPPDATA%\U-Claw"
+call :bootstrap_node "%BOOTSTRAP_HOST%"
+if errorlevel 1 (
+    echo   Host cache is unavailable; using portable-strict runtime on this USB drive.
+    call :bootstrap_node "%UCLAW_DIR%host"
+    if errorlevel 1 goto :node_bootstrap_failed
 )
+set "NODE_BIN=%BOOTSTRAP_NODE_BIN%"
 
-REM Strip host-machine provider credential variables before starting the gateway.
-REM If the PC happens to have DASHSCOPE_API_KEY etc. set, OpenClaw treats that
-REM provider as configured, tries to install its plugin during startup migration,
-REM and the plugin install needs a node_modules junction that exFAT cannot create
-REM -- the gateway then never becomes ready ("works on A's PC, dead on B's PC").
-REM Inheriting those vars would also silently spend the host owner's API credits.
-set "UCLAW_STRIP_ENV="
-for /f "usebackq tokens=1,* delims==" %%a in (`""%NODE_BIN%" "%UCLAW_DIR%lib\strip-provider-env.mjs" 2^>nul"`) do (
-    if "%%a"=="UCLAW_STRIP_ENV" set "UCLAW_STRIP_ENV=%%b"
+REM runtime-paths is the single authority for host-vs-portable-strict selection.
+set "UCLAW_RUNTIME_MODE="
+set "UCLAW_RUNTIME_HOST_ROOT="
+set "UCLAW_RUNTIME_NODE_BIN="
+for /f "usebackq tokens=1,* delims==" %%a in (`""%NODE_BIN%" "%UCLAW_DIR%lib\launcher-runtime.mjs" prepare "%UCLAW_DIR%" 2^>nul"`) do (
+    if "%%a"=="UCLAW_RUNTIME_MODE" set "UCLAW_RUNTIME_MODE=%%b"
+    if "%%a"=="UCLAW_RUNTIME_HOST_ROOT" set "UCLAW_RUNTIME_HOST_ROOT=%%b"
+    if "%%a"=="UCLAW_RUNTIME_NODE_BIN" set "UCLAW_RUNTIME_NODE_BIN=%%b"
+    if "%%a"=="UCLAW_RUNTIME_COMPILE_CACHE" set "NODE_COMPILE_CACHE=%%b"
+    if "%%a"=="UCLAW_RUNTIME_LOGS" set "UCLAW_RUNTIME_LOGS=%%b"
 )
-if defined UCLAW_STRIP_ENV (
-    for %%v in (%UCLAW_STRIP_ENV%) do set "%%v="
-    echo   Stripped host provider env vars: %UCLAW_STRIP_ENV%
-)
+if not defined UCLAW_RUNTIME_HOST_ROOT goto :runtime_paths_failed
+if not exist "%UCLAW_RUNTIME_NODE_BIN%" goto :runtime_paths_failed
+set "NODE_BIN=%UCLAW_RUNTIME_NODE_BIN%"
+if "%UCLAW_RUNTIME_MODE%"=="portable-strict" echo   Portable-strict mode: host cache is unavailable; startup will be slower.
 
-if defined NODE_COMPILE_CACHE echo   Cache on local disk: %UCLAW_CACHE_ROOT%
+REM Keep gateway temp files inside the per-USB slot, not Windows TEMP.
+set "UCLAW_GATEWAY_TMP=%UCLAW_RUNTIME_LOGS%\tmp"
+if not exist "%UCLAW_GATEWAY_TMP%" mkdir "%UCLAW_GATEWAY_TMP%" >nul 2>&1
+set "TEMP=%UCLAW_GATEWAY_TMP%"
+set "TMP=%UCLAW_GATEWAY_TMP%"
 
-REM Default config (migrate legacy if present, otherwise create)
 if not exist "%STATE_DIR%\openclaw.json" (
-    if exist "%DATA_DIR%\config.json" (
-        echo   Migrating legacy config...
-        copy "%DATA_DIR%\config.json" "%STATE_DIR%\openclaw.json" >nul
-        echo   Config migrated
-    ) else (
-        echo   First run - creating default config...
-        (echo {"gateway":{"mode":"local","auth":{"token":"uclaw"}}})>"%STATE_DIR%\openclaw.json"
-        echo   Config created
-    )
-    echo.
+    (echo {"gateway":{"mode":"local","auth":{"token":"uclaw"}}})>"%STATE_DIR%\openclaw.json"
 )
 
-REM Check dependencies
-REM Note: avoid unescaped parens inside this block -- cmd.exe treats ) as block-end.
-if not exist "%CORE_DIR%\node_modules" (
-    echo   ========================================
-    echo   [WARN] node_modules not found
-    echo   ========================================
-    echo   This release should ship with deps pre-installed.
-    echo   Falling back to npm install ^(USB drives may take 20+ minutes^).
-    echo.
-    echo   TIP: Re-download u-claw-portable-*.zip from GitHub releases,
-    echo        which includes pre-installed deps ^(~200 MB^).
-    echo.
-    echo   File system: NTFS recommended. exFAT/FAT32 will be very slow.
-    echo.
-    cd /d "%CORE_DIR%"
-    REM Keep npm cache inside the portable app instead of system APPDATA.
-    set "npm_config_cache=%APP_DIR%\.npm-cache"
-    call "%NPM_BIN%" install --registry=https://registry.npmmirror.com --ignore-scripts --no-audit --no-fund --omit=dev
-    echo.
-    echo   Dependencies installed!
-    echo.
-)
-
-REM Intranet/self-hosted model fix: keep the configured model host(s) off any
-REM corporate HTTP_PROXY/HTTPS_PROXY. OpenClaw routes ALL fetch through the env
-REM proxy when it is set, which breaks calls to internal model endpoints
-REM (e.g. http://10.x / 192.168.x / a machine-room IP). Add those hosts + loopback
-REM to NO_PROXY so they connect directly. Silent no-op when no proxy/model is set.
-for /f "usebackq tokens=1,* delims==" %%a in (`""%NODE_BIN%" "%UCLAW_DIR%lib\resolve-no-proxy.mjs" "%STATE_DIR%\openclaw.json" 2^>nul"`) do (
-    if "%%a"=="UCLAW_NO_PROXY" set "NO_PROXY=%%b"
-)
-if defined NO_PROXY (
-    set "no_proxy=%NO_PROXY%"
-    REM Note: no unescaped parens in echo inside this IF block - cmd treats ) as block-end.
-    echo   Direct-connect via NO_PROXY: %NO_PROXY%
-)
-
-REM Async update check (non-blocking, 5s timeout, silent failure)
-REM Writes data\.openclaw\update-available.json if a newer version is on OSS.
-REM Welcome.html / Config.html read this file and show a banner.
-REM Version file lookup order: portable/OPENCLAW_VERSION (USB), then repo-root ../OPENCLAW_VERSION (dev)
-set "VERSION_FILE=%UCLAW_DIR%OPENCLAW_VERSION"
-if not exist "%VERSION_FILE%" set "VERSION_FILE=%UCLAW_DIR%..\OPENCLAW_VERSION"
-if exist "%VERSION_FILE%" (
-    start /B "" "%NODE_BIN%" "%UCLAW_DIR%lib\check-update.mjs" "%VERSION_FILE%" "%STATE_DIR%" >nul 2>&1
-)
-
-
-REM WeChat plugin staging -- delegated to the plugin.wechat.install action.
-REM This logic used to be copy-pasted into 5 files (Windows/Mac x Start/Install,
-REM plus config-server). A single fix therefore had to be applied 5 times, and
-REM missing one meant that path stayed broken for real customers (see the zod
-REM incident). Now every entry point calls the same action core.
-echo   Checking WeChat plugin...
-"%NODE_BIN%" "%UCLAW_DIR%uclaw.mjs" plugin.wechat.install --quiet
-
-REM Start Config Server in background
-echo   Starting Config Center on port 18788...
+REM Config Center is dependency-free and serves loading.html's startup status endpoint.
 set "CONFIG_SERVER=%UCLAW_DIR%config-server"
 set "RUNTIME_JSON=%STATE_DIR%\runtime.json"
 del "%RUNTIME_JSON%" >nul 2>&1
 start /B "" "%NODE_BIN%" "%CONFIG_SERVER%\server.js" >nul 2>&1
-
-REM Wait for Config Server with polling instead of a fixed delay.
-REM It writes runtime.json with the actual fallback port when ready.
 set /a CFG_TRIES=0
 :wait_config
 if exist "%RUNTIME_JSON%" goto :config_ready
@@ -175,88 +92,122 @@ set "CONFIG_PORT=18788"
 if exist "%RUNTIME_JSON%" (
     for /f "usebackq tokens=*" %%p in (`powershell -NoProfile -Command "try { (Get-Content -Raw '%RUNTIME_JSON%' | ConvertFrom-Json).configServerPort } catch {}" 2^>nul`) do set "CONFIG_PORT=%%p"
 )
-echo   Config Center port: %CONFIG_PORT%
 
-REM Find available gateway port after Config Center has bound its port.
+REM Config Center may have claimed a fallback port, so choose the gateway only now.
 set PORT=18789
 :check_port
 netstat -an | findstr ":%PORT% " | findstr "LISTENING" >nul 2>&1
 if %errorlevel%==0 (
-    REM Bounds check BEFORE the increment. cmd expands %PORT% once when it parses
-    REM the whole IF block, so a check placed after `set /a` would still read the
-    REM pre-increment value -- the guard never fired and the gateway could bind
-    REM 18800, outside the documented range.
-    if %PORT% geq 18799 (
-        echo   No available port 18789-18799
-        pause
-        exit /b 1
-    )
-    echo   Port %PORT% in use, trying next...
+    if %PORT% geq 18799 goto :no_free_port
     set /a PORT+=1
     goto :check_port
 )
 
-echo   Starting OpenClaw on port %PORT%...
-echo.
+REM The rest of first-run installation goes through the existing action core.
+call :write_status runtime-seed 5
+set "UCLAW_STARTUP_STATUS_FILE=%STARTUP_STATUS%"
+echo   Installing offline runtime. First launch can take 3-5 minutes.
+"%NODE_BIN%" "%UCLAW_DIR%uclaw.mjs" runtime.seed --usb-root "%UCLAW_DIR%" --host-root "%UCLAW_RUNTIME_HOST_ROOT%" --quiet
+if errorlevel 1 goto :seed_failed
+call :write_status activating 95
+"%NODE_BIN%" "%UCLAW_DIR%uclaw.mjs" runtime.activate --usb-root "%UCLAW_DIR%" --host-root "%UCLAW_RUNTIME_HOST_ROOT%" --quiet
+if errorlevel 1 goto :activate_failed
 
-REM Auto-open Config Center only on first run (issue #24). The documented design
-REM (repo CLAUDE.md): first run (no model configured) opens Config Center;
-REM configured runs only open the Dashboard. Config Center is still reachable
-REM any time via Windows-Menu.bat -- this only changes what auto-opens here.
-REM Silent-fail helper: any read/parse error is treated as "not configured",
-REM so at worst users see one extra Config Center tab, never zero.
+set "UCLAW_OPENCLAW_MJS="
+for /f "usebackq tokens=1,* delims==" %%a in (`""%NODE_BIN%" "%UCLAW_DIR%lib\launcher-runtime.mjs" active "%UCLAW_DIR%" "%UCLAW_RUNTIME_HOST_ROOT%" 2^>nul"`) do (
+    if "%%a"=="UCLAW_OPENCLAW_MJS" set "UCLAW_OPENCLAW_MJS=%%b"
+)
+if not exist "%UCLAW_OPENCLAW_MJS%" goto :active_entry_missing
+
+REM Do not inherit a host user's provider credentials or proxy routing by accident.
+set "UCLAW_STRIP_ENV="
+for /f "usebackq tokens=1,* delims==" %%a in (`""%NODE_BIN%" "%UCLAW_DIR%lib\strip-provider-env.mjs" 2^>nul"`) do (
+    if "%%a"=="UCLAW_STRIP_ENV" set "UCLAW_STRIP_ENV=%%b"
+)
+if defined UCLAW_STRIP_ENV for %%v in (%UCLAW_STRIP_ENV%) do set "%%v="
+for /f "usebackq tokens=1,* delims==" %%a in (`""%NODE_BIN%" "%UCLAW_DIR%lib\resolve-no-proxy.mjs" "%STATE_DIR%\openclaw.json" 2^>nul"`) do (
+    if "%%a"=="UCLAW_NO_PROXY" set "NO_PROXY=%%b"
+)
+if defined NO_PROXY set "no_proxy=%NO_PROXY%"
+
+REM Keep the existing action binding; v3 slim packages may intentionally skip it.
+"%NODE_BIN%" "%UCLAW_DIR%uclaw.mjs" plugin.wechat.install --quiet
+"%NODE_BIN%" "%UCLAW_DIR%uclaw.mjs" lock.clean --quiet
+
 set "MODEL_CONFIGURED=0"
 for /f "usebackq tokens=1,* delims==" %%a in (`""%NODE_BIN%" "%UCLAW_DIR%lib\check-model-configured.mjs" "%STATE_DIR%\openclaw.json" 2^>nul"`) do (
     if "%%a"=="UCLAW_MODEL_CONFIGURED" set "MODEL_CONFIGURED=%%b"
 )
+if not "%MODEL_CONFIGURED%"=="1" start "" http://127.0.0.1:%CONFIG_PORT%/
 
-REM Do not open Dashboard before the gateway is ready.
-REM Slow USB drives may need tens of seconds to stage bundled deps.
-REM Open the local startup page now; Config Center only auto-opens on first run.
-
-REM Open startup page with the gateway port and token in the query string.
-echo   Opening startup screen...
-set "LOADING_PATH=%UCLAW_DIR%lib\loading.html"
-set "LOADING_URL=file:///%LOADING_PATH:\=/%?port=%PORT%&token=uclaw"
-start "" "%LOADING_URL%"
-
-if "%MODEL_CONFIGURED%"=="1" (
-    echo   Model already configured - Dashboard only, no Config Center popup.
-) else (
-    echo   Opening Config Center...
-    start "" http://127.0.0.1:%CONFIG_PORT%/
-)
-
-REM Fallback watcher: if the startup page cannot poll from file URLs,
-REM keep polling and reopen Config Center after the gateway is ready.
-start /B "" cmd /c ""%UCLAW_DIR%lib\wait-gateway.bat" %PORT% %CONFIG_PORT%"
-
-REM Prewarm gateway in the background after it becomes ready.
-start /B "" "%NODE_BIN%" "%UCLAW_DIR%lib\prewarm.mjs" %PORT% uclaw >nul 2>&1
-
-echo.
-echo   ========================================
-echo   Starting OpenClaw Gateway on port %PORT%...
-echo   First run on a USB drive may take 30-90 seconds
-echo   (unpacking bundled components). Please wait;
-echo   Config Center is open for model, key, recharge, and channel setup.
-echo   DO NOT close this window while using U-Claw!
-echo   ========================================
-echo.
-
-REM Clean stale gateway lock from a previous crash / USB yank so OpenClaw won't
-REM refuse to start with "gateway already running (pid XXXX)". Only locks whose
-REM owning process is gone (or corrupt) are removed; a live instance is left alone.
-"%NODE_BIN%" "%UCLAW_DIR%uclaw.mjs" lock.clean --quiet
-
-cd /d "%CORE_DIR%"
-set "OPENCLAW_MJS=%CORE_DIR%\node_modules\openclaw\openclaw.mjs"
-"%NODE_BIN%" "%OPENCLAW_MJS%" gateway run --allow-unconfigured --force --port %PORT%
+call :write_status starting-gateway 98 %PORT%
+echo   Starting OpenClaw on port %PORT%...
+"%NODE_BIN%" "%UCLAW_OPENCLAW_MJS%" gateway run --allow-unconfigured --force --port %PORT%
 set "GW_EXIT=%errorlevel%"
-
-echo.
-if not "%GW_EXIT%"=="0" if not "%GW_EXIT%"=="-1073741510" (
-    echo   OpenClaw exited unexpectedly ^(code %GW_EXIT%^)
-)
-echo   OpenClaw stopped.
+call :write_status stopped 0
+if not "%GW_EXIT%"=="0" if not "%GW_EXIT%"=="-1073741510" echo   OpenClaw exited unexpectedly ^(code %GW_EXIT%^)
 pause
+exit /b %GW_EXIT%
+
+:read_channel
+for /f "usebackq tokens=1,* delims==" %%a in (`powershell -NoProfile -Command "$c=Get-Content -Raw -LiteralPath $env:CHANNEL_FILE ^| ConvertFrom-Json; $t=$c.node.targets.'win-x64'; 'UCLAW_NODE_VERSION='+$c.node.version; 'UCLAW_NODE_ARCHIVE='+$t.archive; 'UCLAW_NODE_SHA256='+$t.sha256" 2^>nul`) do (
+    if "%%a"=="UCLAW_NODE_VERSION" set "UCLAW_NODE_VERSION=%%b"
+    if "%%a"=="UCLAW_NODE_ARCHIVE" set "UCLAW_NODE_ARCHIVE=%%b"
+    if "%%a"=="UCLAW_NODE_SHA256" set "UCLAW_NODE_SHA256=%%b"
+)
+if not defined UCLAW_NODE_VERSION exit /b 1
+if not defined UCLAW_NODE_ARCHIVE exit /b 1
+if not defined UCLAW_NODE_SHA256 exit /b 1
+exit /b 0
+
+:bootstrap_node
+set "BOOTSTRAP_NODE_HOME=%~1\shared\runtime\node-v%UCLAW_NODE_VERSION%-win-x64"
+set "BOOTSTRAP_NODE_BIN=%BOOTSTRAP_NODE_HOME%\node.exe"
+if exist "%BOOTSTRAP_NODE_BIN%" exit /b 0
+set "UCLAW_NODE_DEST=%BOOTSTRAP_NODE_HOME%"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; $archive=Join-Path $env:UCLAW_DIR ('vendor\'+$env:UCLAW_NODE_ARCHIVE); if (-not (Test-Path -LiteralPath $archive)) { throw 'offline Node seed is missing' }; $actual=(Get-FileHash -Algorithm SHA256 -LiteralPath $archive).Hash.ToLowerInvariant(); if ($actual -ne $env:UCLAW_NODE_SHA256.ToLowerInvariant()) { throw 'offline Node seed SHA256 mismatch' }; $dest=$env:UCLAW_NODE_DEST; $parent=Split-Path -Parent $dest; New-Item -ItemType Directory -Force -Path $parent ^| Out-Null; $stage=$dest+'.staging-'+$PID; Expand-Archive -LiteralPath $archive -DestinationPath $stage -Force; $root=Get-ChildItem -LiteralPath $stage -Directory ^| Select-Object -First 1; if ($null -eq $root) { $root=Get-Item -LiteralPath $stage }; if (-not (Test-Path -LiteralPath (Join-Path $root.FullName 'node.exe'))) { throw 'Node archive did not contain node.exe' }; if (Test-Path -LiteralPath $dest) { Move-Item -LiteralPath $dest -Destination ($dest+'.corrupt-'+$PID) -Force }; Move-Item -LiteralPath $root.FullName -Destination $dest -Force; if (-not (Test-Path -LiteralPath (Join-Path $dest 'node.exe'))) { throw 'Node extraction verification failed' }" >nul 2>&1
+if errorlevel 1 exit /b 1
+if not exist "%BOOTSTRAP_NODE_BIN%" exit /b 1
+exit /b 0
+
+:write_status
+if "%~3"=="" (
+    (echo {"phase":"%~1","pct":%~2})>"%STARTUP_STATUS%"
+) else (
+    (echo {"phase":"%~1","pct":%~2,"gateway_port":%~3})>"%STARTUP_STATUS%"
+)
+exit /b 0
+
+:data_not_writable
+echo   [ERROR] USB data directory is not writable.
+goto :failed
+:channel_missing
+echo   [ERROR] runtime-channel.json is missing.
+goto :failed
+:channel_invalid
+echo   [ERROR] runtime-channel.json is invalid for Windows x64.
+goto :failed
+:node_seed_missing
+echo   [ERROR] Offline Node seed is missing from vendor.
+goto :failed
+:node_bootstrap_failed
+echo   [ERROR] Could not verify and extract the offline Node runtime.
+goto :failed
+:runtime_paths_failed
+echo   [ERROR] Neither the host cache nor USB fallback runtime path is writable.
+goto :failed
+:seed_failed
+echo   [ERROR] Offline runtime installation failed. See the startup status and action logs.
+goto :failed
+:activate_failed
+echo   [ERROR] Runtime activation failed; the previous kernel remains available.
+goto :failed
+:active_entry_missing
+echo   [ERROR] The active OpenClaw kernel entry is missing.
+goto :failed
+:no_free_port
+echo   [ERROR] No available port in 18789-18799.
+:failed
+call :write_status failed 0
+pause
+exit /b 1

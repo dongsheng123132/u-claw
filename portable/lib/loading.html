@@ -9,13 +9,11 @@
   双击启动脚本后立刻打开本页，给用户即时反馈，消除"黑窗假死"体感。
   本页每秒自查 gateway 是否就绪（fetch /ready）。
 
-  就绪后【不自动跳转】，而是停在选择页，给两个大按钮：
-    🚀 进入 Dashboard（开始聊天）
-    ⚙️ 配置 / 改模型（打开配置中心）
-  让用户自己决定去聊天还是改配置——避免"配过模型就被冲进 Dashboard、想改配置还得自己翻标签"。
+  首启时会轮询 Config Center 暴露的启动状态：离线 seed 需要数分钟，
+  不能让用户只看到一个没有阶段变化的黑窗。网关 ready 后自动进入 Dashboard。
 
-  端口通过 URL 查询参数传入：loading.html?port=18789
-  （启动脚本打开时拼好。默认 18789。）
+  网关端口在 Config Center 启动后才选择，避免两者抢占回退端口；
+  启动器把选中的端口写入启动状态，页面据此开始轮询 /ready。
 -->
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -70,35 +68,6 @@ h1 { font-size: 1.7em; font-weight: 600; margin-bottom: 8px; }
 a.manual { color: #fff; text-decoration: underline; opacity: .9; }
 
 /* —— 就绪后的选择页 —— */
-.ready-wrap { display: none; }
-body.ready .loading-wrap { display: none; }
-body.ready .ready-wrap { display: block; }
-.actions {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  margin-top: 26px;
-}
-.btn {
-  display: block;
-  text-decoration: none;
-  color: #fff;
-  border-radius: 14px;
-  padding: 20px 22px;
-  font-size: 1.15em;
-  font-weight: 600;
-  line-height: 1.35;
-  cursor: pointer;
-  border: 2px solid rgba(255,255,255,.35);
-  background: rgba(255,255,255,.12);
-  transition: transform .12s ease, background .2s ease, box-shadow .2s ease;
-}
-.btn:hover { transform: translateY(-2px); background: rgba(255,255,255,.22); box-shadow: 0 8px 24px rgba(0,0,0,.18); }
-.btn:active { transform: translateY(0); }
-.btn .sub { display: block; font-size: .68em; font-weight: 400; opacity: .8; margin-top: 4px; }
-.btn-primary { background: #ff7a45; border-color: #ff7a45; }
-.btn-primary:hover { background: #ff6a30; }
-.foot { margin-top: 24px; font-size: .82em; opacity: .65; line-height: 1.6; }
 </style>
 </head>
 <body>
@@ -108,32 +77,17 @@ body.ready .ready-wrap { display: block; }
     <div class="loading-wrap">
       <div class="logo">🦞</div>
       <h1>U-Claw 正在启动</h1>
-      <div class="tip">首次从 U 盘启动需要展开内置组件，<br>稍等片刻，就绪后会提示你下一步。</div>
+      <div class="tip">首次启动正在离线安装运行时，约需 3–5 分钟。<br>就绪后会自动进入 Dashboard。</div>
       <div class="spinner"></div>
       <div class="bar"><i></i></div>
-      <div class="status" id="status">正在等待 OpenClaw 网关…</div>
+      <div class="status" id="status">正在准备离线运行时…</div>
       <div class="elapsed" id="elapsed"></div>
       <div class="note">
-        慢 U 盘首次启动通常 30–90 秒。<br>
+        快速模式会在这台电脑的 %LOCALAPPDATA%\U-Claw\ 建约 850 MB 可重建缓存；<br>
+        业务数据仍只在 U 盘，缓存可用 <code>uclaw runtime.host.purge --yes</code> 清理。<br>
         如果迟迟没反应，可先打开
         <a class="manual" id="manual" href="#">配置中心</a>。
       </div>
-    </div>
-
-    <!-- 就绪后：让用户自己选 -->
-    <div class="ready-wrap">
-      <div class="logo">🦞</div>
-      <h1>U-Claw 已就绪</h1>
-      <div class="tip">选择下一步 — 直接开始聊天，或先去配置模型和渠道。</div>
-      <div class="actions">
-        <a class="btn btn-primary" id="goDash">🚀 进入 Dashboard
-          <span class="sub">开始和 AI 聊天</span>
-        </a>
-        <a class="btn" id="goConfig">⚙️ 配置 / 改模型
-          <span class="sub">填写或更换模型 Key、充值、连接微信等渠道</span>
-        </a>
-      </div>
-      <div class="foot">没配过模型或余额不足？先点「配置 / 改模型」处理 Key 或充值。</div>
     </div>
 
   </div>
@@ -141,15 +95,14 @@ body.ready .ready-wrap { display: block; }
 <script>
 (function () {
   var params = new URLSearchParams(location.search);
-  var port = parseInt(params.get('port'), 10) || 18789;
+  var port = parseInt(params.get('port'), 10) || 0;
+  var configPort = parseInt(params.get('configPort'), 10) || 18788;
   var token = params.get('token') || 'uclaw';
-  var base = 'http://127.0.0.1:' + port;
-  var dashboard = base + '/#token=' + encodeURIComponent(token);
-  var configCenter = 'http://127.0.0.1:18788/';
+  var base = port ? 'http://127.0.0.1:' + port : '';
+  var dashboard = base ? base + '/#token=' + encodeURIComponent(token) : '';
+  var configCenter = 'http://127.0.0.1:' + configPort + '/';
 
   document.getElementById('manual').href = configCenter;
-  document.getElementById('goDash').href = dashboard;
-  document.getElementById('goConfig').href = configCenter;
 
   var startedAt = Date.now();
   var ready = false;
@@ -167,13 +120,53 @@ body.ready .ready-wrap { display: block; }
   tickElapsed();
 
   function showChoice() {
-    if (ready) return;
+    if (ready || !dashboard) return;
     ready = true;
-    document.body.classList.add('ready');
+    document.getElementById('status').textContent = 'U-Claw 已就绪，正在进入 Dashboard…';
+    location.replace(dashboard);
   }
+
+  function setGatewayPort(nextPort) {
+    if (!nextPort || nextPort === port) return;
+    port = nextPort;
+    base = 'http://127.0.0.1:' + port;
+    dashboard = base + '/#token=' + encodeURIComponent(token);
+  }
+
+  var phaseText = {
+    bootstrap: '正在校验并展开离线 Node…',
+    'runtime-seed': '正在安装运行时（约 3–5 分钟）…',
+    activating: '正在验证并切换运行时…',
+    'starting-gateway': '正在启动 OpenClaw 网关…',
+    failed: '启动失败，请查看启动窗口中的错误信息。'
+  };
+
+  var configCandidates = [];
+  for (var candidate = 18788; candidate <= 18798; candidate++) configCandidates.push(candidate);
+
+  function pollStartupStatus(index) {
+    var current = configCandidates[index || 0];
+    fetch('http://127.0.0.1:' + current + '/api/startup-status', { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (status) {
+        if (!status) throw new Error('status unavailable');
+        configPort = current;
+        configCenter = 'http://127.0.0.1:' + configPort + '/';
+        document.getElementById('manual').href = configCenter;
+        setGatewayPort(parseInt(status.gateway_port, 10));
+        var text = status.message || phaseText[status.phase];
+        if (text) document.getElementById('status').textContent = text;
+      })
+      .catch(function () {
+        if ((index || 0) + 1 < configCandidates.length) pollStartupStatus((index || 0) + 1);
+      });
+  }
+  setInterval(pollStartupStatus, 1000);
+  pollStartupStatus();
 
   function poll() {
     if (ready) return;
+    if (!base) { setTimeout(poll, 500); return; }
     // /ready 就绪即显示选择页。no-cors 下拿不到 status，但 fetch 成功 resolve 就说明端口活了。
     fetch(base + '/ready', { mode: 'no-cors', cache: 'no-store' })
       .then(function () { showChoice(); })

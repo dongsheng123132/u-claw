@@ -17,17 +17,17 @@ function lineOf(content, needle) {
   return lines[index];
 }
 
-test('Windows-Start dependency fallback text escapes parentheses inside IF block', () => {
+test('Windows v3 launcher bootstraps Node from the checked offline seed, not v2 setup/app', () => {
   const script = readRepoFile('portable', 'Windows-Start.bat');
 
-  assert.match(
-    lineOf(script, 'Falling back to npm install'),
-    /\^\(USB drives may take 20\+ minutes\^\)\./,
-  );
-  assert.match(
-    lineOf(script, 'pre-installed deps'),
-    /\^\(~200 MB\^\)\./,
-  );
+  assert.match(script, /runtime-channel\.json/, 'Node version/hash must come from the version channel');
+  assert.match(script, /Get-FileHash -Algorithm SHA256/, 'offline Node seed must be verified before extraction');
+  assert.match(script, /Expand-Archive/, 'Windows Node seed must be extracted by PowerShell');
+  assert.match(script, /launcher-runtime\.mjs" prepare/, 'launcher must delegate final host/strict decision to runtime-paths');
+  assert.match(script, /runtime\.seed --usb-root/, 'first install must call the runtime.seed action');
+  assert.match(script, /runtime\.activate --usb-root/, 'first install must activate through the action core');
+  assert.match(script, /launcher-runtime\.mjs" active/, 'gateway entry must come from the active pointer');
+  assert.doesNotMatch(script, /setup\.bat|app\\core|app\\runtime/, 'v3 first start must not fall back to the v2 app tree');
 });
 
 test('portable Windows launchers disable OpenClaw bonjour discovery', () => {
@@ -61,11 +61,19 @@ test('Windows startup only auto-opens Config Center when no model is configured 
     /lib\\check-model-configured\.mjs/,
     'should consult the model-configured helper before deciding whether to auto-open Config Center',
   );
-  assert.match(
-    script,
-    /if "%MODEL_CONFIGURED%"=="1" \([\s\S]*\) else \([\s\S]*start "" http:\/\/127\.0\.0\.1:%CONFIG_PORT%\/[\s\S]*\)/,
-    'Config Center should only auto-open in the "not configured" branch',
-  );
+  assert.match(script, /if not "%MODEL_CONFIGURED%"=="1" start "" http:\/\/127\.0\.0\.1:%CONFIG_PORT%\//,
+    'Config Center should only auto-open when no model is configured');
+});
+
+test('v3 first-start page exposes cache disclosure, live seed phases, and ready redirect', () => {
+  const loading = readRepoFile('portable', 'lib', 'loading.html');
+  const server = readRepoFile('portable', 'config-server', 'server.js');
+
+  assert.match(loading, /850 MB/, 'first-start page must disclose the host cache size');
+  assert.match(loading, /runtime\.host\.purge --yes/, 'first-start page must explain cleanup');
+  assert.match(loading, /api\/startup-status/, 'first-start page must poll live seed progress');
+  assert.match(loading, /location\.replace\(dashboard\)/, 'ready should enter Dashboard automatically');
+  assert.match(server, /req\.url === '\/api\/startup-status'/, 'Config Center must expose the launcher status file');
 });
 
 test('Windows gateway fallback does not force-open Dashboard', () => {

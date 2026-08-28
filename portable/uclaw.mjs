@@ -20,7 +20,8 @@
 //   node uclaw.mjs config.set --patch '{"agents":{"defaults":{"model":{"primary":"deepseek/deepseek-chat"}}}}'
 //   node uclaw.mjs bug.collect --note "启动就闪退"
 
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { dirname } from 'node:path';
 import { execute, resolvePaths, ACTIONS, getAction, describeActions } from './lib/core/index.mjs';
 
 const isTTY = process.stdout.isTTY === true;
@@ -29,6 +30,15 @@ const C = isTTY
   : { dim: '', red: '', green: '', yellow: '', bold: '', off: '' };
 
 const EXIT_OK = 0, EXIT_FAIL = 1, EXIT_USAGE = 2;
+
+function writeStartupProgress(event) {
+  const file = process.env.UCLAW_STARTUP_STATUS_FILE;
+  if (!file) return;
+  try {
+    mkdirSync(dirname(file), { recursive: true });
+    writeFileSync(file, JSON.stringify({ phase: 'runtime-seed', pct: event.pct, message: event.message, updated_at: new Date().toISOString() }), 'utf8');
+  } catch { /* UI progress must not block the action */ }
+}
 
 /** 日志一律走 stderr —— stdout 是留给结果的。 */
 function log(...args) { process.stderr.write(args.join(' ') + '\n'); }
@@ -150,6 +160,7 @@ async function main() {
     noInput: flags.no_input === true,
     // 进度走 stderr，且非 TTY / --quiet 时闭嘴（§9）
     onProgress: (e) => {
+      writeStartupProgress(e);
       if (flags.quiet || !isTTY) return;
       log(`${C.dim}[${e.pct}%] ${e.message}${C.off}`);
     },

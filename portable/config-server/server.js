@@ -561,6 +561,15 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // UI-only launch progress; business actions still return their normal envelopes.
+  if (req.url === '/api/startup-status' && req.method === 'GET') {
+    let status = {};
+    try { status = JSON.parse(fs.readFileSync(path.join(P().stateDir, 'startup-status.json'), 'utf8')); } catch {}
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+    res.end(JSON.stringify(status));
+    return;
+  }
+
   // API: Trigger update check on demand (so users can press a "Check now" button)
   if (req.url === '/api/update-check' && req.method === 'POST') {
     (async () => {

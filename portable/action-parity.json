@@ -728,6 +728,10 @@
             "type": "string",
             "description": "U 盘根目录；留空=当前 U-Claw 目录"
           },
+          "host_root": {
+            "type": "string",
+            "description": "启动器经 runtime-paths 决定的运行时缓存根"
+          },
           "version": {
             "type": "string",
             "description": "要激活的版本；rollback=true 时忽略"
@@ -812,6 +816,10 @@
           "usb_root": {
             "type": "string",
             "description": "U 盘根目录；留空=当前 U-Claw 目录"
+          },
+          "host_root": {
+            "type": "string",
+            "description": "启动器经 runtime-paths 决定的运行时缓存根"
           }
         }
       },
@@ -892,6 +900,10 @@
           "usb_root": {
             "type": "string",
             "description": "U 盘根目录；留空=当前 U-Claw 目录"
+          },
+          "host_root": {
+            "type": "string",
+            "description": "启动器经 runtime-paths 决定的运行时缓存根"
           },
           "scope": {
             "type": "string",
@@ -976,6 +988,10 @@
           "usb_root": {
             "type": "string",
             "description": "U 盘根目录；留空=当前 U-Claw 目录"
+          },
+          "host_root": {
+            "type": "string",
+            "description": "启动器经 runtime-paths 决定的运行时缓存根"
           },
           "version": {
             "type": "string",
@@ -1063,6 +1079,10 @@
           "usb_root": {
             "type": "string",
             "description": "U 盘根目录；留空=当前 U-Claw 目录"
+          },
+          "host_root": {
+            "type": "string",
+            "description": "启动器经 runtime-paths 决定的运行时缓存根"
           }
         }
       },
@@ -1167,6 +1187,10 @@
           "usb_root": {
             "type": "string",
             "description": "U 盘根目录；留空=当前 U-Claw 目录"
+          },
+          "host_root": {
+            "type": "string",
+            "description": "启动器经 runtime-paths 决定的运行时缓存根"
           },
           "version": {
             "type": "string",

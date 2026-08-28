@@ -37,7 +37,8 @@ function runtimeContext(input, ctx) {
   const usbRoot = usbRootOf(input, ctx);
   const platform = ctx.runtime?.platform || process.platform;
   const arch = ctx.runtime?.arch || process.arch;
-  const bootstrap = resolveRuntimePaths({ usbRoot, platform, arch, env: ctx.env || process.env });
+  const env = ctx.env || process.env;
+  const bootstrap = resolveRuntimePaths({ usbRoot, platform, arch, env });
 
   let channel;
   try {
@@ -47,7 +48,7 @@ function runtimeContext(input, ctx) {
   }
 
   const paths = resolveRuntimePaths({
-    usbRoot, platform, arch, env: ctx.env || process.env, nodeVersion: channel.node.version,
+    usbRoot, platform, arch, env, nodeVersion: channel.node.version, hostRoot: input.host_root,
   });
   return { paths, channel, platform, fetchImpl: ctx.runtime?.fetchImpl, runner: ctx.runtime?.runner };
 }
@@ -96,6 +97,7 @@ function progressBridge(ctx) {
 
 const USB_ROOT_PROP = {
   usb_root: { type: 'string', description: 'U 盘根目录；留空=当前 U-Claw 目录' },
+  host_root: { type: 'string', description: '启动器经 runtime-paths 决定的运行时缓存根' },
 };
 
 // ── runtime.probe ───────────────────────────────────────────────────────────
