@@ -8,7 +8,7 @@
 import { existsSync, statSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { pathToFileURL } from 'node:url';
 
 export const OFFLINE_CHANNEL_PLUGIN_SPECS = Object.freeze([
   '@openclaw-china/dingtalk@2026.4.24',
@@ -129,10 +129,7 @@ async function main(argv) {
   printUsageAndExit();
 }
 
-const isMain = (() => {
-  try { return !!process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href; }
-  catch { return false; }
-})();
+const isMain = !!process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 
 if (isMain) {
   main(process.argv.slice(2)).catch((error) => {

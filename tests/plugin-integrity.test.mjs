@@ -2,13 +2,22 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 import {
   OFFLINE_CHANNEL_PLUGIN_SPECS,
   PluginIntegrityError,
   parsePackageSpec,
   verifyPluginIntegrity,
 } from '../portable/lib/plugin-integrity.mjs';
+
+const REPO = dirname(dirname(fileURLToPath(import.meta.url)));
+const CLI = join(REPO, 'portable', 'lib', 'plugin-integrity.mjs');
+
+function runCli(args) {
+  return spawnSync(process.execPath, [CLI, ...args], { encoding: 'utf8' });
+}
 
 async function withTempDir(fn) {
   const dir = await mkdtemp(join(tmpdir(), 'uclaw-plugin-integrity-'));
@@ -85,4 +94,24 @@ test('包规格解析不接受不完整 scoped 包或额外 @ 段', () => {
   assert.deepEqual(parsePackageSpec('@scope/plugin@1.0.0'), { name: '@scope/plugin', version: '1.0.0' });
   assert.throws(() => parsePackageSpec('@scope@1.0.0'), PluginIntegrityError);
   assert.throws(() => parsePackageSpec('@scope/plugin@1@extra'), PluginIntegrityError);
+});
+
+test('CLI 输出固定的四行离线插件规格', () => {
+  const result = runCli(['--print-offline-channel-specs']);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(result.stdout.trim().split(/\r?\n/), OFFLINE_CHANNEL_PLUGIN_SPECS);
+});
+
+test('CLI 对错误参数返回用法退出码 2', () => {
+  const result = runCli(['--not-a-real-argument']);
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /用法/);
+});
+
+test('CLI 对缺失的 staged 插件返回失败退出码与错误输出', async () => {
+  await withTempDir(async (dir) => {
+    const result = runCli(['--node-modules', join(dir, 'node_modules'), '--offline-channel-plugins']);
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /插件完整性校验失败.*缺少 package\.json/s);
+  });
 });
