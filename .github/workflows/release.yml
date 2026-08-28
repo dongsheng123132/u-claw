@@ -99,30 +99,28 @@ jobs:
           # main package (153MB total) and lets OpenClaw lazy-stage the
           # subset of bundled deps it actually needs at runtime.
 
-          # 5) Install QQ plugin
-          npm install @sliverp/qqbot@latest \
-            --registry="$mirror_npm" \
-            --ignore-scripts \
-            --no-audit \
-            --no-fund || true
-
-          # 5b) Pre-install China channel plugins (钉钉/飞书中国版/企业微信)
+          # 5) Pre-install every channel that the release notes promise works offline.
           # 借鉴自 BytePioneer-AI/openclaw-china 生态：这些是非官方主仓库插件，
           # 官方镜像默认不带 → U-Claw 离线预置 = 最大差异化价值。国内客户开箱即用，
           # 不用自己 npm install（很多客户机没法翻墙装非镜像包）。
           # 钉钉走 WebSocket 出站免公网 IP，是国内最易接入的渠道。
-          # 全部 || true：装不上不阻断发版（个别包偶发 404 时便携版仍可用 QQ；微信入口已降级待上游）。
-          for cn_pkg in \
-            "@openclaw-china/dingtalk" \
-            "@openclaw-china/feishu-china" \
-            "@openclaw-china/wecom" \
-            "@openclaw-china/qqbot"; do
-            echo "Installing China channel plugin: $cn_pkg"
-            npm install "${cn_pkg}@latest" \
+          # 必须显式 --prefix 到 stage 的 core_dir：上面已经 cd 回 workspace，裸 npm
+          # install 会把包写进 runner 的仓库根，zip 产物里根本没有。任何一个装不上都
+          # 直接失败，不能把「离线预装」的空承诺发给客户。
+          channel_packages=(
+            "@sliverp/qqbot"
+            "@openclaw-china/dingtalk"
+            "@openclaw-china/feishu-china"
+            "@openclaw-china/wecom"
+            "@openclaw-china/qqbot"
+          )
+          for channel_pkg in "${channel_packages[@]}"; do
+            echo "Installing offline channel plugin into staged core: $channel_pkg"
+            npm --prefix "$core_dir" install "${channel_pkg}@latest" \
               --registry="$mirror_npm" \
               --ignore-scripts \
               --no-audit \
-              --no-fund || echo "WARN: $cn_pkg install failed, skipping (便携版仍可用其它渠道)"
+              --no-fund
           done
 
           # 6) Copy China-optimized skills if present
@@ -134,32 +132,6 @@ jobs:
               [ ! -d "$skills_target/$skill_name" ] && cp -R "$skill_dir" "$skills_target/$skill_name"
             done
           fi
-
-          # 6b) Install WeChat (Weixin) plugin into app/extensions/openclaw-weixin
-          # 官方 npm 包 @tencent-weixin/openclaw-weixin 自带 dist/index.js(发布时已编译,无需 build)。
-          # config-server/server.js 把 app/extensions/openclaw-weixin 当作插件源,扫码登录后整目录
-          # copy 到 ~/.openclaw/extensions/。它硬要求插件目录内 node_modules/qrcode-terminal 存在
-          # (server.js:52),而 npm 会把该依赖提升到顶层,故下面显式 copy 进插件的 node_modules。
-          wx_tmp="$(mktemp -d)"
-          (
-            cd "$wx_tmp"
-            echo '{"name":"wx-tmp","version":"1.0.0","private":true}' > package.json
-            npm install @tencent-weixin/openclaw-weixin@latest \
-              --registry="$mirror_npm" --no-audit --no-fund
-          )
-          wx_pkg="$wx_tmp/node_modules/@tencent-weixin/openclaw-weixin"
-          if [ -f "$wx_pkg/dist/index.js" ] && [ -f "$wx_pkg/openclaw.plugin.json" ]; then
-            wx_dest="$app_dir/extensions/openclaw-weixin"
-            mkdir -p "$wx_dest"
-            cp -R "$wx_pkg/." "$wx_dest/"
-            # 把 qrcode-terminal(被 npm 提升到顶层)放进插件自己的 node_modules
-            mkdir -p "$wx_dest/node_modules"
-            cp -R "$wx_tmp/node_modules/qrcode-terminal" "$wx_dest/node_modules/qrcode-terminal"
-            echo "WeChat plugin installed: $(du -sm "$wx_dest" | cut -f1) MB"
-          else
-            echo "WARN: WeChat plugin install failed, skipping (dist/index.js or openclaw.plugin.json missing)"
-          fi
-          rm -rf "$wx_tmp"
 
           # 7) Belt-and-suspenders: even though we don't pre-install bundled
           # deps, openclaw's own dependencies might still pull large native
@@ -227,6 +199,33 @@ jobs:
             }
             console.log(`✅ ${ver} 满足 ${range}`);
           ' "$node_version" "$engines"
+
+      - name: Verify every promised offline channel is in the staged bundle
+        run: |
+          tag_name="${GITHUB_REF_NAME:-${{ github.event.inputs.tag }}}"
+          stage_dir="$(pwd)/dist/u-claw-portable-windows-${tag_name}"
+          core_dir="$stage_dir/app/core"
+          channel_packages=(
+            "@sliverp/qqbot"
+            "@openclaw-china/dingtalk"
+            "@openclaw-china/feishu-china"
+            "@openclaw-china/wecom"
+            "@openclaw-china/qqbot"
+          )
+
+          for channel_pkg in "${channel_packages[@]}"; do
+            package_json="$core_dir/node_modules/$channel_pkg/package.json"
+            if [ ! -f "$package_json" ]; then
+              echo "::error::离线预装渠道缺失：$channel_pkg（期望在 $package_json）"
+              exit 1
+            fi
+            installed_name=$(node -p "JSON.parse(require('fs').readFileSync('$package_json','utf8')).name")
+            if [ "$installed_name" != "$channel_pkg" ]; then
+              echo "::error::离线预装渠道 package.json 名称不匹配：期望 $channel_pkg，实际 $installed_name"
+              exit 1
+            fi
+            echo "✅ staged offline channel: $installed_name"
+          done
 
       - name: Run test suite (含 Node/engines 一致性守卫)
         run: node --test "tests/*.test.mjs"
@@ -378,7 +377,7 @@ jobs:
 
             - 打开 Config 选模型、填入自己的 API Key 即可使用，支持 DeepSeek / 通义 / Claude / GPT 等国内外大模型
             - 想用「虾盘云」中转站（一个 Key 调用国内外全部模型、免翻墙）：先到 https://cloud.u-claw.org 注册并创建 Key
-            - **聊天渠道开箱即用**：便携版已离线预装 QQ / 钉钉 / 飞书 / 企业微信 插件，无需自己 npm 安装；**「个人微信」入口暂不可用**（上游插件兼容问题，等待官方修复，修复后随版本更新自动恢复）
+            - **聊天渠道开箱即用**：便携版已离线预装 QQ / qqbot / 钉钉 / 飞书中国版 / 企业微信插件，无需自己 npm 安装；**「个人微信」入口暂不可用**（上游插件兼容问题，等待官方修复，修复后随版本更新自动恢复）
             - OpenClaw runtime: `${{ steps.openclaw_version.outputs.version }}`
 
             ### 下载
