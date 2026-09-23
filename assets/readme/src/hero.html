@@ -1,0 +1,38 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><link rel="stylesheet" href="base.css">
+<style>
+body { height: 640px; }
+.left { position: absolute; left: 72px; top: 0; bottom: 0; width: 520px; display: flex; flex-direction: column; justify-content: center; }
+.badge { align-self: flex-start; font-size: 13px; letter-spacing: 2px; color: #ffb08f; padding: 6px 14px;
+  border: 1px solid rgba(255,107,53,.4); border-radius: 999px; background: rgba(255,107,53,.08); margin-bottom: 26px; }
+h1 { font-size: 76px; line-height: 1.05; font-weight: 800; letter-spacing: -1px; }
+h1 .zh { font-size: 64px; margin-left: 12px; }
+h2 { font-size: 30px; font-weight: 700; margin-top: 20px; }
+p.desc { font-size: 16px; max-width: 470px; line-height: 1.7; margin-top: 12px; }
+.chips { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 28px; }
+.foot { margin-top: 30px; font-size: 14px; color: #6f7a8a; letter-spacing: .5px; }
+.win { position: absolute; right: 56px; top: 56px; width: 620px; border-radius: 14px; overflow: hidden;
+  border: 1px solid #2c3342; box-shadow: 0 30px 80px rgba(0,0,0,.6), 0 0 0 1px rgba(255,107,53,.08); background: #0a0a0a; }
+.bar { height: 34px; background: #171b23; display: flex; align-items: center; gap: 7px; padding: 0 14px; border-bottom: 1px solid #252b36; }
+.bar i { width: 11px; height: 11px; border-radius: 50%; background: #3a4150; display: block; }
+.bar span { margin-left: 12px; font-size: 12px; color: #7d8898; font-family: Consolas, monospace; }
+.win .shot { height: 494px; overflow: hidden; }
+.win img { display: block; width: 100%; }
+</style></head><body><div class="glow"></div>
+<div class="left">
+  <div class="badge">OPEN SOURCE · MIT</div>
+  <h1>U-Claw<span class="zh accent">虾盘</span></h1>
+  <h2>把 AI 工作空间装进 U 盘</h2>
+  <p class="desc muted">插上任意电脑，双击启动。模型配置、记忆、技能和会话都跟着 U&nbsp;盘走，不绑设备、不上传数据。</p>
+  <div class="chips">
+    <span class="chip"><span class="dot"></span>Windows 免部署</span>
+    <span class="chip"><span class="dot"></span>macOS</span>
+    <span class="chip"><span class="dot"></span>可启动 Linux U 盘</span>
+    
+  </div>
+  <div class="foot">基于 OpenClaw · Local-first · No device lock</div>
+</div>
+<div class="win">
+  <div class="bar"><i></i><i></i><i></i><span>U-Claw · Config.html（真实界面）</span></div>
+  <div class="shot"><img src="../config-ui.png"></div>
+</div>
+</body></html>

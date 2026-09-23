@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/readme/hero-image2.png" alt="U-Claw：随身携带的 AI 工作空间" width="100%" />
+  <img src="assets/readme/hero.png" alt="U-Claw 虾盘：把 AI 工作空间装进 U 盘" width="100%" />
 </p>
 
 <h1 align="center">U-Claw（虾盘）</h1>
@@ -27,6 +27,8 @@
 
 > 📺 图文教程：[docs/快速上手.md](docs/快速上手.md)（含真实界面截图，5 步从插 U 盘到开始对话）
 
+<p align="center"><img src="assets/readme/how-it-works.png" alt="下载 → 双击启动 → 选模型填 Key → 开始工作" width="100%" /></p>
+
 1. 从 [Releases](https://github.com/dongsheng123132/u-claw/releases) 下载 Windows 便携版，解压到 U 盘后双击 `Windows-Start.bat`。
 2. 或克隆仓库，在 `portable/` 运行 `bash setup.sh`，下载 Node.js 与 OpenClaw。
 3. 首次启动在本地配置模型 Key；配置只保存在 U 盘的 `data/.openclaw/openclaw.json`。
@@ -38,6 +40,30 @@
 | 多种使用方式 | 便携 U 盘、在线一键安装、可启动 Linux U 盘各自独立。 |
 
 *平台支持：Windows ✅（免部署完整包）· macOS ✅ · 可启动 Linux U盘 ✅ —— 详见下方平台支持表。*
+
+## 真实界面
+
+首次启动自动打开本地配置页，三步配好（以下均为真实截图）：
+
+<table>
+<tr>
+<td width="33%"><img src="docs/img/config-step1.png" alt="选择模型" /></td>
+<td width="33%"><img src="docs/img/config-step2.png" alt="填写 API Key" /></td>
+<td width="33%"><img src="docs/img/config-step3.png" alt="接入聊天渠道" /></td>
+</tr>
+<tr>
+<td align="center">① 选模型</td>
+<td align="center">② 填 Key</td>
+<td align="center">③ 接渠道（可跳过）</td>
+</tr>
+</table>
+
+**SkillHub 技能市场**：随盘附带的本地页面，浏览 ClawHub 上的技能，按分类找、看安装量。
+
+<p align="center"><img src="assets/readme/skillhub-ui.png" alt="U-Claw SkillHub 技能市场" width="100%" /></p>
+
+<p align="center"><img src="assets/readme/ecosystem.png" alt="运行平台、AI 模型与聊天渠道" width="100%" /></p>
+
 
 > [!TIP]
 > ### 👑 同作者新品：U-King · AI 装机管家
@@ -188,6 +214,8 @@ U-Claw/                          ← 整个拷到 U 盘
 |------|------|------|
 | QQ | ✅ 已预装 | 输入 AppID + Secret 即可 |
 | 飞书 | ✅ 内置 | 企业首选 |
+| 钉钉 | ✅ 配置页可填 | WebSocket 接入，免公网 IP |
+| 企业微信 | ✅ 配置页可填 | 企业微信机器人 |
 | Telegram | ✅ 内置 | 海外推荐 |
 | WhatsApp | ✅ 内置 | Baileys 协议 |
 | Discord | ✅ 内置 | — |

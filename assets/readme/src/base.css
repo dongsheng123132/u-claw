@@ -1,0 +1,13 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 1280px; background: #0b0d12; color: #e9edf3;
+  font-family: "Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", system-ui, sans-serif; }
+body { position: relative; overflow: hidden; }
+.glow { position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(600px 400px at 85% 20%, rgba(255,107,53,.16), transparent 70%),
+              radial-gradient(500px 380px at 5% 90%, rgba(72,120,255,.10), transparent 70%); }
+.accent { color: #ff6b35; }
+.muted { color: #8b95a5; }
+.card { background: #141820; border: 1px solid #262c38; border-radius: 16px; position: relative; }
+.chip { display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px; border-radius: 999px;
+  background: #161b24; border: 1px solid #2a3140; font-size: 15px; color: #cfd6e0; white-space: nowrap; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: #ff6b35; }
