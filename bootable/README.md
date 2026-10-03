@@ -360,7 +360,7 @@ bootable/
 
 - **Ventoy**: 开源引导管理器，ISO/WIM/VHD 直接启动，更新 ISO 不用重新格式化
 - **Persistence**: Ventoy persistence 插件 + `casper-rw` 标签 ext4 镜像
-- **Node.js**: v22.14.0 LTS，npmmirror.com（国内）或 nodejs.org
+- **Node.js**: 版本以 [安装脚本](linux-setup/setup-openclaw.sh) 中的 `NODE_VERSION` 为准，npmmirror.com（国内）或 nodejs.org
 - **OpenClaw**: npm latest，安装到 `/opt/u-claw/`
 - **完全独立**: 不引用仓库内 `portable/`、`u-claw-app/`、`website/` 的任何文件
 
