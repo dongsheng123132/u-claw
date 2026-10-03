@@ -489,12 +489,8 @@ function setupStep2() {
             <a href="${buyLink.href}" target="_blank">🔑 ${name} — ${buyLink.dataset.actionLabel || '获取 API Key'}</a>
         `;
     }
-    // Add common alternatives
-    linksDiv.innerHTML += `
-        <a href="https://platform.minimaxi.com/" target="_blank">🔑 MiniMax — 国内推荐，注册送额度</a>
-        <a href="https://open.bigmodel.cn/" target="_blank">🔑 智谱 GLM — 有免费额度</a>
-        <a href="https://cloud.siliconflow.cn/" target="_blank">🔑 硅基流动 — 多模型聚合，便宜</a>
-    `;
+    // 只展示所选平台的入口；自定义和本地模型不插入其他平台推荐。
+    document.getElementById('buyInfo').style.display = !selectedLocal && buyLink ? 'block' : 'none';
 }
 
 // --- Toggle password ---
