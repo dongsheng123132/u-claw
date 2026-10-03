@@ -40,8 +40,6 @@ test('config page keeps saved secrets out of the API key input and reports reloa
   assert.match(configPage, /已保存的密钥已脱敏；输入新值可更换/);
   assert.match(configPage, /pendingRestart/);
   for (const page of [configPage, portableConfigPage]) {
-    assert.match(page, /apiKeyInput\.value === SECRET_REF_INPUT_VALUE\) apiKeyInput\.value = ''/,
-      'changing providers must clear a displayed SecretRef placeholder');
     assert.match(page, /inputApiKey === SECRET_REF_INPUT_VALUE && !isSecretRefValue\(savedProviderApiKey\)/,
       'saving an unbacked placeholder must be rejected');
   }

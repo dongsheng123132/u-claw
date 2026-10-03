@@ -520,13 +520,16 @@ function selectCloudCard(card, p) {
     document.querySelectorAll('#step1 .model-card').forEach(function(c) { c.classList.remove('selected'); });
     card.classList.add('selected');
     var sel = card.querySelector('.card-model-select');
+    var providerChanged = selectedProvider !== p.id || selectedBase !== p.base;
     selectedProvider = p.id;
-    savedProviderApiKey = null;
-    savedProviderId = null;
     selectedBase = p.base;
     selectedModel = sel ? sel.value : (p.recommended || (p.models[0] || ''));
     var apiKeyInput = document.getElementById('apiKey');
-    if (apiKeyInput.value === SECRET_REF_INPUT_VALUE) apiKeyInput.value = '';
+    if (providerChanged) {
+        apiKeyInput.value = '';
+        savedProviderApiKey = null;
+        savedProviderId = null;
+    }
     selectedLocal = false;  // 点云端卡片 → 取消本地标记
     document.getElementById('nextStep1').disabled = false;
 }
@@ -1107,12 +1110,17 @@ async function discoverLocalModels() {
                 card.addEventListener('click', function() {
                     document.querySelectorAll('#step1 .model-card').forEach(function(c) { c.classList.remove('selected'); });
                     card.classList.add('selected');
+                    var providerChanged = selectedProvider !== p.provider || selectedBase !== p.base;
                     selectedProvider = p.provider;
                     selectedBase = p.base;
                     selectedModel = modelId;
                     selectedLocal = true;
                     var apiKeyInput = document.getElementById('apiKey');
-                    if (apiKeyInput.value === SECRET_REF_INPUT_VALUE) apiKeyInput.value = '';
+                    if (providerChanged) {
+                        apiKeyInput.value = '';
+                        savedProviderApiKey = null;
+                        savedProviderId = null;
+                    }
                     document.getElementById('nextStep1').disabled = false;
                 });
                 grid.appendChild(card);

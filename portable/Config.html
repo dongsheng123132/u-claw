@@ -432,13 +432,16 @@ document.querySelectorAll('#step1 .model-card').forEach(card => {
         if (e.target.closest('.buy-link')) return; // don't select when clicking buy link
         document.querySelectorAll('#step1 .model-card').forEach(c => c.classList.remove('selected'));
         card.classList.add('selected');
+        const providerChanged = selectedProvider !== card.dataset.provider || selectedBase !== card.dataset.base;
         selectedProvider = card.dataset.provider;
-        savedProviderApiKey = null;
-        savedProviderId = null;
         selectedBase = card.dataset.base;
         selectedModel = card.dataset.model;
         const apiKeyInput = document.getElementById('apiKey');
-        if (apiKeyInput.value === SECRET_REF_INPUT_VALUE) apiKeyInput.value = '';
+        if (providerChanged) {
+            apiKeyInput.value = '';
+            savedProviderApiKey = null;
+            savedProviderId = null;
+        }
         document.getElementById('nextStep1').disabled = false;
     });
 });
@@ -710,12 +713,17 @@ async function discoverLocalModels() {
                 card.addEventListener('click', () => {
                     document.querySelectorAll('.model-card').forEach(c => c.classList.remove('selected'));
                     card.classList.add('selected');
+                    const providerChanged = selectedProvider !== p.provider || selectedBase !== p.base;
                     selectedProvider = p.provider;
                     selectedBase = p.base;
                     selectedModel = modelId;
                     selectedLocal = true;
                     const apiKeyInput = document.getElementById('apiKey');
-                    if (apiKeyInput.value === SECRET_REF_INPUT_VALUE) apiKeyInput.value = '';
+                    if (providerChanged) {
+                        apiKeyInput.value = '';
+                        savedProviderApiKey = null;
+                        savedProviderId = null;
+                    }
                     document.getElementById('nextStep1').disabled = false;
                 });
                 grid.appendChild(card);
