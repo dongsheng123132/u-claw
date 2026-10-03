@@ -1239,9 +1239,15 @@ function walletCopyFallback(text, okMsg) {
         document.body.appendChild(ta);
         ta.focus();
         ta.select();
-        document.execCommand('copy');
+        // execCommand 返回 false 表示没复制成功，不能再报"已复制"（issue #68）
+        var copied = document.execCommand('copy') === true;
         document.body.removeChild(ta);
-        showToast(okMsg);
+        if (copied) {
+            showToast(okMsg);
+        } else {
+            showToast('复制失败，请在弹出的对话框里手动复制', true);
+            window.prompt('自动复制失败，请手动复制下面的内容（Ctrl+C）：', text);
+        }
     } catch (e) {
         showToast('复制失败，请手动选中密钥复制', true);
     }
