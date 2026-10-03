@@ -643,6 +643,20 @@ function fillApiKeyFromSaved(value) {
     input.value = isSecretRefValue(value) ? SECRET_REF_INPUT_VALUE : (value || '');
 }
 
+// 回填时按主模型 primary 选 provider（issue #69）；primary 指向的 provider 不在配置里才退回第一个（旧行为）
+function pickSavedProvider(cfg) {
+    var providers = cfg && cfg.models && cfg.models.providers;
+    if (!providers) return null;
+    var names = Object.keys(providers);
+    if (!names.length) return null;
+    var primary = cfg.agents && cfg.agents.defaults && cfg.agents.defaults.model && cfg.agents.defaults.model.primary;
+    var slash = typeof primary === 'string' ? primary.indexOf('/') : -1;
+    var primaryProvider = slash >= 0 ? primary.slice(0, slash) : '';
+    var modelId = slash >= 0 ? primary.slice(slash + 1) : '';
+    var providerName = Object.prototype.hasOwnProperty.call(providers, primaryProvider) ? primaryProvider : names[0];
+    return { providerName: providerName, modelId: modelId };
+}
+
 async function loadConfig() {
     try {
         const res = await fetch('/api/config');
@@ -660,14 +674,14 @@ async function loadConfig() {
 
         // Detect models.providers format
         if (cfg.models && cfg.models.providers) {
-            const providerName = Object.keys(cfg.models.providers)[0];
-            if (providerName) {
+            const picked = pickSavedProvider(cfg);
+            if (picked) {
+                const providerName = picked.providerName;
+                const modelId = picked.modelId;
                 const p = cfg.models.providers[providerName];
                 const catalogProviderId = providerName.endsWith('-api') ? providerName.slice(0, -4) : providerName;
                 // 同一 provider 可能有多张卡（如不同端点/模型），按 base+model 三元组精确匹配，
                 // 避免只按 provider 匹配时回填选错卡。
-                const primary = cfg.agents?.defaults?.model?.primary;
-                const modelId = typeof primary === 'string' && primary.includes('/') ? primary.slice(primary.indexOf('/') + 1) : '';
                 const card = Array.from(document.querySelectorAll('.model-card')).find(candidate =>
                     candidate.dataset.provider === catalogProviderId &&
                     candidate.dataset.base === (p.baseUrl || '') &&
