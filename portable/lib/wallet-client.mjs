@@ -450,6 +450,15 @@ async function doClaim(deps) {
       state = await settlePendingState(state, store, fetchImpl, verify, deps);
     }
     if (state.apiKey) {
+      // #66：钱包可能已落盘，但上一次 applyKey 写配置失败。重试应修复实际消费者，
+      // 不再 bind 新钱包；仍写不进去就由外层 catch 返回失败，不能假报成功。
+      // 未收尾的 pending 沿用原处理；已同步时不重写，保留用户自选模型和 provider 参数。
+      if (!state.pendingKey) {
+        const config = readConfigSafe(deps.configPath || defaultConfigPath());
+        if (config.models?.providers?.[CLOUD_PROVIDER_ID]?.apiKey !== state.apiKey) {
+          applyKeyToConfig(state.apiKey, deps);
+        }
+      }
       return { ok: true, apiKey: state.apiKey, walletId: state.walletId, alreadyClaimed: true };
     }
 
