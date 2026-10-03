@@ -4,6 +4,9 @@
 // 字段，把微信登录写入的 config.plugins.entries 冲没了。lib/merge-config.mjs 把它改成
 // "合并写入 + 原子落盘"：受管字段（models/agents/env/gateway/commands/meta）整体替换、
 // 支持删除；其余字段（plugins、未知顶层字段）原样保留磁盘版本。
+//
+// issue #67（渠道配置保存假成功）补充：channels 不是受管字段，之前渠道页 POST 的 channels 被
+// mergeConfig 静默丢弃而服务端仍回 {ok:true}。现在 channels 属于「请求带了才整体替换」一类。
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -17,6 +20,9 @@ import {
   saveConfigMerged,
   MANAGED_TOP_LEVEL_KEYS,
 } from '../portable/lib/merge-config.mjs';
+// 命名空间导入：REPLACE_IF_PRESENT_KEYS 在旧代码上不存在，用命名导入会让整个测试文件加载失败，
+// 而不是只让相关用例失败。
+import * as mergeConfigModule from '../portable/lib/merge-config.mjs';
 
 function withTempDir(fn) {
   const dir = mkdtempSync(join(tmpdir(), 'uclaw-merge-config-test-'));
@@ -212,4 +218,137 @@ test('MANAGED_TOP_LEVEL_KEYS 与 Config.html 里前端双保险的清单保持�
   assert.ok(m, 'Config.html 里应有 MANAGED_CONFIG_KEYS 常量');
   const frontendKeys = m[1].split(',').map((s) => s.trim().replace(/^'|'$/g, '')).filter(Boolean);
   assert.deepEqual(new Set(frontendKeys), new Set(MANAGED_TOP_LEVEL_KEYS));
+});
+
+// ── issue #67：channels（请求带了才整体替换，没带保留磁盘版本）─────────────
+
+test('REPLACE_IF_PRESENT_KEYS: 只含 channels，且不与受管字段重叠（否则保存模型会清空渠道）', () => {
+  const replaceIfPresent = mergeConfigModule.REPLACE_IF_PRESENT_KEYS;
+  assert.deepEqual([...replaceIfPresent], ['channels']);
+  for (const key of replaceIfPresent) {
+    assert.ok(!MANAGED_TOP_LEVEL_KEYS.includes(key), `${key} 不能进 MANAGED_TOP_LEVEL_KEYS`);
+  }
+});
+
+test('mergeConfig: 请求带 channels 时整体替换磁盘 channels（新增写入、请求里删掉的渠道消失）——issue #67 回归', () => {
+  const existing = {
+    channels: {
+      qqbot: { enabled: true, appId: 'old-app', clientSecret: 'old-secret' },
+      feishu: { enabled: true, appId: 'fs-app', appSecret: 'fs-secret' },
+    },
+  };
+  // 渠道页 GET → 改 → POST：新增 telegram、去掉 feishu。
+  const incoming = {
+    channels: {
+      qqbot: { enabled: true, appId: 'old-app', clientSecret: 'old-secret' },
+      telegram: { enabled: true, botToken: 'tg-token', dmPolicy: 'pairing' },
+    },
+  };
+
+  const merged = mergeConfig(existing, incoming);
+
+  assert.deepEqual(merged.channels, incoming.channels, 'channels 应以本次请求为准整体替换');
+  assert.ok('telegram' in merged.channels, '新增的 telegram 必须写进去');
+  assert.ok(!('feishu' in merged.channels), '请求里删掉的 feishu 不能被合并救回');
+});
+
+test('mergeConfig: 磁盘没有 channels、请求带 channels 时也会写入', () => {
+  const incoming = { channels: { telegram: { enabled: true, botToken: 'tg-token' } } };
+  const merged = mergeConfig({ models: { providers: {} } }, incoming);
+  assert.deepEqual(merged.channels, incoming.channels);
+});
+
+test('mergeConfig: 请求不带 channels（保存模型）时，磁盘 channels 原样保留', () => {
+  const existing = {
+    channels: { telegram: { enabled: true, botToken: 'tg-token', dmPolicy: 'pairing' } },
+    models: { providers: { old: {} } },
+  };
+  const incoming = {
+    models: { providers: { minimax: {} } },
+    agents: { defaults: { model: { primary: 'minimax/MiniMax-M3' } } },
+  };
+
+  const merged = mergeConfig(existing, incoming);
+
+  assert.deepEqual(merged.channels, existing.channels, '模型页不带 channels，不能把渠道冲掉');
+  assert.deepEqual(merged.models, incoming.models);
+});
+
+test('mergeConfig: 请求里的 plugins 仍然被无视（只有 channels 享受新规则）', () => {
+  const existing = {
+    plugins: { entries: { 'openclaw-weixin': { enabled: true } } },
+    channels: { qqbot: { enabled: true } },
+  };
+  const incoming = {
+    plugins: { entries: { hacked: { enabled: true } } },
+    someFutureField: { x: 1 },
+    channels: { telegram: { enabled: true } },
+  };
+
+  const merged = mergeConfig(existing, incoming);
+
+  assert.deepEqual(merged.plugins, existing.plugins, '请求里的 plugins 必须被无视，磁盘版本胜出');
+  assert.ok(!('someFutureField' in merged), '请求里其它未知顶层字段仍被无视');
+  assert.deepEqual(merged.channels, incoming.channels);
+});
+
+test('mergeConfig: 请求里的 channels 不是对象（null / 字符串 / 数组）时，保留磁盘 channels', () => {
+  const existing = { channels: { telegram: { enabled: true, botToken: 'tg-token' } } };
+  for (const bad of [null, 'x', ['telegram'], 42, true]) {
+    const merged = mergeConfig(existing, { channels: bad });
+    assert.deepEqual(
+      merged.channels,
+      existing.channels,
+      `incoming.channels=${JSON.stringify(bad)} 时应保留磁盘版本`
+    );
+  }
+});
+
+test('mergeConfig: 替换 channels 不改动入参，且 gateway 保底 / agent 清除照常生效', () => {
+  const existing = { channels: { a: { enabled: true } }, agent: { legacy: true } };
+  const incoming = { channels: { b: { enabled: true } } };
+  const existingSnapshot = JSON.parse(JSON.stringify(existing));
+
+  const merged = mergeConfig(existing, incoming);
+
+  assert.deepEqual(existing, existingSnapshot, 'existing 不应被改动');
+  assert.deepEqual(merged.channels, { b: { enabled: true } });
+  assert.ok(!('agent' in merged));
+  assert.deepEqual(merged.gateway, { mode: 'local', auth: { mode: 'token', token: 'uclaw' } });
+});
+
+test('saveConfigMerged: 端到端——渠道页 GET→加 channels→POST，channels 落盘且 plugins / models 完好（issue #67）', () => {
+  withTempDir((dir) => {
+    const p = join(dir, 'openclaw.json');
+    const disk = {
+      gateway: { mode: 'local', auth: { mode: 'token', token: 'uclaw' } },
+      models: { mode: 'merge', providers: { minimax: { baseUrl: 'https://minimax' } } },
+      agents: { defaults: { model: { primary: 'minimax/MiniMax-M3' } } },
+      plugins: { entries: { 'openclaw-weixin': { enabled: true } } },
+    };
+    writeFileSync(p, JSON.stringify(disk));
+
+    // 模拟渠道页：GET 整份配置，加上 channels 再 POST 回来。
+    const incoming = JSON.parse(readFileSync(p, 'utf8'));
+    incoming.channels = {
+      telegram: { enabled: true, botToken: 'tg-token', dmPolicy: 'pairing' },
+    };
+    saveConfigMerged(p, incoming);
+
+    const onDisk = JSON.parse(readFileSync(p, 'utf8'));
+    assert.deepEqual(onDisk.channels, incoming.channels, 'channels 必须真的落盘');
+    assert.deepEqual(onDisk.plugins, disk.plugins, 'plugins 必须完好');
+    assert.deepEqual(onDisk.models, disk.models, 'models 必须完好');
+    assert.deepEqual(onDisk.agents, disk.agents, 'agents 必须完好');
+
+    // 随后保存一次模型（不带 channels）：渠道不能被冲掉。
+    saveConfigMerged(p, {
+      gateway: disk.gateway,
+      models: { mode: 'merge', providers: { other: {} } },
+      agents: disk.agents,
+    });
+    const afterModelSave = JSON.parse(readFileSync(p, 'utf8'));
+    assert.deepEqual(afterModelSave.channels, incoming.channels, '保存模型后 channels 仍在');
+    assert.deepEqual(afterModelSave.plugins, disk.plugins);
+  });
 });
