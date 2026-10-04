@@ -113,7 +113,7 @@ for /f "usebackq tokens=*" %%p in (`powershell -NoProfile -Command "$p=Get-CimIn
 set "INSTANCE_STATUS=unavailable"
 set "INSTANCE_PORT="
 if defined UCLAW_LAUNCHER_PID (
-    for /f "usebackq tokens=1,* delims==" %%a in (`"%NODE_BIN%" "%UCLAW_DIR%lib\portable-instance-lock.mjs" acquire "%INSTANCE_ROOT%" "%STATE_DIR%" "%UCLAW_LAUNCHER_PID%" 2^>nul`) do (
+    for /f "usebackq tokens=1,* delims==" %%a in (`""%NODE_BIN%" "%UCLAW_DIR%lib\portable-instance-lock.mjs" acquire "%INSTANCE_ROOT%" "%STATE_DIR%" "%UCLAW_LAUNCHER_PID%" 2^>nul"`) do (
         if "%%a"=="UCLAW_INSTANCE_STATUS" set "INSTANCE_STATUS=%%b"
         if "%%a"=="UCLAW_INSTANCE_PORT" set "INSTANCE_PORT=%%b"
     )
