@@ -205,3 +205,40 @@ test('/api/gateway-check rejects a bad port parameter instead of throwing', asyn
     rmSync(stateDir, { recursive: true, force: true });
   }
 });
+
+
+test('startup documents accept launcher query strings', async () => {
+  const stateDir = fixtureStateDir('uclaw-startup-route-');
+  try {
+    await withServer(stateDir, async port => {
+      for (const route of ['/startup?port=18789&configured=0', '/?gatewayPort=18789']) {
+        const response = await fetch(`http://127.0.0.1:${port}${route}`);
+        assert.equal(response.status, 200);
+        assert.match(response.headers.get('content-type'), /text\/html/);
+      }
+    });
+  } finally { rmSync(stateDir, { recursive: true, force: true }); }
+});
+
+test('gateway-check distinguishes an identifiable gateway from a ready gateway', async () => {
+  const stateDir = fixtureStateDir('uclaw-ready-');
+  const { createServer } = await import('node:http');
+  let status = 200, body;
+  const fixture = createServer((req, res) => { res.writeHead(status, {'Content-Type':'application/json'}); res.end(JSON.stringify(body)); });
+  await new Promise(resolve => fixture.listen(0, '127.0.0.1', resolve));
+  try {
+    await withServer(stateDir, async port => {
+      for (const [responseStatus, ready, failing, expected] of [
+        [200, false, [], false], [200, true, ['initializing'], false],
+        [503, true, [], false], [200, true, [], true],
+      ]) {
+        status = responseStatus; body = {ready, failing, uptimeMs:1234, eventLoop:{degraded:false}};
+        const response = await fetch(`http://127.0.0.1:${port}/api/gateway-check?port=${fixture.address().port}`);
+        assert.equal((await response.json()).ready, expected);
+      }
+    });
+  } finally {
+    await new Promise(resolve => fixture.close(resolve));
+    rmSync(stateDir, { recursive: true, force: true });
+  }
+});

@@ -97,11 +97,10 @@ test('Windows startup only auto-opens Config Center when no model is configured 
     /lib\\check-model-configured\.mjs/,
     'should consult the model-configured helper before deciding whether to auto-open Config Center',
   );
-  assert.match(
-    script,
-    /if "%MODEL_CONFIGURED%"=="1" \([\s\S]*\) else \([\s\S]*start "" "?http:\/\/127\.0\.0\.1:%CONFIG_PORT%\/[\s\S]*\)/,
-    'Config Center should only auto-open in the "not configured" branch',
-  );
+  assert.match(script, /\/startup\?port=%PORT%&token=uclaw&configured=%MODEL_CONFIGURED%/,
+    'one startup page receives the configuration state and selects the destination after readiness');
+  assert.doesNotMatch(script, /start "" "?http:\/\/127\.0\.0\.1:%CONFIG_PORT%\/\?gatewayPort=/,
+    'first run must not open configuration while gateway initialization is still writing');
 });
 
 test('Windows launcher publishes the actually-selected gateway port to runtime.json (v2.2.1)', () => {
