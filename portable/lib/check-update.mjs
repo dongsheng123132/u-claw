@@ -4,7 +4,7 @@
 //   1. 读取 OPENCLAW_VERSION 文件得到当前版本号
 //   2. 5s timeout 拉 OSS 上的 latest.json
 //   3. 比对版本号，有新版就写 update-available.json 到 STATE_DIR
-//   4. Welcome.html / Config.html 启动时读这个文件，有就显示提示条
+//   4. config-server 的 GET /api/update-status 读这个文件并原样返回（桌面壳据此显示提示）
 //
 // 设计原则：
 //   - 静默失败：网络坏、OSS 挂、json 格式错、本地版本号缺失，都不能影响 OpenClaw 启动

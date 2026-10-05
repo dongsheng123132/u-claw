@@ -1,9 +1,9 @@
 {
   "_comment": [
-    "模型目录的单一真相源。改这里，然后跑 `node lib/sync-models.mjs` 同步到各配置页。",
+    "模型目录的单一真相源。改这里，然后跑 `node lib/sync-models.mjs` 生成配置中心用的 models-catalog.json。",
     "tests/models-catalog.test.mjs 会校验各处没有漂移，漂移了测试直接失败。",
     "",
-    "为什么要有这个文件：模型 ID 原本硬编码在 Config.html、config-server/public/index.html、",
+    "为什么要有这个文件：模型 ID 原本硬编码在 Config.html（已移除）、config-server/public/index.html、",
     "install.ps1、install.sh 等多份副本里，各家模型名每几个月换一代，副本必然漂移。",
     "2026-07 就因为 DeepSeek 停用 deepseek-chat 导致客户机每条消息都 400（见 pc-5376）。",
     "",

@@ -2,7 +2,7 @@
 
 > 适用对象：`portable/config-server/server.js`（Node.js `http`，零业务中间件）。
 >
-> 本文档是 **U-King 桌面壳**（第二个调用方，自带 `Config.html` 是第一个）与该服务的对外契约。
+> 本文档是 **U-King 桌面壳**（第二个调用方，config-server 自带的配置中心页面 `public/index.html` 是第一个）与该服务的对外契约。
 > 所有字段名、状态码、CORS 行为、路径参数均与 `server.js` 实际代码逐条核对。
 > 代码优先；如发现本文与代码不一致，以 `server.js` 为准并提 issue。
 
@@ -326,7 +326,7 @@ if (req.method === 'OPTIONS') { res.writeHead(200); res.end(); return; }
 | 谁负责退出 | 进程被父脚本终止时自然退出；`server.js` 本身没有 SIGTERM 处理、不会优雅清理。 |
 | 端口占用行为 | `EADDRINUSE` 时**向下**顺延（`PORT_RANGE_FLOOR = 18778`）。注意 Windows 双绑怪癖：bind 已占用端口时回调先返回 `listening=true`，`EADDRINUSE` 后到——`setTimeout(..., 250)` 推迟横幅/runtime 写入就是为了躲这个窗口。 |
 | 端口复用（runtime.json） | 每次成功 listen 后写 `runtime.json`，**不是原子写**（普通 `writeFileSync`，与 `/api/config` 不同）。两个 server 进程同时写可能截断，但 `GET /api/runtime` 对损坏文件做了 `try/catch` 兜底。 |
-| 桌面壳 vs Config.html 共存 | **不冲突**：两者都是 127.0.0.1 的客户端，谁先抢到端口谁就是主，runtime.json 会随后写好新端口。桌面壳应优先用 `/api/runtime` 而不是猜端口。 |
+| 桌面壳 vs 配置中心自带页面（`public/index.html`）共存 | **不冲突**：两者都是 127.0.0.1 的客户端，谁先抢到端口谁就是主，runtime.json 会随后写好新端口。桌面壳应优先用 `/api/runtime` 而不是猜端口。 |
 | CORS 与桌面壳 | 桌面壳走 `http://127.0.0.1:<port>` 在白名单内；若用 Electron / Tauri webview 默认 Origin 通常就是 `http://127.0.0.1`，预检会成功。如果桌面壳改了 user-agent 或代理导致 Origin 不是 127.0.0.1，需要确认 webview 行为。 |
 | 重启/升级时的 reload | `POST /api/config` 成功后调 `openclaw.mjs secrets reload`；连接错返回 `{pendingRestart:true}` 表示需要重启 gateway 才生效。桌面壳触发相关保存后应主动建议用户重启 gateway。 |
 

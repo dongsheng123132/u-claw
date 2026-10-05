@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const placeholder = '（已加密保存，无需重填）';
-const targets = ['portable/Config.html', 'portable/config-server/public/index.html'];
+const targets = ['portable/config-server/public/index.html'];
 
 function harness(file, nextProvider, nextBase, local = false) {
   const source = readFileSync(join(root, file), 'utf8');
@@ -34,14 +34,9 @@ function harness(file, nextProvider, nextBase, local = false) {
     const match = localSource.match(/card\.addEventListener\('click', ([\s\S]*?)\);\s*grid\.appendChild\(card\)/);
     assert.ok(match, 'local card handler must be present');
     vm.runInContext(`globalThis.invoke = ${match[1]}`, ctx);
-  } else if (file.endsWith('index.html')) {
+  } else {
     vm.runInContext(source.slice(source.indexOf('function selectCloudCard'), source.indexOf('async function loadCatalog')), ctx);
     ctx.invoke = () => ctx.selectCloudCard(card, ctx.p);
-  } else {
-    const start = source.indexOf("document.querySelectorAll('#step1 .model-card').forEach");
-    const end = source.indexOf("document.getElementById('nextStep1').addEventListener", start);
-    vm.runInContext(source.slice(start, end), ctx);
-    ctx.invoke = () => card.click({ target: { closest() { return null; } } });
   }
   return { ctx, input, saved, click: () => ctx.invoke() };
 }

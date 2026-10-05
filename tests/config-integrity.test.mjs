@@ -180,14 +180,9 @@ test('official provider guard: catalog 与快照都不可用时 fail-open，不�
   });
 });
 
-test('config pages restore saved baseUrl and primary model after selecting a card', () => {
-  const pages = [
-    readFileSync(join(repoRoot, 'portable', 'config-server', 'public', 'index.html'), 'utf8'),
-    readFileSync(join(repoRoot, 'portable', 'Config.html'), 'utf8'),
-  ];
-  for (const page of pages) {
-    assert.match(page, /selectedBase = p\.baseUrl \|\| selectedBase/);
-    assert.match(page, /primary.*cfg\.agents|cfg\.agents.*primary/s);
-    assert.match(page, /if \(modelId\) selectedModel = modelId/);
-  }
+test('config page restores saved baseUrl and primary model after selecting a card', () => {
+  const page = readFileSync(join(repoRoot, 'portable', 'config-server', 'public', 'index.html'), 'utf8');
+  assert.match(page, /selectedBase = p\.baseUrl \|\| selectedBase/);
+  assert.match(page, /primary.*cfg\.agents|cfg\.agents.*primary/s);
+  assert.match(page, /if \(modelId\) selectedModel = modelId/);
 });

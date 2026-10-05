@@ -2,7 +2,7 @@
 //
 // 背景（issue #58，微信扫码成功但 clawbot 不响应）：
 //   config-server 的 POST /api/config 曾经是整体覆盖写盘（fs.writeFileSync(CONFIG_PATH,
-//   JSON.stringify(config))），而 Config.html 的 buildOpenClawConfig() 每次保存模型配置时
+//   JSON.stringify(config))），而旧版配置页（Config.html，已移除）的 buildOpenClawConfig() 每次保存模型配置时
 //   只构造 gateway/commands/meta/models/agents 几个字段。用户先扫码连好微信（会往
 //   config.plugins.entries['openclaw-weixin'] 写 {enabled:true}），之后只要再回配置页保存
 //   一次模型，plugins 整段就被冲掉——UI 上没有任何报错，用户体感是"扫码明明成功了，为什么

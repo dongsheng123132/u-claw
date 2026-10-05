@@ -209,11 +209,6 @@ if [ ! -f "$CONFIG_PATH" ]; then
 CFGEOF
 fi
 
-# ---- Copy launch scripts ----
-for f in Config.html U-Claw.html; do
-    [ -f "$UCLAW_DIR/$f" ] && cp "$UCLAW_DIR/$f" "$INSTALL_TARGET/"
-done
-
 # ---- Create launch script ----
 cat > "$INSTALL_TARGET/start.command" << 'STARTEOF'
 #!/bin/bash

@@ -6,7 +6,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 // Issue #69: when the saved config has several providers (e.g. the wallet code adds
-// `uclaw-cloud` next to the user's own provider), the Config UIs used to take
+// `uclaw-cloud` next to the user's own provider), the Config UI used to take
 // Object.keys(providers)[0] as the provider but the model ID from
 // agents.defaults.model.primary ("<providerName>/<modelId>"). The two could disagree, so the
 // form showed one provider + key with another provider's model, and saving wrote a
@@ -15,7 +15,6 @@ import assert from 'node:assert/strict';
 const repoRoot = fileURLToPath(new URL('..', import.meta.url));
 const targets = [
   ['index.html', join(repoRoot, 'portable', 'config-server', 'public', 'index.html')],
-  ['Config.html', join(repoRoot, 'portable', 'Config.html')],
 ];
 
 // Returns the source text of `function <name>(` / `async function <name>(` including its
@@ -62,7 +61,7 @@ function hasFunction(source, name) {
 }
 
 // ---------------------------------------------------------------------------
-// Part A: the pure helper, in both pages
+// Part A: the pure helper
 // ---------------------------------------------------------------------------
 
 for (const [label, path] of targets) {
@@ -146,15 +145,8 @@ for (const [label, path] of targets) {
   });
 }
 
-test('pickSavedProvider source is identical in index.html and Config.html (drift guard)', () => {
-  const texts = targets.map(([, path]) =>
-    extractFunction(readFileSync(path, 'utf8'), 'pickSavedProvider').replace(/\r\n/g, '\n'),
-  );
-  assert.equal(texts[0], texts[1]);
-});
-
 // ---------------------------------------------------------------------------
-// Part B: the real loadConfig of each page, run against fake DOM / fetch
+// Part B: the real loadConfig of the page, run against fake DOM / fetch
 // ---------------------------------------------------------------------------
 
 async function runLoadConfig(source, cfg) {

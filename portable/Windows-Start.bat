@@ -167,7 +167,7 @@ if defined NO_PROXY (
 
 REM Async update check (non-blocking, 5s timeout, silent failure)
 REM Writes data\.openclaw\update-available.json if a newer version is on OSS.
-REM Welcome.html / Config.html read this file and show a banner.
+REM config-server serves this file via GET /api/update-status for the desktop shell.
 REM Version file lookup order: portable/OPENCLAW_VERSION (USB), then repo-root ../OPENCLAW_VERSION (dev)
 set "VERSION_FILE=%UCLAW_DIR%OPENCLAW_VERSION"
 if not exist "%VERSION_FILE%" set "VERSION_FILE=%UCLAW_DIR%..\OPENCLAW_VERSION"
@@ -226,7 +226,7 @@ REM reuses this exact instance instead of selecting 18790/18791.
 if defined UCLAW_LAUNCHER_PID "%NODE_BIN%" "%UCLAW_DIR%lib\portable-instance-lock.mjs" publish "%INSTANCE_ROOT%" "%STATE_DIR%" "%UCLAW_LAUNCHER_PID%" %PORT% >nul 2>&1
 
 REM Single source of truth for the actually-selected gateway port (v2.2.1).
-REM config-server / Config.html / U-Claw.html now read this instead of guessing
+REM config-server and the Config Center page it serves now read this instead of guessing
 REM configServerPort + 1 -- see lib/runtime-ports.mjs for why that guess broke
 REM on machines where 18789 was already taken by something else.
 "%NODE_BIN%" "%UCLAW_DIR%lib\runtime-ports.mjs" publish "%STATE_DIR%" gateway %PORT% >nul 2>&1
