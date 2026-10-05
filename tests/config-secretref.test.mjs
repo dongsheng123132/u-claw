@@ -23,11 +23,11 @@ test('config save stores API keys as SecretRef through OpenClaw secret store std
 test('incoming API key is replaced before merged config is written', () => {
   assert.match(server, /provider\.apiKey\s*=\s*await storeSecretRef\(/, 'provider apiKey must be replaced with a SecretRef');
   const executable = server.split('\n').filter((line) => !line.trimStart().startsWith('//')).join('\n');
-  assert.match(executable, /await moveIncomingSecretsToStore\(incoming\)[\s\S]*mergeConfig\(readConfigSafe\(CONFIG_PATH\), incoming\)[\s\S]*guardOfficialProvidersInMemory\(merged,[\s\S]*writeConfigAtomic\(CONFIG_PATH, merged\)/,
+  assert.match(executable, /await moveIncomingSecretsToStore\(incoming\)[\s\S]*mergeConfig\(readConfigSafe\(CONFIG_PATH\), incoming[,)][\s\S]*guardOfficialProvidersInMemory\(merged,[\s\S]*writeConfigAtomic\(CONFIG_PATH, merged\)/,
     'secret storage, merge, guard and atomic write must form one executable save chain');
   assert.doesNotMatch(server, /saveConfigMerged\(CONFIG_PATH,\s*JSON\.parse\(body\)\)/,
     'parsed incoming values must not be merged directly without secret handling');
-  assert.match(server, /mergeConfig\(readConfigSafe\(CONFIG_PATH\), incoming\)/,
+  assert.match(server, /mergeConfig\(readConfigSafe\(CONFIG_PATH\), incoming[,)]/,
     'non-sensitive configuration must continue using the normal merge writer');
 });
 

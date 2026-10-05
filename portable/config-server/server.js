@@ -377,7 +377,10 @@ const server = http.createServer((req, res) => {
                 throw err;
               }
               const { readConfigSafe, mergeConfig, writeConfigAtomic } = await import('../lib/merge-config.mjs');
-          const merged = mergeConfig(readConfigSafe(CONFIG_PATH), incoming);
+          // 配置中心一次只提交选中的那个 provider；虾盘云钱包写的 uclaw-cloud 不在请求里时
+          // 从磁盘原样保留（不经 moveIncomingSecretsToStore，保存不会因它失败）。请求点名它则以请求为准。
+          const { CLOUD_PROVIDER_ID } = await import('../lib/wallet-client.mjs');
+          const merged = mergeConfig(readConfigSafe(CONFIG_PATH), incoming, { keepProviders: [CLOUD_PROVIDER_ID] });
           try {
             const { guardOfficialProvidersInMemory } = await import('../lib/official-provider-guard.mjs');
             guardOfficialProvidersInMemory(merged, {

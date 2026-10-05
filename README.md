@@ -253,7 +253,7 @@ bash setup.sh
 ```
 
 **Q: 如何同时配置多个 AI 模型并切换？**
-启动 `Windows-Start.bat` / `Mac-Start.command` 后使用配置中心（首次启动自动打开，之后可从启动页进入）。它一次只配置一个模型服务（保存后作为主模型），再次保存会替换原有的模型配置。需要同时保留多个 provider（如 DeepSeek、Kimi、通义等）时，请用 OpenClaw 自带的 `openclaw configure`（双击 `OpenClaw-CLI.bat` / `Mac-OpenClaw-CLI.command` 打开命令行）或直接编辑 `data/.openclaw/openclaw.json`，之后在聊天界面左上角下拉菜单切换；此后不要再在配置中心保存模型，否则会覆盖 `models`。配置持久保存在 U 盘上。
+启动 `Windows-Start.bat` / `Mac-Start.command` 后使用配置中心（首次启动自动打开，之后可从启动页进入）。它一次只配置一个模型服务（保存后作为主模型），再次保存会替换原有的模型配置（虾盘云设备钱包写入的 `uclaw-cloud` 条目除外：只要本次保存没有点名它就会保留，所以切换模型服务不会丢掉已领取的额度）。需要同时保留多个 provider（如 DeepSeek、Kimi、通义等）时，请用 OpenClaw 自带的 `openclaw configure`（双击 `OpenClaw-CLI.bat` / `Mac-OpenClaw-CLI.command` 打开命令行）或直接编辑 `data/.openclaw/openclaw.json`，之后在聊天界面左上角下拉菜单切换；此后不要再在配置中心保存模型，否则会覆盖 `models`。配置持久保存在 U 盘上。
 
 **Q: U 盘安装后无法创建文件 / 写入失败？**
 先检查写保护、剩余空间和目录权限。仅在 Windows 使用时推荐 NTFS；exFAT 的完整兼容性仍在验证。不要把所有写入失败都归因于格式，先运行诊断工具并保存错误信息；需要格式化时请先备份数据。
@@ -530,7 +530,7 @@ bash setup.sh
 ```
 
 **Q: How do I use multiple AI models / providers?**
-Launch `Windows-Start.bat` / `Mac-Start.command` and use the Config Center (it opens automatically on first start; afterwards it is reachable from the startup page). It configures one model provider at a time (the saved one becomes the primary model); saving again replaces the previous model config. To keep several providers (DeepSeek, Kimi, Qwen, etc.), use OpenClaw's own `openclaw configure` (double-click `OpenClaw-CLI.bat` / `Mac-OpenClaw-CLI.command` to open a shell) or edit `data/.openclaw/openclaw.json` directly, then switch between models via the dropdown in the chat interface; do not save a model in the Config Center afterwards, or `models` will be overwritten. Config is saved persistently on the USB drive.
+Launch `Windows-Start.bat` / `Mac-Start.command` and use the Config Center (it opens automatically on first start; afterwards it is reachable from the startup page). It configures one model provider at a time (the saved one becomes the primary model); saving again replaces the previous model config, except the 虾盘云 wallet's `uclaw-cloud` entry, which is kept unless the save names it, so switching providers does not lose the claimed credit. To keep several providers (DeepSeek, Kimi, Qwen, etc.), use OpenClaw's own `openclaw configure` (double-click `OpenClaw-CLI.bat` / `Mac-OpenClaw-CLI.command` to open a shell) or edit `data/.openclaw/openclaw.json` directly, then switch between models via the dropdown in the chat interface; do not save a model in the Config Center afterwards, or `models` will be overwritten. Config is saved persistently on the USB drive.
 
 **Q: USB drive shows "cannot create file" / write errors?**
 Check write protection, free space, and directory permissions first. NTFS is recommended for Windows-only use; full exFAT compatibility is still being validated. Run diagnostics before assuming the filesystem is the cause, and back up your data before formatting.
