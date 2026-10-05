@@ -73,12 +73,16 @@ for (const file of targets) {
     assert.equal(h.input.value, '');
     assert.equal(h.ctx.savedProviderApiKey, null);
   });
-  test(`${file}: selecting a local model clears the cloud key`, () => {
-    const h = harness(file, 'ollama', 'http://127.0.0.1:11434/v1', true);
-    h.click();
-    assert.equal(h.input.value, '');
-    assert.equal(h.ctx.savedProviderApiKey, null);
-    assert.equal(h.ctx.savedProviderId, null);
-    assert.equal(h.ctx.selectedLocal, true);
-  });
+  // config-server/public/index.html no longer has local-model cards; only the legacy
+  // portable/Config.html still carries discoverLocalModels(), so only it is covered here.
+  if (file === 'portable/Config.html') {
+    test(`${file}: selecting a local model clears the cloud key`, () => {
+      const h = harness(file, 'ollama', 'http://127.0.0.1:11434/v1', true);
+      h.click();
+      assert.equal(h.input.value, '');
+      assert.equal(h.ctx.savedProviderApiKey, null);
+      assert.equal(h.ctx.savedProviderId, null);
+      assert.equal(h.ctx.selectedLocal, true);
+    });
+  }
 }

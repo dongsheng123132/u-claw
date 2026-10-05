@@ -234,13 +234,6 @@ details#advancedModelsBox[open] summary { border-bottom: 1px solid #333; margin-
                  填 Key 后点「拉取模型」可实时刷新该家最新模型列表。目录见同目录 models-catalog.json -->
         </div>
 
-        <!-- 本地模型自动发现（Ollama / LM Studio）-->
-        <div id="localModelsBox" style="display:none; margin-top:6px;">
-            <h3 style="color:#4caf50; font-size:0.95em; margin:12px 0 4px;">💻 检测到本机本地模型 <span class="tag free">离线·免费</span></h3>
-            <p class="desc" style="margin-bottom:10px;">无需 API Key，纯本地推理。点选即用：</p>
-            <div class="model-grid" id="localModelGrid"></div>
-        </div>
-
         <div class="btn-row">
             <button class="btn btn-primary" id="nextStep1" disabled>下一步 →</button>
         </div>
@@ -359,7 +352,6 @@ let selectedModel = '';
 var savedProviderApiKey = null;
 var savedProviderId = null;
 var SECRET_REF_INPUT_VALUE = '（已加密保存，无需重填）';
-let selectedLocal = false;  // 选中的是本地模型（Ollama/LM Studio）则免 Key
 
 // --- Model catalog: 渲染云端提供商卡片（每家一卡 + 卡内模型下拉） ---
 let CATALOG_PROVIDERS = [];   // models-catalog.json 里的目录
@@ -446,7 +438,6 @@ function selectCloudCard(card, p) {
         savedProviderApiKey = null;
         savedProviderId = null;
     }
-    selectedLocal = false;  // 点云端卡片 → 取消本地标记
     document.getElementById('nextStep1').disabled = false;
 }
 
@@ -462,12 +453,12 @@ async function loadCatalog() {
         CATALOG_PROVIDERS = list;
         renderCloudCards();
     } catch (e) {
-        // 目录加载失败时给最小兜底（保证页面永远可用，后续 discoverLocalModels/loadConfig 照常执行）
+        // 目录加载失败时给最小兜底（保证页面永远可用，后续 loadConfig 照常执行）
         CATALOG_PROVIDERS = [
             { id: 'uclaw-cloud', name: '虾盘云', tags: [{ cls: 'hot', text: '首选' }, { cls: 'cn', text: '国内' }, { cls: 'free', text: '有免费' }], desc: '一个 Key 通吃 30+ 模型，注册送额度', base: 'https://api.u-claw.org/v1', models: ['deepseek-v4-flash'], recommended: 'deepseek-v4-flash', link: 'https://u-claw.org/cloud.html', linkLabel: '注册 / 充值 / 获取 API Key' },
             { id: 'custom', name: '自定义', tags: [], desc: '填写任意 OpenAI 兼容 API 地址（OpenRouter、API2D、New API、One API 等）', base: '', models: [], recommended: '', link: '', linkLabel: '' }
         ];
-        try { renderCloudCards(); } catch (e2) { /* 渲染异常也不阻塞本地模型探测与配置回填 */ }
+        try { renderCloudCards(); } catch (e2) { /* 渲染异常也不阻塞配置回填 */ }
     }
 }
 
@@ -524,8 +515,7 @@ async function fetchProviderModels() {
 }
 
 // --- Model cards ---
-// 云端卡片的选中逻辑在 renderCloudCards()/selectCloudCard 里（含卡内下拉）；
-// 本地模型卡片在 discoverLocalModels() 里自绑定。
+// 云端卡片的选中逻辑在 renderCloudCards()/selectCloudCard 里（含卡内下拉）。
 
 document.getElementById('nextStep1').addEventListener('click', () => goStep(2));
 
@@ -545,17 +535,16 @@ const PROVIDER_NAMES = {
     'uclaw-cloud': '虾盘云', minimax: 'MiniMax', kimi: 'Kimi (月之暗面)', deepseek: 'DeepSeek',
     zai: '智谱 GLM', qwen: '通义千问', doubao: '豆包',
     openai: 'OpenAI', anthropic: 'Anthropic Claude', groq: 'Groq',
-    siliconflow: '硅基流动', custom: '自定义',
-    ollama: 'Ollama（本地）', lmstudio: 'LM Studio（本地）'
+    siliconflow: '硅基流动', custom: '自定义'
 };
 
 function setupStep2() {
     var isCustom = selectedProvider === 'custom';
     document.getElementById('customFields').style.display = isCustom ? 'block' : 'none';
 
-    // 模型下拉：优先已拉取的实时列表，否则用目录静态列表；本地模型和自定义不用下拉
+    // 模型下拉：优先已拉取的实时列表，否则用目录静态列表；自定义不用下拉
     var modelGroup = document.getElementById('modelSelect').closest('.form-group');
-    if (isCustom || selectedLocal) {
+    if (isCustom) {
         modelGroup.style.display = 'none';
     } else {
         modelGroup.style.display = 'block';
@@ -565,11 +554,8 @@ function setupStep2() {
     }
 
     var name = PROVIDER_NAMES[selectedProvider] || selectedProvider;
-    document.getElementById('step2desc').textContent = selectedLocal
-        ? name + ' 是本地模型，无需 API Key，直接点「保存并继续」即可'
-        : '请填写 ' + name + ' 的 API Key';
-    // 本地模型隐藏「获取/充值 Key」信息框
-    document.getElementById('buyInfo').style.display = selectedLocal ? 'none' : 'block';
+    document.getElementById('step2desc').textContent = '请填写 ' + name + ' 的 API Key';
+    document.getElementById('buyInfo').style.display = 'block';
 
     // 取当前点亮的卡片（选中态），同一 provider 多张卡时也不会选错
     var card = document.querySelector('#step1 .model-card.selected');
@@ -580,8 +566,8 @@ function setupStep2() {
         var action = buyLink.dataset.actionLabel || '获取 API Key';
         linksDiv.innerHTML = '<a href="' + buyLink.href + '" target="_blank">🔑 ' + name + ' — ' + action + '</a>';
     }
-    // 只展示所选平台的入口；自定义和本地模型不插入其他平台推荐。
-    document.getElementById('buyInfo').style.display = !selectedLocal && buyLink ? 'block' : 'none';
+    // 只展示所选平台的入口；自定义不插入其他平台推荐。
+    document.getElementById('buyInfo').style.display = buyLink ? 'block' : 'none';
 }
 
 // --- Toggle password ---
@@ -649,9 +635,7 @@ async function saveConfig() {
     if (inputApiKey === SECRET_REF_INPUT_VALUE && !isSecretRefValue(savedProviderApiKey)) {
         showToast('请重新输入 API Key', true); return;
     }
-    // 本地模型（Ollama/LM Studio）无需真实 Key，但 OpenClaw 配置结构仍要求 apiKey 字段。
-    if (selectedLocal) { if (!apiKey) apiKey = 'local'; }
-    else if (!apiKey) { showToast('请填写 API Key', true); return; }
+    if (!apiKey) { showToast('请填写 API Key', true); return; }
 
     var base = selectedBase;
     var model = selectedModel;
@@ -860,53 +844,8 @@ async function loadConfig() {
     } catch(e) {}
 }
 
-// 先加载目录渲染云端卡片，再探测本地模型，最后回填已存配置。
-loadCatalog().then(function() { return discoverLocalModels(); }).then(loadConfig);
-
-// --- 本地模型自动发现（Ollama / LM Studio）---
-// 探测本机已运行的本地推理服务，探测到就生成卡片，无需 API Key、纯离线即可点选。
-async function discoverLocalModels() {
-    try {
-        var res = await fetch('/api/local-models');
-        if (!res.ok) return;
-        var data = await res.json();
-        var providers = (data && data.providers) || [];
-        if (!providers.length) return;
-        var grid = document.getElementById('localModelGrid');
-        grid.innerHTML = '';
-        providers.forEach(function(p) {
-            (p.models || []).slice(0, 6).forEach(function(modelId) {
-                var card = document.createElement('div');
-                card.className = 'model-card';
-                card.dataset.provider = p.provider;   // ollama / lmstudio
-                card.dataset.base = p.base;
-                card.dataset.model = modelId;
-                card.dataset.local = '1';
-                card.innerHTML = '<span class="check">✓</span>' +
-                    '<h4>🖥️ ' + p.label + ' <span class="tag free">本地</span></h4>' +
-                    '<p>' + modelId + '</p>';
-                card.addEventListener('click', function() {
-                    document.querySelectorAll('#step1 .model-card').forEach(function(c) { c.classList.remove('selected'); });
-                    card.classList.add('selected');
-                    var providerChanged = selectedProvider !== p.provider || selectedBase !== p.base;
-                    selectedProvider = p.provider;
-                    selectedBase = p.base;
-                    selectedModel = modelId;
-                    selectedLocal = true;
-                    var apiKeyInput = document.getElementById('apiKey');
-                    if (providerChanged) {
-                        apiKeyInput.value = '';
-                        savedProviderApiKey = null;
-                        savedProviderId = null;
-                    }
-                    document.getElementById('nextStep1').disabled = false;
-                });
-                grid.appendChild(card);
-            });
-        });
-        document.getElementById('localModelsBox').style.display = 'block';
-    } catch (e) { /* 无本地模型或探测失败：静默忽略，不影响页面 */ }
-}
+// 先加载目录渲染云端卡片，最后回填已存配置。
+loadCatalog().then(loadConfig);
 
 checkGateway();
 setInterval(checkGateway, 10000);
