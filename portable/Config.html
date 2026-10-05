@@ -820,16 +820,24 @@ async function launchOpenClaw() {
     if (Object.keys(channels).length > 0) {
         try {
             const res = await fetch('/api/config');
-            const existing = res.ok ? await res.json() : {};
+            // 读失败就不能继续：不带受管字段（models/agents/env…）的 POST 会让服务端把它们清空
+            if (!res.ok) throw new Error('读取现有配置失败（HTTP ' + res.status + '）');
+            const existing = await res.json();
             // 清除旧版废弃键，防止 OpenClaw 报 "agent.* was moved" 错误
             delete existing.agent;
             existing.channels = Object.assign(existing.channels || {}, channels);
-            await fetch('/api/config', {
+            const saveRes = await fetch('/api/config', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(existing)
             });
-        } catch(e) {}
+            const result = await saveRes.json().catch(() => ({}));
+            if (!saveRes.ok || !result.ok) throw new Error(result.error || '保存失败');
+        } catch(e) {
+            // 保存没成功就不能报"配置已保存"、也不能通知 /api/done（issue #67）
+            showToast('渠道配置保存失败：' + e.message + '，请重试', true);
+            return;
+        }
     }
 
     // 3. Launch

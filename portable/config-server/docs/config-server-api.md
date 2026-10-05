@@ -109,6 +109,7 @@ if (req.method === 'OPTIONS') { res.writeHead(200); res.end(); return; }
 
 合并写入而非整份覆盖（issue #58）。逻辑见 `lib/merge-config.mjs`：
 - 受管顶层字段 `gateway / commands / meta / models / agents / env`：以本次请求为准整体替换，**未带则视为清空**（但 `gateway` 有保底：缺字段时补回 `{mode:'local', auth:{mode:'token', token:'uclaw'}}`）。
+- `channels`（issue #67）：请求体里带了且是对象 → **整体替换**磁盘上的 `channels`（支持删除）；没带或不是对象 → 保留磁盘版本（保存模型不会冲掉渠道）。
 - 其余顶层字段（`plugins` 等 UI 不管理的字段）：**无视请求体里的值**，一律保留磁盘上的版本。
 - 顶层 `agent`（旧键）会被 `delete merged.agent` 清掉。
 - 写盘是**原子写**：`.tmp-<pid>-<rand>` → `renameSync` 替换；写前尽力备份 `.bak`，备份失败不阻断。
@@ -409,7 +410,7 @@ if (req.method === 'OPTIONS') { res.writeHead(200); res.end(); return; }
 
 | 问题 | 答案（基于代码事实） |
 | ---- | -------------------- |
-| 是整份覆盖还是合并？ | **合并**：`mergeConfig(existing, incoming)`。`gateway/commands/meta/models/agents/env` 六个受管顶层字段以本次请求为准整体替换（未带视为清空，但 `gateway` 有保底 token），其他顶层字段（典型如 `plugins`）一律保留磁盘原值。 |
+| 是整份覆盖还是合并？ | **合并**：`mergeConfig(existing, incoming)`。`gateway/commands/meta/models/agents/env` 六个受管顶层字段以本次请求为准整体替换（未带视为清空，但 `gateway` 有保底 token）；`channels` 请求里带了（且是对象）就整体替换、没带则保留磁盘原值；其他顶层字段（典型如 `plugins`）一律保留磁盘原值。 |
 | 有写锁吗？ | **没有显式写锁**。两次并发 POST 时两次都 `readConfigSafe → mergeConfig → writeConfigAtomic`，最后一次 `renameSync` 胜出；中间过程不会丢字段但会丢「两次 POST 之间第三方进程（微信登录或 wallet `applyKey`）的写入」。建议应用层串行化，或每次保存前 `GET /api/config` 拉最新再改。 |
 | 写盘是原子的吗？ | **是**：`writeConfigAtomic()` 用 `.<name>.tmp-<pid>-<rand>` 写临时文件再 `renameSync` 替换；写前会备份 `<name>.bak`，备份失败不阻断。 |
 | 失败会半截写坏吗？ | **不会**：renameSync 在同一文件系统内是原子操作，进程被杀/断电不会留下半截 JSON。 |

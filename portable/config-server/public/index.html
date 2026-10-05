@@ -907,17 +907,25 @@ async function saveChannelsAndOpen() {
     if (Object.keys(channels).length > 0) {
         try {
             var res = await fetch('/api/config');
-            var existing = res.ok ? await res.json() : {};
+            // 读失败就不能继续：不带受管字段（models/agents/env…）的 POST 会让服务端把它们清空
+            if (!res.ok) throw new Error('读取现有配置失败（HTTP ' + res.status + '）');
+            var existing = await res.json();
             // 清除旧版废弃键，防止 OpenClaw 报 "agent.* was moved" 错误
             delete existing.agent;
             existing.channels = Object.assign(existing.channels || {}, channels);
-            await fetch('/api/config', {
+            var saveRes = await fetch('/api/config', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(existing)
             });
+            var result = await saveRes.json().catch(function() { return {}; });
+            if (!saveRes.ok || !result.ok) throw new Error(result.error || '保存失败');
             showToast('渠道配置已保存');
-        } catch(e) {}
+        } catch(e) {
+            // 保存没成功就不能报成功、也不能往下开 Dashboard（issue #67）
+            showToast('渠道配置保存失败：' + e.message + '，请重试', true);
+            return;
+        }
     }
 
     window.open(gatewayUrl(), '_blank');

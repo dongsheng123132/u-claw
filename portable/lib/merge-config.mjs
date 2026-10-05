@@ -8,12 +8,15 @@
 //   一次模型，plugins 整段就被冲掉——UI 上没有任何报错，用户体感是"扫码明明成功了，为什么
 //   机器人不理我"。同理受害的还有用户手工加进 openclaw.json 的任何 UI 不认识的字段。
 //
-// 修法——区分两类顶层字段：
+// 修法——区分三类顶层字段：
 //   - MANAGED_TOP_LEVEL_KEYS（UI 显式管理的）：models / agents / env / gateway / commands / meta。
 //     这些字段以"本次请求"为准整体替换（不做深合并），从而天然支持删除
 //     （比如用户在 models.providers 里删掉一个 provider，合并不会把它救回来）。
 //     如果本次请求没带某个受管字段，视为该字段本次被清空——这跟改造前"整体覆盖"对这几个
 //     字段的行为一致，不引入新差异，只是不再殃及无关字段；gateway 见下方单独保底。
+//   - REPLACE_IF_PRESENT_KEYS（issue #67）：channels。渠道页会 POST channels，模型页不带它：
+//     请求带了且是对象 → 整体替换（同样支持删除）；没带/不是对象 → 保留磁盘版本
+//     （保存模型不能把已配好的渠道冲掉）。不能放进 MANAGED_TOP_LEVEL_KEYS，否则"没带=清空"。
 //   - 其余所有顶层字段（plugins、以及任何未来出现的未知字段）：UI 从不碰，就算请求体里出现
 //     也无视，一律原样保留磁盘上的版本。
 //
@@ -40,6 +43,9 @@ import crypto from 'node:crypto';
 export const MANAGED_TOP_LEVEL_KEYS = Object.freeze([
   'gateway', 'commands', 'meta', 'models', 'agents', 'env',
 ]);
+
+// 请求里带了（且是对象）才整体替换，没带就保留磁盘版本——语义见文件头注释。
+export const REPLACE_IF_PRESENT_KEYS = Object.freeze(['channels']);
 
 const DEFAULT_GATEWAY = Object.freeze({
   mode: 'local',
@@ -70,7 +76,7 @@ export function readConfigSafe(configPath) {
 
 /**
  * 合并现有配置（磁盘上的）与本次请求（前端提交的），返回待写盘的新对象。
- * 见文件头注释：受管字段整体替换（支持删除），其余字段原样保留磁盘版本。
+ * 见文件头注释：受管字段整体替换（支持删除），channels 带了才整体替换，其余字段原样保留磁盘版本。
  */
 export function mergeConfig(existingConfig, incomingConfig) {
   const existing = isPlainObject(existingConfig) ? existingConfig : {};
@@ -100,6 +106,10 @@ export function mergeConfig(existingConfig, incomingConfig) {
       const t = merged.gateway.auth.token;
       if (typeof t !== 'string' || t === '') merged.gateway.auth.token = DEFAULT_GATEWAY.auth.token;
     }
+  }
+
+  for (const key of REPLACE_IF_PRESENT_KEYS) {
+    if (isPlainObject(incoming[key])) merged[key] = incoming[key];
   }
 
   // 旧版废弃键，留着会让 OpenClaw 报 "agent.* was moved"（挪自原 server.js 逻辑，保持行为不变）。
