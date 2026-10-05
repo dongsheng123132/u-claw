@@ -74,8 +74,10 @@
 1. **检查Node.js**:
    ```bash
    /opt/u-claw/runtime/node-linux-x64/bin/node --version
-   # 应该显示 v22.14.0
+   # 输出应与本次使用的安装脚本中的 NODE_VERSION 一致
    ```
+
+   预期版本请查看 [linux-setup/setup-openclaw.sh](linux-setup/setup-openclaw.sh) 开头的 `NODE_VERSION`，以制作该 U 盘时使用的脚本为准。
 
 2. **检查OpenClaw安装**:
    ```bash
