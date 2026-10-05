@@ -1,7 +1,0 @@
-[Desktop Entry]
-Name=U-Claw AI Assistant
-Comment=OpenClaw AI - Plug and Play
-Exec=/opt/u-claw/start-openclaw.sh
-Terminal=true
-Type=Application
-Categories=Utility;

@@ -40,7 +40,6 @@ const NODE_PIN_FILES = [
   'install/install.sh',
   'install/install.ps1',
   '.github/workflows/release.yml',
-  'bootable/linux-setup/setup-openclaw.sh',
 ];
 
 /**

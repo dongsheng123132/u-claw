@@ -29,9 +29,6 @@ Thumbs.db
 # ── Claude workspace ──
 .claude/
 
-# ── Bootable USB build artifacts (scripts are tracked, downloads are not) ──
-bootable/.download-cache/
-
 # ── Install module cache ──
 install/.download-cache/
 
