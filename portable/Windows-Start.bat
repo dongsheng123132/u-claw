@@ -176,7 +176,7 @@ if exist "%VERSION_FILE%" (
 )
 
 
-REM WeChat is unavailable in Config Center; do not stage an unused plugin at startup.
+REM The WeChat plugin is not staged at startup; Config Center no longer offers WeChat or channel setup.
 
 REM Start Config Server in background
 echo   Starting Config Center on port 18788...
@@ -266,7 +266,7 @@ echo   ========================================
 echo   Starting OpenClaw Gateway on port %PORT%...
 echo   First run on a USB drive may take several minutes
 echo   (unpacking bundled components). Please wait;
-echo   Config Center is open for model, key, recharge, and channel setup.
+echo   Config Center is open for model, key, and recharge setup.
 echo   DO NOT close this window while using U-Claw!
 echo   ========================================
 echo.

@@ -37,9 +37,9 @@
 | --- | --- |
 | 随身 AI 工作空间 | 换电脑时带走配置、记忆、会话与设备授权；仅可重建的浏览器缓存留在主机。 |
 | 本地优先 | 不绑定设备、不打指纹、不上传本地配置。 |
-| 多种使用方式 | 便携 U 盘、在线一键安装、可启动 Linux U 盘各自独立。 |
+| 多种使用方式 | 便携 U 盘、在线一键安装，两种方式各自独立。 |
 
-*平台支持：Windows ✅（免部署完整包）· macOS ✅ · 可启动 Linux U盘 ✅ —— 详见下方平台支持表。*
+*平台支持：Windows ✅（免部署完整包）· macOS ✅ —— 详见下方平台支持表。*
 
 > [!TIP]
 > ### 👑 同作者新品：U-King · AI 装机管家
@@ -66,7 +66,7 @@ U-Claw（虾盘）是一个**制作教程 + 全套源代码**，教你把 [OpenC
 
 ### 🧩 模型随便选：国内外大模型都能用
 
-U-Claw 是纯开源工具，**不绑定设备、不打指纹、不上传任何数据**。首次启动会自动打开 Config 页面，选一个模型、填入自己的 API Key 即可一键启动：
+U-Claw 是纯开源工具，**不绑定设备、不打指纹、不上传任何数据**。首次启动会自动打开「配置中心」，选一个模型、填入自己的 API Key（或一键领取虾盘云额度 / 充值）即可开始使用：
 
 - **虾盘云（首选 · 中转站）**：一个 Key 调用 DeepSeek / Claude / GPT / 通义 等国内外全部大模型，无需翻墙。注册并充值：[u-claw.org/cloud.html](https://u-claw.org/cloud.html)
 - **各家官方 Key 也行**：DeepSeek、通义千问、Kimi、智谱 GLM、豆包、MiniMax（国内）/ OpenAI、Claude、Groq（国外）/ 硅基流动、任意 OpenAI 兼容地址（自定义）
@@ -113,7 +113,7 @@ cp -R portable/ /Volumes/你的U盘/U-Claw/   # Mac
 | **免安装运行** | `Mac-Start.command` | `Windows-Start.bat` |
 | **功能菜单** | `Mac-Menu.command` | `Windows-Menu.bat` |
 | **安装到电脑** | `Mac-Install.command` | `Windows-Install.bat` |
-| **首次配置** | `Config.html` | `Config.html` |
+| **首次配置** | 首次启动自动打开「配置中心」 | 首次启动自动打开「配置中心」 |
 
 ### U 盘文件结构
 
@@ -125,7 +125,6 @@ U-Claw/                          ← 整个拷到 U 盘
 ├── Windows-Start.bat             Windows 免安装运行
 ├── Windows-Menu.bat              Windows 功能菜单
 ├── Windows-Install.bat           安装到 Windows
-├── Config.html                   首次配置页面
 ├── setup.sh                      补齐依赖（开发者用）
 ├── app/                          ← 大依赖（setup.sh 下载，不进 git）
 │   ├── core/                        OpenClaw + QQ 插件
@@ -141,14 +140,9 @@ U-Claw/                          ← 整个拷到 U 盘
 
 ### Linux 可启动版
 
-连操作系统都没有？没关系。可启动版可以让任意电脑从 U 盘直接启动 Ubuntu + AI：
+Linux 可启动 U 盘套件已移出本仓库，在独立仓库 [u-claw-linux](https://github.com/dongsheng123132/u-claw-linux) 中维护。
 
-- 本仓库内：[`bootable/`](bootable/) 目录（与其他模块完全独立，互不影响）
-- 独立仓库：[u-claw-linux](https://github.com/dongsheng123132/u-claw-linux)（内容一致，方便单独克隆）
-
-基于 Ventoy + Ubuntu 24.04 LTS + 持久化存储，在 Windows 上运行 4 步 PowerShell 脚本即可制作。详见 [`bootable/README.md`](bootable/README.md)。
-
-> **关于桌面安装版（Electron）**：`u-claw-app/` 的 Electron 桌面版（`.exe` 安装版 / 绿色版 / `.dmg`）**已于 2026-06-19 停止发布并归档**，原因见 [`u-claw-app/DEPRECATED.md`](u-claw-app/DEPRECATED.md)。U-Claw 现在只发布「便携 U 盘版」——这才是产品的本质：插上 U 盘、解压即用。
+> **关于桌面安装版（Electron）**：Electron 桌面版（`.exe` 安装版 / 绿色版 / `.dmg`）**已于 2026-06-19 停止发布，并已从仓库移除**（见 tag `archive/pre-scope-razor-2026-10-05`）。U-Claw 现在只发布「便携 U 盘版」——这才是产品的本质：插上 U 盘、解压即用。
 
 ### 直接下载发行版
 
@@ -183,14 +177,7 @@ U-Claw/                          ← 整个拷到 U 盘
 
 ### 支持的聊天平台
 
-| 平台 | 状态 | 说明 |
-|------|------|------|
-| QQ | ✅ 已预装 | 输入 AppID + Secret 即可 |
-| 飞书 | ✅ 内置 | 企业首选 |
-| Telegram | ✅ 内置 | 海外推荐 |
-| WhatsApp | ✅ 内置 | Baileys 协议 |
-| Discord | ✅ 内置 | — |
-| 微信 | ⚠️ 暂不可用 | 上游插件兼容问题，修复后随更新恢复 |
+QQ、飞书、Telegram、WhatsApp、Discord 等聊天平台由 OpenClaw 自带的命令接入，**配置中心不提供聊天平台入口**。双击 `OpenClaw-CLI.bat`（Windows）/ `Mac-OpenClaw-CLI.command`（Mac）打开命令行，然后运行 `openclaw channels add`（添加）、`openclaw channels login`（登录 / 扫码）、`openclaw channels status`（查看状态）、`openclaw channels remove`（移除）。已有的 `channels` 配置在配置中心保存模型时会被保留。QQ 插件已随包预装；微信插件暂不可用（上游兼容问题，修复后随更新恢复）。
 
 ### 国内镜像
 
@@ -200,7 +187,6 @@ U-Claw/                          ← 整个拷到 U 盘
 |------|------|
 | npm 包 | `registry.npmmirror.com` |
 | Node.js | `npmmirror.com/mirrors/node` |
-| Electron | `npmmirror.com/mirrors/electron` |
 
 ### 开发 & 贡献
 
@@ -217,7 +203,6 @@ bash Mac-Start.command   # Mac 测试
 | Mac Apple Silicon (M1-M4) | ✅ | 便携版 |
 | Mac Intel (x64) | ✅ | 便携版 |
 | Windows x64 | ✅ | 便携版（含免部署完整包） |
-| Linux x64（可启动 U 盘） | ✅ | [`bootable/`](bootable/) 目录 |
 
 欢迎 PR！特别需要：教程翻译、文档完善。
 
@@ -268,7 +253,7 @@ bash setup.sh
 ```
 
 **Q: 如何同时配置多个 AI 模型并切换？**
-支持同时配置多个 provider！打开 `Config.html` → 在 Providers 区域点击「添加」，逐个填入各模型的 API Key 和地址（如 DeepSeek、Kimi、通义等）→ 保存后，在聊天界面左上角下拉菜单随时切换。配置持久保存在 U 盘上。
+启动 `Windows-Start.bat` / `Mac-Start.command` 后使用配置中心（首次启动自动打开，之后可从启动页进入）。它一次只配置一个模型服务（保存后作为主模型），再次保存会替换原有的模型配置。需要同时保留多个 provider（如 DeepSeek、Kimi、通义等）时，请用 OpenClaw 自带的 `openclaw configure`（双击 `OpenClaw-CLI.bat` / `Mac-OpenClaw-CLI.command` 打开命令行）或直接编辑 `data/.openclaw/openclaw.json`，之后在聊天界面左上角下拉菜单切换；此后不要再在配置中心保存模型，否则会覆盖 `models`。配置持久保存在 U 盘上。
 
 **Q: U 盘安装后无法创建文件 / 写入失败？**
 先检查写保护、剩余空间和目录权限。仅在 Windows 使用时推荐 NTFS；exFAT 的完整兼容性仍在验证。不要把所有写入失败都归因于格式，先运行诊断工具并保存错误信息；需要格式化时请先备份数据。
@@ -395,7 +380,7 @@ cp -R portable/ /Volumes/YOUR_USB/U-Claw/   # Mac
 | **Run (no install)** | `Mac-Start.command` | `Windows-Start.bat` |
 | **Menu** | `Mac-Menu.command` | `Windows-Menu.bat` |
 | **Install to PC** | `Mac-Install.command` | `Windows-Install.bat` |
-| **First-time config** | `Config.html` | `Config.html` |
+| **First-time config** | Config Center opens automatically on first start | Config Center opens automatically on first start |
 
 ### File Structure
 
@@ -407,7 +392,6 @@ U-Claw/                          ← Copy entire folder to USB
 ├── Windows-Start.bat             Windows launcher
 ├── Windows-Menu.bat              Windows menu
 ├── Windows-Install.bat           Install to Windows
-├── Config.html                   First-time config page
 ├── setup.sh                      Download dependencies (dev use)
 ├── app/                          ← Large deps (downloaded by setup.sh, not in git)
 │   ├── core/                        OpenClaw + QQ plugin
@@ -423,14 +407,9 @@ U-Claw/                          ← Copy entire folder to USB
 
 ### Linux Bootable USB
 
-No operating system? No problem. Boot any computer from USB into Ubuntu + AI:
+The Linux bootable USB kit has moved out of this repo and is maintained in the standalone [u-claw-linux](https://github.com/dongsheng123132/u-claw-linux) repo.
 
-- In this repo: [`bootable/`](bootable/) directory (fully independent from other modules)
-- Standalone repo: [u-claw-linux](https://github.com/dongsheng123132/u-claw-linux) (same content, easier to clone separately)
-
-Based on Ventoy + Ubuntu 24.04 LTS + persistence. 4-step PowerShell scripts on Windows. See [`bootable/README.md`](bootable/README.md) for details.
-
-> **About the Electron desktop app**: `u-claw-app/` (the `.exe` installer / portable / `.dmg` builds) was **deprecated and is no longer published as of 2026-06-19** — see [`u-claw-app/DEPRECATED.md`](u-claw-app/DEPRECATED.md). U-Claw now ships only the portable USB build, which is the product's essence: plug in the USB and run.
+> **About the Electron desktop app**: the Electron desktop app (the `.exe` installer / portable / `.dmg` builds) was **deprecated and is no longer published as of 2026-06-19, and has been removed from the repo** (see tag `archive/pre-scope-razor-2026-10-05`). U-Claw now ships only the portable USB build, which is the product's essence: plug in the USB and run.
 
 ### Supported AI Models
 
@@ -449,14 +428,7 @@ Based on Ventoy + Ubuntu 24.04 LTS + persistence. 4-step PowerShell scripts on W
 
 ### Supported Chat Platforms
 
-| Platform | Status | Notes |
-|----------|--------|-------|
-| QQ | ✅ Pre-installed | Enter AppID + Secret |
-| Feishu (Lark) | ✅ Built-in | Enterprise favorite |
-| Telegram | ✅ Built-in | International |
-| WhatsApp | ✅ Built-in | Baileys protocol |
-| Discord | ✅ Built-in | — |
-| WeChat | ✅ Community plugin | iPad protocol |
+Chat platforms (QQ, Feishu/Lark, Telegram, WhatsApp, Discord, etc.) are connected with OpenClaw's own commands; **the Config Center has no chat-platform entry**. Double-click `OpenClaw-CLI.bat` (Windows) / `Mac-OpenClaw-CLI.command` (Mac) to open a shell, then run `openclaw channels add` (add), `openclaw channels login` (log in / scan QR), `openclaw channels status` (check status) or `openclaw channels remove` (remove). Existing `channels` entries are preserved when you save a model in the Config Center. The QQ plugin is pre-installed; the WeChat plugin is currently unavailable (upstream compatibility issue, it will return once fixed upstream).
 
 ### China Mirrors
 
@@ -466,7 +438,6 @@ All scripts use China mirrors by default — no VPN needed:
 |----------|--------|
 | npm packages | `registry.npmmirror.com` |
 | Node.js | `npmmirror.com/mirrors/node` |
-| Electron | `npmmirror.com/mirrors/electron` |
 
 ### Development & Contributing
 
@@ -483,7 +454,6 @@ bash Mac-Start.command   # Test on Mac
 | Mac Apple Silicon (M1-M4) | ✅ | Portable |
 | Mac Intel (x64) | ✅ | Portable |
 | Windows x64 | ✅ | Portable (full offline bundle) |
-| Linux x64 (Bootable USB) | ✅ | [`bootable/`](bootable/) directory |
 
 PRs welcome! Especially: documentation, tutorials.
 
@@ -560,7 +530,7 @@ bash setup.sh
 ```
 
 **Q: How do I use multiple AI models / providers?**
-Multiple providers are supported! Open `Config.html` → click "Add" in the Providers section → enter API Key and endpoint for each model (DeepSeek, Kimi, Qwen, etc.) → save. Switch between models via the dropdown in the chat interface. Config is saved persistently on the USB drive.
+Launch `Windows-Start.bat` / `Mac-Start.command` and use the Config Center (it opens automatically on first start; afterwards it is reachable from the startup page). It configures one model provider at a time (the saved one becomes the primary model); saving again replaces the previous model config. To keep several providers (DeepSeek, Kimi, Qwen, etc.), use OpenClaw's own `openclaw configure` (double-click `OpenClaw-CLI.bat` / `Mac-OpenClaw-CLI.command` to open a shell) or edit `data/.openclaw/openclaw.json` directly, then switch between models via the dropdown in the chat interface; do not save a model in the Config Center afterwards, or `models` will be overwritten. Config is saved persistently on the USB drive.
 
 **Q: USB drive shows "cannot create file" / write errors?**
 Check write protection, free space, and directory permissions first. NTFS is recommended for Windows-only use; full exFAT compatibility is still being validated. Run diagnostics before assuming the filesystem is the cause, and back up your data before formatting.

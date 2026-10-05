@@ -16,7 +16,7 @@ assignees: ''
 |------|------|
 | 操作系统 | macOS / Windows 10 / Windows 11 |
 | Node.js 版本 | `node -v` 的输出 |
-| 使用方式 | 便携 U 盘版 / 一键安装版 / Electron 桌面版 / Linux 可启动版 |
+| 使用方式 | 便携 U 盘版 / 一键安装版 |
 | 出错步骤 | setup.bat / setup.sh / Windows-Start.bat / Mac-Start.command / 其他 |
 
 ## 完整报错信息
