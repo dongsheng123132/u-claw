@@ -25,6 +25,8 @@
 
 ## 三步开始
 
+> **Windows 用户：推荐使用 NTFS 格式的 U 盘。** exFAT 的首次工作区创建与对话兼容性仍在验证，当前不推荐；FAT32 也不作为本版支持格式。macOS 不应照搬 NTFS 建议，请使用本机目录或可写的原生文件系统。格式化会清空盘内文件，操作前请备份。
+
 > 📺 图文教程：[docs/快速上手.md](docs/快速上手.md)（含真实界面截图，5 步从插 U 盘到开始对话）
 
 1. 从 [Releases](https://github.com/dongsheng123132/u-claw/releases) 下载 Windows 便携版，解压到 U 盘后双击 `Windows-Start.bat`。
@@ -155,17 +157,14 @@ U-Claw/                          ← 整个拷到 U 盘
 - `u-claw-portable-windows-vX.Y.Z.zip` — Windows 便携完整版（已预装 Node + OpenClaw，**解压到 U 盘双击 `Windows-Start.bat` 即用**）
 - **Mac**：源码在 [`portable/`](portable/) 目录，`bash setup.sh` 自动下载 Node + OpenClaw（国内镜像约 1 分钟），双击 `Mac-Start.command` 启动
 
-> ⚠️ **U 盘请用 NTFS 格式**（不要 exFAT/FAT32）：Node.js 在 exFAT 上 IO 极慢且不支持符号链接，可能导致启动失败。
->
-> 两种格式的实测差异（v2.1.20，真机验证）：
->
-> | | exFAT / FAT32 | NTFS |
-> |---|---|---|
-> | 网关启动与对话 | ✅ 正常可用 | ✅ 正常可用 |
-> | V8 编译缓存落本机加速 | ✅ 生效（缓存自动放 `%LOCALAPPDATA%\U-Claw`） | ✅ 同左 |
-> | 浏览器用户数据与缓存 | ✅ 受管 Chromium 自动落在本机盘 | ✅ 同左 |
->
-> 一句话：浏览器与 Node 的可重建高频 IO 会自动落在本机盘；`data/.openclaw` 中的 SQLite 会话、设备身份、授权与配置始终随 U 盘携带。换电脑后浏览器网站登录态需要在该电脑重新登录。仍建议使用 NTFS，以避免安装依赖或其它需要链接能力的操作在 exFAT/FAT32 上变慢或受限。
+> **Windows 用户：推荐使用 NTFS 格式的 U 盘。** exFAT 的首次工作区创建与对话兼容性仍在验证，当前不推荐；FAT32 也不作为本版支持格式。macOS 不应照搬 NTFS 建议，请使用本机目录或可写的原生文件系统。格式化会清空盘内文件，操作前请备份。
+
+| 数据类型 | 存放位置 |
+|---|---|
+| 模型配置、钱包、SQLite 会话、工作区 | U 盘 `data/.openclaw` |
+| Node 编译缓存、受管浏览器用户目录 | 当前电脑本地缓存目录 |
+
+浏览器网站登录状态不会自动随盘迁移，换电脑后需要重新登录。部分界面缓存和运行时依赖仍会读写 U 盘。Windows NTFS 候选包已完成多轮启动、真实对话与重启保留数据测试；这不代表 exFAT 或所有电脑环境已验收。
 
 ### 支持的 AI 模型
 
@@ -258,17 +257,8 @@ MIT 协议，随便复制分发。
 1. 删除不完整的依赖：`rmdir /s /q portable\app\core\node_modules`（Windows）或 `rm -rf portable/app/core/node_modules`（Mac）
 2. 切换淘宝镜像重新安装：`cd portable/app/core && npm install --registry=https://registry.npmmirror.com`
 
-**Q: 系统已有 Node.js v24，安装失败？**
-Node.js v24 是最新开发版，部分依赖尚不兼容。需要 **v20 或 v22 LTS**。删除已下载的 runtime 目录后重新运行 setup，它会自动下载内置的 Node v22：
-```bash
-# Windows
-rmdir /s /q portable\app\runtime\node-win-x64
-setup.bat
-
-# Mac
-rm -rf portable/app/runtime/node-mac-arm64
-bash setup.sh
-```
+**Q: 电脑已有其他版本的 Node.js，应该用哪个？**
+本版内置并验证的是 **Node.js 22.22.3 + OpenClaw 2026.9.2**。优先使用发行包自带的启动脚本和 Node，不需要更换电脑上的 Node。若运行时缺失，重新解压完整发行包，或从源码运行 `setup.bat` / `setup.sh`；不要单独升级 OpenClaw 后继续沿用旧运行时。
 
 **Q: Mac 上提示 `.toSorted is not a function`？**
 系统旧版 Node.js 被检测到并跳过了内置版本下载，但旧版 Node 不支持 `.toSorted()`（需要 v20+）。删除 runtime 目录让脚本重新下载内置 Node v22：
@@ -281,7 +271,7 @@ bash setup.sh
 支持同时配置多个 provider！打开 `Config.html` → 在 Providers 区域点击「添加」，逐个填入各模型的 API Key 和地址（如 DeepSeek、Kimi、通义等）→ 保存后，在聊天界面左上角下拉菜单随时切换。配置持久保存在 U 盘上。
 
 **Q: U 盘安装后无法创建文件 / 写入失败？**
-两种可能：① U 盘侧面有物理写保护开关，拨到解锁位置；② U 盘不是 **NTFS** 格式——本产品要求 NTFS（exFAT/FAT32 会导致启动缓慢、写入失败甚至启动失败）。备份数据后重新格式化为 NTFS 即可。
+先检查写保护、剩余空间和目录权限。仅在 Windows 使用时推荐 NTFS；exFAT 的完整兼容性仍在验证。不要把所有写入失败都归因于格式，先运行诊断工具并保存错误信息；需要格式化时请先备份数据。
 
 **Q: 从 Ubuntu 向 U 盘复制时符号链接丢失？**
 `node_modules/.bin/` 下有大量符号链接，FAT32/exFAT 在直接 `cp -R` 时会跳过。用 `rsync -aL` 可将符号链接展开为真实文件：
@@ -379,6 +369,8 @@ Automatically downloads Node.js, installs OpenClaw, configures 10 Chinese-optimi
 See [`install/README.md`](install/README.md) for details.
 
 ### Quick Start: Build a Portable USB
+
+> **Windows-only USB use: NTFS is recommended.** First-workspace and first-chat compatibility on exFAT is still being validated; exFAT and FAT32 are not recommended for this release. On macOS, use a local folder or a writable native filesystem instead of applying the Windows NTFS advice. Formatting erases the drive; back up your files first.
 
 ```bash
 # 1. Clone
@@ -557,17 +549,8 @@ Usually caused by a network interruption during `npm install`, leaving `node_mod
 1. Delete incomplete dependencies: `rmdir /s /q portable\app\core\node_modules` (Windows) or `rm -rf portable/app/core/node_modules` (Mac)
 2. Reinstall using China mirror: `cd portable/app/core && npm install --registry=https://registry.npmmirror.com`
 
-**Q: Already have Node.js v24 and installation fails?**
-Node.js v24 is a dev release — some dependencies aren't compatible yet. You need **v20 or v22 LTS**. Delete the runtime folder to force a fresh download of the bundled Node v22:
-```bash
-# Windows
-rmdir /s /q portable\app\runtime\node-win-x64
-setup.bat
-
-# Mac
-rm -rf portable/app/runtime/node-mac-arm64
-bash setup.sh
-```
+**Q: Which Node.js version should I use?**
+This release bundles and validates **Node.js 22.22.3 with OpenClaw 2026.9.2**. Use the bundled launcher and runtime; you do not need to replace your system Node. If runtime files are missing, extract a fresh full release or run `setup.bat` / `setup.sh` from source. Do not upgrade OpenClaw independently of its runtime requirements.
 
 **Q: Mac shows `.toSorted is not a function`?**
 Your system Node.js was detected and the bundled version was skipped, but the system version is too old (needs v20+). Delete the runtime folder to re-download the bundled Node v22:
@@ -580,7 +563,7 @@ bash setup.sh
 Multiple providers are supported! Open `Config.html` → click "Add" in the Providers section → enter API Key and endpoint for each model (DeepSeek, Kimi, Qwen, etc.) → save. Switch between models via the dropdown in the chat interface. Config is saved persistently on the USB drive.
 
 **Q: USB drive shows "cannot create file" / write errors?**
-Two possibilities: ① The USB drive has a physical write-protect switch on the side — slide it to unlock; ② The drive is not **NTFS** — this product requires NTFS (exFAT/FAT32 causes slow startup, write failures, or boot failure). Back up your data and reformat as NTFS.
+Check write protection, free space, and directory permissions first. NTFS is recommended for Windows-only use; full exFAT compatibility is still being validated. Run diagnostics before assuming the filesystem is the cause, and back up your data before formatting.
 
 **Q: Symlinks missing when copying from Ubuntu to USB?**
 `node_modules/.bin/` contains many symlinks that get skipped during direct `cp -R`. Use `rsync -aL` to expand symlinks into real files:
