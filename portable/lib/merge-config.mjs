@@ -21,6 +21,12 @@
 //     不能放进 MANAGED_TOP_LEVEL_KEYS，否则"没带=清空"。
 //   - 其余所有顶层字段（plugins、以及任何未来出现的未知字段）：UI 从不碰，就算请求体里出现
 //     也无视，一律原样保留磁盘上的版本。
+//   - models.providers 里"别的写入方"拥有的条目（options.keepProviders，目前只有虾盘云设备钱包
+//     写的 uclaw-cloud）：配置中心 buildConfig() 一次只带用户选中的那一个 provider，按上面
+//     "models 整体替换"保存会把已领取额度的凭据冲掉。调用方传 keepProviders=[id…] 后：请求带了
+//     models.providers 却没点名这些 id → 把磁盘上的条目原样补回；请求点名了 → 以请求为准；
+//     请求根本没带 models → 仍按"未带视为清空"。不传该选项则行为与上面完全一致（#58 的删除
+//     语义、钱包 removeKey() 删 uclaw-cloud 都靠这一点）。
 //
 // 别做无脑深合并：那会导致"用户在 UI 里删掉的东西被合并救回来"，一个 bug 换一个 bug。
 //
@@ -79,10 +85,14 @@ export function readConfigSafe(configPath) {
 /**
  * 合并现有配置（磁盘上的）与本次请求（前端提交的），返回待写盘的新对象。
  * 见文件头注释：受管字段整体替换（支持删除），channels 带了才整体替换，其余字段原样保留磁盘版本。
+ *
+ * options.keepProviders：provider ID 数组（默认空）。请求带了 models.providers 但没点名的 ID，
+ * 若磁盘上有同名条目就原样补回（深拷贝，不改入参）；不传则与旧行为完全一致。
  */
-export function mergeConfig(existingConfig, incomingConfig) {
+export function mergeConfig(existingConfig, incomingConfig, options = {}) {
   const existing = isPlainObject(existingConfig) ? existingConfig : {};
   const incoming = isPlainObject(incomingConfig) ? incomingConfig : {};
+  const keepProviders = options && Array.isArray(options.keepProviders) ? options.keepProviders : [];
 
   const merged = { ...existing };
 
@@ -92,6 +102,24 @@ export function mergeConfig(existingConfig, incomingConfig) {
     } else if (key !== 'gateway') {
       delete merged[key];
     }
+  }
+
+  // 只有请求自己带了 models.providers 才补回：请求没带 models 时"未带视为清空"照旧，
+  // 不能借 keepProviders 把整段 models 救活。补回的条目放在请求自己的 provider 之后，
+  // 主模型（agents）一概不碰。
+  if (keepProviders.length && isPlainObject(incoming.models) && isPlainObject(incoming.models.providers)) {
+    const diskProviders = isPlainObject(existing.models) && isPlainObject(existing.models.providers)
+      ? existing.models.providers
+      : {};
+    let providers = null;
+    for (const id of keepProviders) {
+      if (typeof id !== 'string') continue;
+      if (!Object.prototype.hasOwnProperty.call(diskProviders, id) || !isPlainObject(diskProviders[id])) continue;
+      if (Object.prototype.hasOwnProperty.call(incoming.models.providers, id)) continue;
+      if (!providers) providers = { ...incoming.models.providers };
+      providers[id] = structuredClone(diskProviders[id]);
+    }
+    if (providers) merged.models = { ...incoming.models, providers };
   }
 
   if (!isPlainObject(merged.gateway)) {
@@ -147,10 +175,11 @@ export function writeConfigAtomic(configPath, config) {
 
 /**
  * 一步到位的便捷封装：读现有配置 → 合并 → 原子写回。给 server.js 的 POST /api/config 用。
+ * options 原样传给 mergeConfig（目前只有 keepProviders），默认不传＝旧行为。
  */
-export function saveConfigMerged(configPath, incomingConfig) {
+export function saveConfigMerged(configPath, incomingConfig, options = {}) {
   const existing = readConfigSafe(configPath);
-  const merged = mergeConfig(existing, incomingConfig);
+  const merged = mergeConfig(existing, incomingConfig, options);
   writeConfigAtomic(configPath, merged);
   return merged;
 }
