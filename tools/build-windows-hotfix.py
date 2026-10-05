@@ -22,7 +22,7 @@ def main():
     def git(*arguments):return subprocess.check_output(['git',*arguments],cwd=root)
     if git('status','--porcelain').strip():raise SystemExit('Build requires a clean source checkout')
     revision=git('rev-parse','HEAD').decode().strip()
-    tag='v'+json.loads((root/'u-claw-app/package.json').read_text(encoding='utf-8'))['version']
+    tag='v'+(root/'VERSION').read_text(encoding='utf-8').strip()
     if not tag.startswith('v2.2.'):raise SystemExit('This builder is scoped to the 2.2.x hotfix line')
     pin=(root/'OPENCLAW_VERSION').read_text().strip()
     if pin!='2026.9.2' or (root/'portable/OPENCLAW_VERSION').read_text().strip()!=pin:

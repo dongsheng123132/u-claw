@@ -13,7 +13,7 @@ name: Track OpenClaw upstream
 # 设计原则：
 #   - 幂等：上游没新版就什么都不做，安静退出
 #   - 可手动：workflow_dispatch 支持手动触发、强制指定上游版本、dry-run 只看不改
-#   - 单一可信源：OPENCLAW_VERSION 是上游 pin，u-claw-app/package.json 是壳版本
+#   - 单一可信源：OPENCLAW_VERSION 是上游 pin，VERSION 是壳/发布版本
 
 on:
   schedule:
@@ -79,10 +79,8 @@ jobs:
         id: current
         run: |
           pinned="$(tr -d '[:space:]' < OPENCLAW_VERSION)"
-          shell_ver="$(node -p "require('./u-claw-app/package.json').version")"
           echo "pinned=$pinned" >> "$GITHUB_OUTPUT"
-          echo "shell_ver=$shell_ver" >> "$GITHUB_OUTPUT"
-          echo "当前 pin: $pinned | 壳版本: $shell_ver"
+          echo "当前 pin: $pinned"
 
       - name: Decide whether to bump
         id: decide
@@ -196,8 +194,9 @@ jobs:
           printf '%s\n' "$latest" > OPENCLAW_VERSION
           printf '%s\n' "$latest" > portable/OPENCLAW_VERSION
 
-          # 2) 版本真相源是 git tag；此文件为展示镜像（已废弃桌面版残留），每日 bump 时同步。
-          node -e "const f='u-claw-app/package.json';const p=require('./'+f);p.version='$next';require('fs').writeFileSync(f, JSON.stringify(p,null,2)+'\n')"
+          # 2) 壳/发布版本写进根 VERSION，与下面要打的 v$next tag 保持一致
+          #    （publish-latest.mjs / tools/build-windows-hotfix.py 读它）。
+          printf '%s\n' "$next" > VERSION
 
           echo "已写入: OPENCLAW_VERSION=$latest, 壳版本=$next"
 
@@ -210,7 +209,7 @@ jobs:
           git config user.name  "u-claw-bot"
           git config user.email "bot@u-claw.org"
 
-          git add OPENCLAW_VERSION portable/OPENCLAW_VERSION u-claw-app/package.json
+          git add OPENCLAW_VERSION portable/OPENCLAW_VERSION VERSION
           git commit -m "chore(upstream): 跟随 OpenClaw $latest，发布 v$next
 
           自动跟踪上游：OpenClaw npm latest 升到 $latest，
