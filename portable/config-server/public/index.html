@@ -193,22 +193,22 @@ details#advancedModelsBox[open] summary { border-bottom: 1px solid #333; margin-
     <!-- Step 1: Select Model -->
     <div class="section active" id="step1">
         <h2>选择 AI 模型</h2>
-        <p class="desc">最省心：一键领取虾盘云额度，联网就能用；也可以展开下方「高级」用自己的 API Key。</p>
+        <p class="desc">可用下方「高级」选择 DeepSeek 等模型并填写自己的 API Key；也可以创建虾盘云设备钱包。</p>
 
         <!-- 虾盘云 · 设备钱包 —— 只在用户点击按钮之后才会联网，绝不在打开这个页面时自动请求。 -->
         <div class="wallet-card" id="walletCard">
             <div class="wallet-head">
                 <h3>🦞 虾盘云 · 设备钱包</h3>
-                <span class="wallet-key" id="walletKeyDisplay">联网后可一键领取</span>
+                <span class="wallet-key" id="walletKeyDisplay">尚未生成密钥</span>
             </div>
             <div class="wallet-balance" id="walletBalanceRow" style="display:none;">
                 <span id="walletBalanceText">余额 —</span>
                 <button class="btn-mini" id="walletRefreshBtn" onclick="walletRefreshBalance()">刷新余额</button>
             </div>
-            <p class="hint" id="walletHint">你的密钥就是你的钱包，请自行截图/复制备份——重装、换电脑都要靠它找回余额。没有钱包也完全不影响使用，可以直接用下方「高级」配置本地模型或自己的 API Key。</p>
+            <p class="hint" id="walletHint">生成密钥后，可在这里充值使用云模型。你的密钥就是你的钱包，请自行截图/复制备份——重装、换电脑都要靠它找回余额。没有钱包也完全不影响使用，可以直接用下方「高级」配置本地模型或自己的 API Key。</p>
 
             <div class="btn-row" id="walletClaimRow" style="justify-content:flex-start;">
-                <button class="btn btn-primary" id="walletClaimBtn" onclick="walletClaim()">🚀 一键领取额度</button>
+                <button class="btn btn-primary" id="walletClaimBtn" onclick="walletClaim()">🔑 生成钱包密钥</button>
             </div>
 
             <div id="walletManageBox" style="display:none;">
@@ -520,13 +520,16 @@ function selectCloudCard(card, p) {
     document.querySelectorAll('#step1 .model-card').forEach(function(c) { c.classList.remove('selected'); });
     card.classList.add('selected');
     var sel = card.querySelector('.card-model-select');
+    var providerChanged = selectedProvider !== p.id || selectedBase !== p.base;
     selectedProvider = p.id;
-    savedProviderApiKey = null;
-    savedProviderId = null;
     selectedBase = p.base;
     selectedModel = sel ? sel.value : (p.recommended || (p.models[0] || ''));
     var apiKeyInput = document.getElementById('apiKey');
-    if (apiKeyInput.value === SECRET_REF_INPUT_VALUE) apiKeyInput.value = '';
+    if (providerChanged) {
+        apiKeyInput.value = '';
+        savedProviderApiKey = null;
+        savedProviderId = null;
+    }
     selectedLocal = false;  // 点云端卡片 → 取消本地标记
     document.getElementById('nextStep1').disabled = false;
 }
@@ -661,9 +664,8 @@ function setupStep2() {
         var action = buyLink.dataset.actionLabel || '获取 API Key';
         linksDiv.innerHTML = '<a href="' + buyLink.href + '" target="_blank">🔑 ' + name + ' — ' + action + '</a>';
     }
-    linksDiv.innerHTML += '<a href="https://platform.minimaxi.com/" target="_blank">🔑 MiniMax — 国内推荐，注册送额度</a>' +
-        '<a href="https://open.bigmodel.cn/" target="_blank">🔑 智谱 GLM — 有免费额度</a>' +
-        '<a href="https://cloud.siliconflow.cn/" target="_blank">🔑 硅基流动 — 多模型聚合，便宜</a>';
+    // 只展示所选平台的入口；自定义和本地模型不插入其他平台推荐。
+    document.getElementById('buyInfo').style.display = !selectedLocal && buyLink ? 'block' : 'none';
 }
 
 // --- Toggle password ---
@@ -1130,12 +1132,17 @@ async function discoverLocalModels() {
                 card.addEventListener('click', function() {
                     document.querySelectorAll('#step1 .model-card').forEach(function(c) { c.classList.remove('selected'); });
                     card.classList.add('selected');
+                    var providerChanged = selectedProvider !== p.provider || selectedBase !== p.base;
                     selectedProvider = p.provider;
                     selectedBase = p.base;
                     selectedModel = modelId;
                     selectedLocal = true;
                     var apiKeyInput = document.getElementById('apiKey');
-                    if (apiKeyInput.value === SECRET_REF_INPUT_VALUE) apiKeyInput.value = '';
+                    if (providerChanged) {
+                        apiKeyInput.value = '';
+                        savedProviderApiKey = null;
+                        savedProviderId = null;
+                    }
                     document.getElementById('nextStep1').disabled = false;
                 });
                 grid.appendChild(card);
@@ -1174,7 +1181,7 @@ function walletRenderStatus(status) {
         manageBox.style.display = 'block';
         window._walletRechargeUrl = status.rechargeUrl || '';
     } else {
-        keyDisplay.textContent = '联网后可一键领取';
+        keyDisplay.textContent = '尚未生成密钥';
         claimRow.style.display = 'flex';
         manageBox.style.display = 'none';
         balanceRow.style.display = 'none';
@@ -1192,19 +1199,19 @@ async function walletLoadStatus() {
 async function walletClaim() {
     var btn = document.getElementById('walletClaimBtn');
     btn.disabled = true;
-    btn.textContent = '领取中…';
+    btn.textContent = '生成中…';
     try {
         var res = await fetch('/api/wallet/claim', { method: 'POST' });
         var data = await res.json();
-        if (!data.ok) { showToast(data.error || '领取失败', true); return; }
-        showToast(data.alreadyClaimed ? '本机已有钱包' : '领取成功！已自动配置模型');
+        if (!data.ok) { showToast(data.error || '生成失败', true); return; }
+        showToast(data.alreadyClaimed ? '本机已有钱包' : '钱包密钥已生成，已自动配置模型；请先充值后使用');
         await walletLoadStatus();
         loadConfig(); // 回填 uclaw-cloud provider 的选中态（若用户之后展开高级面板）
     } catch (e) {
-        showToast('领取失败: ' + e.message, true);
+        showToast('生成失败: ' + e.message, true);
     } finally {
         btn.disabled = false;
-        btn.textContent = '🚀 一键领取额度';
+        btn.textContent = '🔑 生成钱包密钥';
     }
 }
 

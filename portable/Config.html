@@ -432,13 +432,16 @@ document.querySelectorAll('#step1 .model-card').forEach(card => {
         if (e.target.closest('.buy-link')) return; // don't select when clicking buy link
         document.querySelectorAll('#step1 .model-card').forEach(c => c.classList.remove('selected'));
         card.classList.add('selected');
+        const providerChanged = selectedProvider !== card.dataset.provider || selectedBase !== card.dataset.base;
         selectedProvider = card.dataset.provider;
-        savedProviderApiKey = null;
-        savedProviderId = null;
         selectedBase = card.dataset.base;
         selectedModel = card.dataset.model;
         const apiKeyInput = document.getElementById('apiKey');
-        if (apiKeyInput.value === SECRET_REF_INPUT_VALUE) apiKeyInput.value = '';
+        if (providerChanged) {
+            apiKeyInput.value = '';
+            savedProviderApiKey = null;
+            savedProviderId = null;
+        }
         document.getElementById('nextStep1').disabled = false;
     });
 });
@@ -489,12 +492,8 @@ function setupStep2() {
             <a href="${buyLink.href}" target="_blank">🔑 ${name} — ${buyLink.dataset.actionLabel || '获取 API Key'}</a>
         `;
     }
-    // Add common alternatives
-    linksDiv.innerHTML += `
-        <a href="https://platform.minimaxi.com/" target="_blank">🔑 MiniMax — 国内推荐，注册送额度</a>
-        <a href="https://open.bigmodel.cn/" target="_blank">🔑 智谱 GLM — 有免费额度</a>
-        <a href="https://cloud.siliconflow.cn/" target="_blank">🔑 硅基流动 — 多模型聚合，便宜</a>
-    `;
+    // 只展示所选平台的入口；自定义和本地模型不插入其他平台推荐。
+    document.getElementById('buyInfo').style.display = !selectedLocal && buyLink ? 'block' : 'none';
 }
 
 // --- Toggle password ---
@@ -728,12 +727,17 @@ async function discoverLocalModels() {
                 card.addEventListener('click', () => {
                     document.querySelectorAll('.model-card').forEach(c => c.classList.remove('selected'));
                     card.classList.add('selected');
+                    const providerChanged = selectedProvider !== p.provider || selectedBase !== p.base;
                     selectedProvider = p.provider;
                     selectedBase = p.base;
                     selectedModel = modelId;
                     selectedLocal = true;
                     const apiKeyInput = document.getElementById('apiKey');
-                    if (apiKeyInput.value === SECRET_REF_INPUT_VALUE) apiKeyInput.value = '';
+                    if (providerChanged) {
+                        apiKeyInput.value = '';
+                        savedProviderApiKey = null;
+                        savedProviderId = null;
+                    }
                     document.getElementById('nextStep1').disabled = false;
                 });
                 grid.appendChild(card);
