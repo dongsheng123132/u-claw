@@ -15,7 +15,7 @@ permissions:
   contents: write
 
 # 产品只发「便携 U 盘版」(portable/ — .bat/.command 解压即用)。
-# Electron 桌面版 (u-claw-app/) 已于 2026-06-19 停发并归档,详见 u-claw-app/DEPRECATED.md。
+# Electron 桌面版已于 2026-06-19 停发,源码已从仓库移除。
 jobs:
   portable-windows-full:
     name: Portable Windows full bundle (Node + OpenClaw pre-installed)

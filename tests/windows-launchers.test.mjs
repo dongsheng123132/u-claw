@@ -291,17 +291,3 @@ test('PowerShell installer generated start.bat disables OpenClaw bonjour discove
     'generated start.bat should disable bonjour discovery',
   );
 });
-
-test('Electron desktop launcher disables OpenClaw bonjour discovery on Windows only', () => {
-  const source = readRepoFile('u-claw-app', 'src', 'main.js');
-
-  assert.match(
-    source,
-    /if\s*\(\s*process\.platform\s*===\s*['"]win32['"]\s*\)\s*{[\s\S]*?env\.OPENCLAW_DISABLE_BONJOUR\s*=\s*['"]1['"]/,
-  );
-  assert.doesNotMatch(
-    source,
-    /OPENCLAW_DISABLE_BONJOUR:\s*['"]1['"]/,
-    'bonjour disable flag should not be in the unconditional env object',
-  );
-});

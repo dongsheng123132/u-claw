@@ -6,7 +6,7 @@
 // 用户点"下载新版"照样 404，等于更新通道白搭。
 //
 // 这里不联网，只断言"生成的链接和仓库里的事实一致"：
-// tag 取自 u-claw-app/package.json，文件名格式取自 release.yml。
+// tag 取自仓库根的 VERSION 文件，文件名格式取自 release.yml。
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -50,7 +50,7 @@ function generate() {
   }
 }
 
-const shellVersion = () => JSON.parse(readFileSync(join(REPO, 'u-claw-app', 'package.json'), 'utf8')).version;
+const shellVersion = () => readFileSync(join(REPO, 'VERSION'), 'utf8').trim();
 const openclawVersion = () => readFileSync(join(REPO, 'OPENCLAW_VERSION'), 'utf8').trim();
 
 test('version 字段用 OpenClaw 上游版本（check-update 拿它比大小）', () => {

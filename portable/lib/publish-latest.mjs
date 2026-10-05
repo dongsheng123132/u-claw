@@ -65,14 +65,17 @@ function readVersion() {
  * 早期版本这里直接拿 OPENCLAW_VERSION 当 tag，于是生成的 releasePageUrl
  * （.../releases/tag/v2026.7.1-2）和 downloadUrl（u-claw-portable-v2026.7.1-2.zip）
  * 全是死链——就算把 latest.json 传上 OSS，用户点"下载新版"也是 404。
+ *
+ * 壳版本的真相源是仓库根的 VERSION 文件（格式同 OPENCLAW_VERSION：一行版本号，
+ * 不带 v 前缀；track-upstream.yml 每次发版前 bump 它，再打同名 v<VERSION> tag）。
  */
 function readReleaseTag() {
-  const pkgPath = resolve(REPO_ROOT, 'u-claw-app', 'package.json');
-  if (!existsSync(pkgPath)) {
-    throw new Error(`找不到壳版本文件 ${pkgPath}（release.yml 的 tag 来源）`);
+  const versionFile = resolve(REPO_ROOT, 'VERSION');
+  if (!existsSync(versionFile)) {
+    throw new Error(`找不到壳版本文件 ${versionFile}（VERSION，release.yml 的 tag 来源）`);
   }
-  const v = JSON.parse(readFileSync(pkgPath, 'utf8')).version;
-  if (!v) throw new Error('u-claw-app/package.json 里没有 version');
+  const v = readFileSync(versionFile, 'utf8').trim();
+  if (!v) throw new Error('VERSION 文件是空的');
   return `v${v}`;
 }
 

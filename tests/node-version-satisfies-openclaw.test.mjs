@@ -30,8 +30,7 @@ import { fileURLToPath } from 'node:url';
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (...p) => readFileSync(join(repoRoot, ...p), 'utf8');
 
-// 所有会把 Node 装进产物的地方。u-claw-app/ 是 2026-06-19 废弃的 Electron 桌面版
-// （见 u-claw-app/DEPRECATED.md），既不构建也不发布，故意不纳入。
+// 所有会把 Node 装进产物的地方。
 const NODE_PIN_FILES = [
   'portable/setup.bat',
   'portable/setup.sh',

@@ -1,8 +1,6 @@
 # ── Runtime dependencies (too large for git, download on build) ──
 portable/app/
 portable/data/
-u-claw-app/node_modules/
-u-claw-app/release/
 
 # ── Non-dev assets (stored locally, not in repo) ──
 archive/
@@ -30,9 +28,6 @@ Thumbs.db
 
 # ── Claude workspace ──
 .claude/
-
-# ── u-claw-app runtime binaries (download on build) ──
-u-claw-app/resources/runtime/
 
 # ── Bootable USB build artifacts (scripts are tracked, downloads are not) ──
 bootable/.download-cache/
