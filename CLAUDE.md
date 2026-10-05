@@ -16,6 +16,8 @@ U 盘 = 插上就能用
 
 The repo is NOT a "build tool" or "generator" — it IS the USB structure. `setup.sh` only fills in large deps that can't go in git. After `setup.sh`, the `portable/` folder is directly copyable to a USB drive.
 
+> **Scope**: before adding a feature or accepting a PR, read the「范围」section of `CONTRIBUTING.md` (positioning, boundary rule, never / not-now lists). Change that section first, code second.
+
 Distribution forms:
 1. **Portable USB** (`portable/`): Run from USB on existing Mac/Windows, zero install. **This is the only form CI publishes** (Windows full zip; Mac runs `setup.sh` on first launch).
 2. **One-line install** (`install/`): `curl | bash` or `irm | iex` — download and install from network, no USB needed. User-run scripts (not in CI).
