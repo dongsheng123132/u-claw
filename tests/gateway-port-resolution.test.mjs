@@ -10,15 +10,14 @@ import { publishPort } from '../portable/lib/runtime-ports.mjs';
 // gatewayPortFromRuntime() (config-server/server.js) is the v2.2.1 fix for the "填了
 // DeepSeek Key 还是没法用" bug: it used to GUESS the gateway port as configServerPort + 1,
 // which silently pointed secrets-reload at the wrong process whenever the customer's
-// machine had a real port conflict. These tests hit the real server (same isolation
-// pattern as tests/wechat-login-redirect.test.mjs's 503 test) and assert the 3-level
-// fallback chain through the actual /api/runtime endpoint, never a mock.
+// machine had a real port conflict. These tests hit the real server (isolated state
+// dir + dedicated port) and assert the 3-level fallback chain through the actual
+// /api/runtime endpoint, never a mock.
 
 const repoRoot = fileURLToPath(new URL('..', import.meta.url));
 const serverJs = join(repoRoot, 'portable', 'config-server', 'server.js');
 
-// 独立端口段：避开真机可能占用的 18778-18798 产品段，和 wechat-login-redirect.test.mjs
-// 用的 18901 也分开，避免并行跑测试时撞车。
+// 独立端口段：避开真机可能占用的 18778-18798 产品段，避免并行跑测试时撞车。
 let nextTestPort = 18910;
 
 async function withServer(stateDir, fn) {

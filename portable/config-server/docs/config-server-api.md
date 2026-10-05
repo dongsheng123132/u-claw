@@ -1,6 +1,6 @@
 # config-server JSON API 契约
 
-> 适用对象：`portable/config-server/server.js`（Node.js `http`，995 行，零业务中间件）。
+> 适用对象：`portable/config-server/server.js`（Node.js `http`，零业务中间件）。
 >
 > 本文档是 **U-King 桌面壳**（第二个调用方，自带 `Config.html` 是第一个）与该服务的对外契约。
 > 所有字段名、状态码、CORS 行为、路径参数均与 `server.js` 实际代码逐条核对。
@@ -42,7 +42,7 @@ if (req.method === 'OPTIONS') { res.writeHead(200); res.end(); return; }
 - 不带 `Origin` 头的请求（curl、Node fetch、桌面壳走 127.0.0.1 直连）不受影响——CORS 是浏览器策略。
 - 桌面壳走 `http://127.0.0.1:<port>` 即落在白名单内，无需额外配置。
 
-## 1. 端点清单（18 个）
+## 1. 端点清单（14 个）
 
 | # | Method | Path | 联网 | 备注 |
 | - | ------ | ---- | --- | ---- |
@@ -54,16 +54,12 @@ if (req.method === 'OPTIONS') { res.writeHead(200); res.end(); return; }
 | 6 | POST | `/api/update-check` | ✓ | 触发联网检查 |
 | 7 | GET | `/api/local-models` | ✓(本机) | Ollama/LM Studio 1.2s 探活 |
 | 8 | POST | `/api/provider-models` | ✓ | 带 Key 拉 `/v1/models` |
-| 9 | POST | `/api/wechat/start` | ✓ | 当前 `WECHAT_ENABLED=false`，固定 `503` |
-| 10 | GET | `/api/wechat/status` | ✓ | `?session=` |
-| 11 | POST | `/api/wechat/cancel` | ✗ | body `{session?}` |
-| 12 | GET | `/api/wechat/plugin-status` | ✗ | 探测 USB/已安装 |
-| 13 | GET | `/api/wallet/status` | ✗ | **回显明文 apiKey + rechargeUrl** |
-| 14 | POST | `/api/wallet/claim` | ✓ | 一键领取 |
-| 15 | GET | `/api/wallet/balance` | ✓ | 查余额 |
-| 16 | POST | `/api/wallet/rotate` | ✓ | 换 Key，两阶段提交 |
-| 17 | POST | `/api/wallet/adopt` | ✓ | body `{key}` |
-| 18 | POST | `/api/wallet/reset-local` | ✗ | 仅清本地 |
+| 9 | GET | `/api/wallet/status` | ✗ | **回显明文 apiKey + rechargeUrl** |
+| 10 | POST | `/api/wallet/claim` | ✓ | 一键领取 |
+| 11 | GET | `/api/wallet/balance` | ✓ | 查余额 |
+| 12 | POST | `/api/wallet/rotate` | ✓ | 换 Key，两阶段提交 |
+| 13 | POST | `/api/wallet/adopt` | ✓ | body `{key}` |
+| 14 | POST | `/api/wallet/reset-local` | ✗ | 仅清本地 |
 
 ## 2. 端点契约
 
@@ -143,7 +139,7 @@ if (req.method === 'OPTIONS') { res.writeHead(200); res.end(); return; }
 
 **敏感字段**：请求体里的 `apiKey` / `token` / `secret` / `password` 🚫——服务端会把它们转成 `SecretRef`，过程中明文只走 stdin，不入 argv、不入日志。
 
-**并发与幂等**：本端点**没有显式写锁**。两次 POST 并发时都 `readConfigSafe → mergeConfig → writeConfigAtomic`，最后一次 rename 胜出；但每次写盘前都会读最新磁盘版，所以不会丢字段——只会丢「两次 POST 之间、第三方进程（微信登录或 wallet applyKey）的写入」。桌面壳并发触发保存时，建议先与本服务确认语义再批量合并。
+**并发与幂等**：本端点**没有显式写锁**。两次 POST 并发时都 `readConfigSafe → mergeConfig → writeConfigAtomic`，最后一次 rename 胜出；但每次写盘前都会读最新磁盘版，所以不会丢字段——只会丢「两次 POST 之间、第三方进程（wallet applyKey）的写入」。桌面壳并发触发保存时，建议先与本服务确认语义再批量合并。
 
 ---
 
@@ -235,102 +231,7 @@ if (req.method === 'OPTIONS') { res.writeHead(200); res.end(); return; }
 
 ---
 
-### 2.9 `POST /api/wechat/start`
-
-> ⚠️ 当前 `WECHAT_ENABLED = false`（2026-08-27 专家会审定，上游 ESM 竞态 bug 未修），**无条件 503**。
-
-**请求体**：忽略（不读）。
-
-**响应 503**（当前固定返回）
-```json
-{ "error": "微信插件存在上游兼容问题，暂时无法接入，修复后会随更新自动恢复。" }
-```
-
-**响应 200**（`WECHAT_ENABLED` 恢复后才会出现）
-```json
-{ "sessionKey": "<uuid>", "qrcodeUrl": "data:image/png;base64,..." }
-```
-
-**响应 500**：上游 fetch 失败（`fetchWeChatQrCode` 抛错）
-```json
-{ "error": "<message>" }
-```
-
-**敏感字段**：无。
-
-### 2.10 `GET /api/wechat/status?session=<key>`
-
-轮询扫码状态。35s 静默超时；命中 `expired` 时服务端最多自动刷新 3 次（`MAX_QR_REFRESH_COUNT`）；命中 `scaned_but_redirect + redirect_host` 时切换 `pollBaseUrl`；命中 `confirmed` 时**自动安装插件 + 保存账号 + 写 `openclaw.json.plugins.entries['openclaw-weixin'].enabled=true`**，最后删除 session。
-
-**Query 参数**
-
-| 名 | 类型 | 必填 |
-| -- | ---- | ---- |
-| `session` | `string`（UUID） | 是 |
-
-**响应 400**
-```json
-{ "error": "Missing session parameter" }
-```
-
-**响应 200**：等待扫码
-```json
-{ "status": "wait" }
-```
-
-**响应 200**：已扫码（含 IDC 重定向）
-```json
-{ "status": "scaned" }
-```
-
-**响应 200**：二维码已刷新（服务端在 `expired` 后的内部自动续命）
-```json
-{ "status": "refreshed", "qrcodeUrl": "data:image/png;base64,..." }
-```
-
-**响应 200**：session 失效
-```json
-{ "status": "expired", "message": "No active session" }
-// 或 "Session expired"
-// 或 "QR expired too many times"
-```
-
-**响应 200**：登录成功
-```json
-{
-  "status": "confirmed",
-  "accountId": "<normalized-id>",
-  "pluginInstalled": true,
-  "message": "WeChat connected! Restart Gateway to activate."
-}
-```
-
-**响应 200**：其他状态原样转发（`status` 字段为微信原始枚举值字符串）。
-
-**响应 500**
-```json
-{ "error": "<message>" }
-```
-
-**敏感字段**：无。
-
----
-
-### 2.11 `POST /api/wechat/cancel`
-
-**请求体（可选）**：`{session:"<uuid>"}`；不传则清空所有 active login。
-
-**响应 200**：`{ok:true}`；**响应 500**（JSON 解析失败）：`{error}`
-
-### 2.12 `GET /api/wechat/plugin-status`
-
-只查 fs 存在性，不联网。**响应 200**：`{hasPlugin:boolean, installed:boolean}`
-- `hasPlugin` = USB `app/extensions/openclaw-weixin/openclaw.plugin.json` 是否存在
-- `installed` = `<stateDir>/extensions/openclaw-weixin/openclaw.plugin.json` 是否存在
-
----
-
-### 2.13 `GET /api/wallet/status`
+### 2.9 `GET /api/wallet/status`
 
 `lib/wallet-client.mjs` 的 `getStatus()`，**不联网**；有 wallet 时额外拼 `rechargeUrl`（用 `payBaseUrl()`）。
 
@@ -344,7 +245,7 @@ if (req.method === 'OPTIONS') { res.writeHead(200); res.end(); return; }
 
 ---
 
-### 2.14 `POST /api/wallet/claim`
+### 2.10 `POST /api/wallet/claim`
 
 一键领取。`claimWallet()`：`state.apiKey` 已存在 → `{alreadyClaimed:true}`；否则 POST `/device/bind`（failover 走 `lib/uclaw-cloud-endpoints.mjs.fetchWithFailover`），拿 `apiKey+walletId` 后落 `<stateDir>/uclaw-device.json`，再 `applyKey()` 合并写 openclaw.json（清旧 `uclaw-cloud` provider → 插新 Key）。并发去重 `claimInFlight`。
 
@@ -353,14 +254,14 @@ if (req.method === 'OPTIONS') { res.writeHead(200); res.end(); return; }
 
 **敏感字段**：🚫 `apiKey` 明文。
 
-### 2.15 `GET /api/wallet/balance`
+### 2.11 `GET /api/wallet/balance`
 
 并行调 `/v1/dashboard/billing/subscription` + `/v1/dashboard/billing/usage`，换算 USD 与 quota（`500,000 quota = $1`）。
 
 **响应 200**：成功 → `{ok:true, remainingUsd, usedUsd, grantedUsd, remainingQuota, usedQuota, grantedQuota}`
 **响应 200**：失败 → `{ok:false, error:"查询余额失败：HTTP <n>"|"查询用量失败：HTTP <n>"|"余额返回格式不认识"|"还没有设备钱包"|<底层>}`
 
-### 2.16 `POST /api/wallet/rotate`
+### 2.12 `POST /api/wallet/rotate`
 
 两阶段提交换 Key：mint `/device/rotate` → 只读 `GET /v1/models` 验证（**不消耗额度**）→ `/device/rotate/commit`；若有 `pendingKey` 先 `settlePendingState()`。并发去重 `rotateInFlight`。
 
@@ -369,7 +270,7 @@ if (req.method === 'OPTIONS') { res.writeHead(200); res.end(); return; }
 
 **敏感字段**：🚫 `apiKey` 明文。
 
-### 2.17 `POST /api/wallet/adopt`
+### 2.13 `POST /api/wallet/adopt`
 
 填入已有 Key（跨机迁移）：本地校验前缀 `sk-`、长度 ≥8、无空白字符；`GET /v1/models` 只读验签；通过则覆盖本地五字段 + `applyKey()` 合并写 openclaw.json。
 
@@ -379,7 +280,7 @@ if (req.method === 'OPTIONS') { res.writeHead(200); res.end(); return; }
 
 **敏感字段**：🚫 请求体 `key` + 响应 `apiKey`。
 
-### 2.18 `POST /api/wallet/reset-local`
+### 2.14 `POST /api/wallet/reset-local`
 
 只清本机五字段 + 清 `openclaw.json.models.providers.uclaw-cloud` + 若主模型指向它一并清空。**绝不调服务端**——旧钱包余额不受影响，旧 Key 仍可在别的机器上 `adopt`。
 
@@ -393,10 +294,9 @@ if (req.method === 'OPTIONS') { res.writeHead(200); res.end(); return; }
 | 状态码 | 出现条件 | Body 形状 |
 | ------ | -------- | --------- |
 | 200 | 业务成功 / 业务失败（wallet 系列、provider-models、config 密钥校验） | `{ok:true,...}` 或 `{ok:false,error:"..."}` |
-| 400 | `/api/gateway-check` 的 `port` 非法；`/api/wechat/status` 缺 `session` | `{ok:false, error:"..."}` 或 `{error:"..."}` |
+| 400 | `/api/gateway-check` 的 `port` 非法 | `{ok:false, error:"..."}` |
 | 404 | 静态文件找不到 | 文本 `Not Found` |
 | 500 | 服务端抛未捕获异常（JSON.parse 失败、import 失败、fs 异常等） | `{error:"..."}` 或 `{ok:false,error:"..."}` |
-| 503 | 仅 `/api/wechat/start`（`WECHAT_ENABLED=false` 时） | `{error:"微信插件存在上游兼容问题，暂时无法接入，修复后会随更新自动恢复。"}` |
 
 ⚠️ 钱包与 `provider-models` 端点**故意把业务错误也塞进 200**（body `ok:false`），避免前端在弱网/限流下被浏览器 fetch 误判为致命。
 
@@ -411,7 +311,7 @@ if (req.method === 'OPTIONS') { res.writeHead(200); res.end(); return; }
 | 问题 | 答案（基于代码事实） |
 | ---- | -------------------- |
 | 是整份覆盖还是合并？ | **合并**：`mergeConfig(existing, incoming)`。`gateway/commands/meta/models/agents/env` 六个受管顶层字段以本次请求为准整体替换（未带视为清空，但 `gateway` 有保底 token）；`channels` 请求里带了（且是对象）就整体替换、没带则保留磁盘原值；其他顶层字段（典型如 `plugins`）一律保留磁盘原值。 |
-| 有写锁吗？ | **没有显式写锁**。两次并发 POST 时两次都 `readConfigSafe → mergeConfig → writeConfigAtomic`，最后一次 `renameSync` 胜出；中间过程不会丢字段但会丢「两次 POST 之间第三方进程（微信登录或 wallet `applyKey`）的写入」。建议应用层串行化，或每次保存前 `GET /api/config` 拉最新再改。 |
+| 有写锁吗？ | **没有显式写锁**。两次并发 POST 时两次都 `readConfigSafe → mergeConfig → writeConfigAtomic`，最后一次 `renameSync` 胜出；中间过程不会丢字段但会丢「两次 POST 之间第三方进程（wallet `applyKey`）的写入」。建议应用层串行化，或每次保存前 `GET /api/config` 拉最新再改。 |
 | 写盘是原子的吗？ | **是**：`writeConfigAtomic()` 用 `.<name>.tmp-<pid>-<rand>` 写临时文件再 `renameSync` 替换；写前会备份 `<name>.bak`，备份失败不阻断。 |
 | 失败会半截写坏吗？ | **不会**：renameSync 在同一文件系统内是原子操作，进程被杀/断电不会留下半截 JSON。 |
 | 重复保存同一份配置会怎样？ | 幂等：`mergeConfig(existing, existing) === existing`，`writeConfigAtomic` 会重写一遍文件、备份一遍 `.bak`，无副作用。 |
@@ -428,7 +328,7 @@ if (req.method === 'OPTIONS') { res.writeHead(200); res.end(); return; }
 | 端口复用（runtime.json） | 每次成功 listen 后写 `runtime.json`，**不是原子写**（普通 `writeFileSync`，与 `/api/config` 不同）。两个 server 进程同时写可能截断，但 `GET /api/runtime` 对损坏文件做了 `try/catch` 兜底。 |
 | 桌面壳 vs Config.html 共存 | **不冲突**：两者都是 127.0.0.1 的客户端，谁先抢到端口谁就是主，runtime.json 会随后写好新端口。桌面壳应优先用 `/api/runtime` 而不是猜端口。 |
 | CORS 与桌面壳 | 桌面壳走 `http://127.0.0.1:<port>` 在白名单内；若用 Electron / Tauri webview 默认 Origin 通常就是 `http://127.0.0.1`，预检会成功。如果桌面壳改了 user-agent 或代理导致 Origin 不是 127.0.0.1，需要确认 webview 行为。 |
-| 重启/升级时的 reload | `POST /api/config` 成功后调 `openclaw.mjs secrets reload`；连接错返回 `{pendingRestart:true}` 表示需要重启 gateway 才生效。`/api/wechat/status` 的 `confirmed` 也提示「Restart Gateway to activate.」。桌面壳触发相关保存/微信登录后应主动建议用户重启 gateway。 |
+| 重启/升级时的 reload | `POST /api/config` 成功后调 `openclaw.mjs secrets reload`；连接错返回 `{pendingRestart:true}` 表示需要重启 gateway 才生效。桌面壳触发相关保存后应主动建议用户重启 gateway。 |
 
 ### 4.4 敏感字段速查（决定能否落日志）
 
@@ -445,7 +345,6 @@ if (req.method === 'OPTIONS') { res.writeHead(200); res.end(); return; }
 
 ### 4.5 已知边界与降级
 
-- `WECHAT_ENABLED=false` 期间，`/api/wechat/start` 固定 503。桌面壳接入微信面板前应先 `GET /api/wechat/plugin-status` + 探测 503 提示文案。
 - `/api/wallet/*` 的所有失败路径都在 200 里——客户端必须看 `ok` 字段，不能只看 HTTP 状态。
 - `/api/update-status` 永不 5xx；桌面壳 UI 上看到 `available:false` 就是「无更新或还没检查」，不要重试风暴。
 - `/api/runtime` 的 `gatewayPort:null` 是合法降级；桌面壳应再走一次本地 18778-18798 盲扫兜底（旧的 `findGatewayPort()` 行为）。
@@ -455,6 +354,6 @@ if (req.method === 'OPTIONS') { res.writeHead(200); res.end(); return; }
 
 ## 5. 同步说明
 
-- 本文档基于 `portable/config-server/server.js`（995 行）逐行核对。
+- 本文档基于 `portable/config-server/server.js` 逐行核对。
 - 涉及模块：`lib/merge-config.mjs`、`lib/check-update.mjs`、`lib/wallet-client.mjs`、`lib/portable-instance-lock.mjs`、`lib/official-provider-guard.mjs`、`lib/uclaw-cloud-endpoints.mjs`。
 - 文档与代码不一致时，以 `server.js` 为准并提 issue；契约字段新增/重命名前，请先修订本文档再发版。

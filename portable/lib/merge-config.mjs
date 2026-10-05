@@ -14,9 +14,11 @@
 //     （比如用户在 models.providers 里删掉一个 provider，合并不会把它救回来）。
 //     如果本次请求没带某个受管字段，视为该字段本次被清空——这跟改造前"整体覆盖"对这几个
 //     字段的行为一致，不引入新差异，只是不再殃及无关字段；gateway 见下方单独保底。
-//   - REPLACE_IF_PRESENT_KEYS（issue #67）：channels。渠道页会 POST channels，模型页不带它：
-//     请求带了且是对象 → 整体替换（同样支持删除）；没带/不是对象 → 保留磁盘版本
-//     （保存模型不能把已配好的渠道冲掉）。不能放进 MANAGED_TOP_LEVEL_KEYS，否则"没带=清空"。
+//   - REPLACE_IF_PRESENT_KEYS（issue #67）：channels。配置中心已不再编辑渠道，模型页保存也不带它；
+//     规则保留，是为了让其他调用方（如 U-King 桌面壳 GET→改→POST）能保存 channels，同时保证
+//     保存模型不会冲掉用户经 OpenClaw（`openclaw channels add`）配好的渠道：
+//     请求带了且是对象 → 整体替换（同样支持删除）；没带/不是对象 → 保留磁盘版本。
+//     不能放进 MANAGED_TOP_LEVEL_KEYS，否则"没带=清空"。
 //   - 其余所有顶层字段（plugins、以及任何未来出现的未知字段）：UI 从不碰，就算请求体里出现
 //     也无视，一律原样保留磁盘上的版本。
 //
