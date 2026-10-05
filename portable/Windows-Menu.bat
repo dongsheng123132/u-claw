@@ -193,7 +193,7 @@ if "%ch_choice%"=="b" (
 if "%ch_choice%"=="c" (
     echo.
     echo   WeChat plugin is temporarily unavailable:
-    echo   upstream module-loading compatibility issue - see config-server WECHAT_ENABLED.
+    echo   upstream module-loading compatibility issue.
     echo   Skip setup until upstream publishes a fix.
 )
 if "%ch_choice%"=="d" (

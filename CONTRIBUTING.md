@@ -14,13 +14,11 @@
 > **本仓库 = U 盘骨架**：脚本 + HTML + 小文件
 > **`bash setup.sh` 之后 = U 盘内容**：骨架 + Node.js + OpenClaw
 
-四种发布形态，互相独立，改其中一个不影响其它：
+两种发布形态，互相独立，改其中一个不影响其它：
 
 | 目录 | 形态 | 入口 |
 |------|------|------|
 | `portable/` | 便携 USB | `setup.sh` → `Mac-Start.command` / `Windows-Start.bat` |
-| `u-claw-app/` | Electron 桌面 | `npm run dev` / `npm run build:mac-arm64` |
-| `bootable/` | Linux 可启动 U 盘 | `1-prepare-usb.ps1` → `4-copy-to-usb.ps1` |
 | `install/` | 一键在线安装 | `install.sh` (Mac/Linux) / `install.ps1` (Windows) |
 
 ## 开发环境
@@ -42,7 +40,6 @@ bash Mac-Start.command           # macOS 启动
 - macOS Apple Silicon (ARM64)：✅ 主开发平台
 - macOS Intel：✅ 工作（需先跑 setup.sh 下 node-mac-x64）
 - Windows x64：🚧 持续完善
-- Linux x64 (Bootable USB)：✅ 用 `bootable/`
 
 ## 提 Issue 的好习惯
 
@@ -51,7 +48,7 @@ bash Mac-Start.command           # macOS 启动
 **至少包含这四样**：
 
 1. 操作系统 + 版本（如 macOS 14.5 / Windows 11 23H2）
-2. 使用的形态（portable / install / bootable / u-claw-app）
+2. 使用的形态（portable / install）
 3. **完整的错误日志**（贴文字，不要只截图）
 4. 你试过哪些步骤
 
@@ -67,7 +64,7 @@ bash Mac-Start.command           # macOS 启动
 ### 提交前先想清楚
 
 1. **改动是不是真的有人需要？** 大改动建议先开 issue 讨论。
-2. **改动会不会破坏其它形态？** 比如改 `portable/` 不要影响 `bootable/`。
+2. **改动会不会破坏其它形态？** 比如改 `portable/` 不要影响 `install/`。
 3. **你跑过吗？** PR 模板里要求列出测试方式，不是装饰。
 
 ### 不要做的事
@@ -118,18 +115,6 @@ git push origin fix/install-sh-npm-path
 - Mac 启动脚本要 `chmod +x`，并清理 quarantine 属性
 - Windows 启动脚本要正确处理 `cd /d "%DIR%core"`
 - 配置文件放 `data/.openclaw/openclaw.json`，便携属性靠这个
-
-### `u-claw-app/` (Electron)
-
-- `main.js` 大约 400 行，改前先理解整体流程
-- Node.js 要找 `resources/runtime/node-{platform}-{arch}`，找不到再 fall back 到系统 node
-- 用户配置在 `app.getPath('userData')/.openclaw/`，不要硬编码路径
-
-### `bootable/`
-
-- 4 步 PowerShell 脚本必须**按顺序**跑
-- ISO 下载走清华/阿里/中科大镜像，不要直接用 ubuntu.com
-- `bootable/` 与独立仓库 `dongsheng123132/u-claw-linux` 内容保持同步，改一边记得同步另一边
 
 ### `install/`
 

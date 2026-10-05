@@ -18,10 +18,11 @@ The repo is NOT a "build tool" or "generator" — it IS the USB structure. `setu
 
 Distribution forms:
 1. **Portable USB** (`portable/`): Run from USB on existing Mac/Windows, zero install. **This is the only form CI publishes** (Windows full zip; Mac runs `setup.sh` on first launch).
-2. **Bootable Linux USB** (`bootable/`): Ventoy + Ubuntu 24.04 — boots any x86_64 PC from USB, no OS needed. Independent module, user-run scripts (not in CI).
-3. **One-line install** (`install/`): `curl | bash` or `irm | iex` — download and install from network, no USB needed. User-run scripts (not in CI).
+2. **One-line install** (`install/`): `curl | bash` or `irm | iex` — download and install from network, no USB needed. User-run scripts (not in CI).
 
-> **Deprecated (2026-06-19): Electron desktop app** (`u-claw-app/`, DMG/EXE) is **no longer built or published** — it was a weaker duplicate of the commercial ClawX desktop and had cold-start gateway-timeout bugs. Code is kept for archive only; see `u-claw-app/DEPRECATED.md`. The `desktop-windows`/`desktop-mac` CI jobs were removed from `release.yml`.
+> **Removed: Electron desktop app** (`u-claw-app/`, DMG/EXE) — deprecated 2026-06-19 (it was a weaker duplicate of the commercial ClawX desktop and had cold-start gateway-timeout bugs), then deleted from the repo. The `desktop-windows`/`desktop-mac` CI jobs were removed from `release.yml`. Recoverable from git tag `archive/pre-scope-razor-2026-10-05`.
+>
+> **Removed: `bootable/`** (Linux bootable USB kit) — it lives on in the standalone repo [u-claw-linux](https://github.com/dongsheng123132/u-claw-linux); also recoverable from the same archive tag.
 >
 > **Removed: `usb-release/`** — an abandoned older predecessor of `portable/` (last touched 2026-04, `core/`+`skills/` layout, referenced nowhere). Deleted 2026-06-19.
 
@@ -34,19 +35,6 @@ bash Mac-Start.command          # Launch (Mac ARM64). Windows: Windows-Start.bat
 
 # Copy to USB drive
 cp -R portable/ /Volumes/YOUR_USB/U-Claw/
-
-# Electron desktop app
-cd u-claw-app && bash setup.sh  # One-click: Node.js + Electron + deps (China mirrors)
-npm run dev                     # Dev mode
-npm run build:mac-arm64         # Build Mac ARM64 DMG
-npm run build:win               # Build Windows NSIS + portable
-
-# Bootable Linux USB (run on Windows PowerShell as Admin)
-cd bootable
-.\1-prepare-usb.ps1             # Write Ventoy to USB (formats drive!)
-.\2-download-iso.ps1            # Download Ubuntu ISO (~5.8GB, China mirrors)
-.\3-create-persistence.ps1      # Create 20GB ext4 persistence image
-.\4-copy-to-usb.ps1             # Copy ISO + persistence + scripts to USB
 ```
 
 ### Tests
@@ -63,13 +51,13 @@ discovery. They read repo files as strings; they do **not** spawn OpenClaw. Ther
 `package.json` — tests are not run by the release CI (`.github/workflows/release.yml` only
 builds and publishes). Run them locally before pushing launcher changes.
 
-**CI workflows** (`.github/workflows/`): `release.yml` builds Win/Mac portable + desktop and
+**CI workflows** (`.github/workflows/`): `release.yml` builds the Windows full portable bundle and
 publishes a GitHub Release on tag push. `track-upstream.yml` runs daily (cron) — checks
 `npm view openclaw version` against the pinned `OPENCLAW_VERSION`; if upstream is newer it bumps
-both `OPENCLAW_VERSION` files + the desktop shell version (`u-claw-app/package.json` patch),
+both `OPENCLAW_VERSION` files + the shell/release version (root `VERSION` patch),
 commits, and pushes a new `v<shell-version>` tag, which in turn triggers `release.yml`. Supports
 `workflow_dispatch` with `force_version` / `dry_run` inputs. `OPENCLAW_VERSION` is the upstream
-pin; `u-claw-app/package.json` is the shell version (the two are separate).
+pin; root `VERSION` is the shell/release version (the two are separate).
 
 Testing of the actual runtime should be done in a separate folder or directly on USB. This repo
 stays clean (no node_modules, no app/ runtime).
@@ -79,14 +67,16 @@ stays clean (no node_modules, no app/ runtime).
 ```
 portable/           THE USB content (= repo + setup.sh downloads)
                     setup.sh / setup.bat / setup.ps1 — fill in app/ (Node + OpenClaw + plugins)
-                    {Mac,Windows}-Start    — launch gateway + config-server, open dashboard/Config
+                    {Mac,Windows}-Start    — launch gateway + config-server, open dashboard / 配置中心
                     {Mac,Windows}-Menu     — interactive CLI launcher (pick start/config/CLI/diagnose)
                     {Mac,Windows}-Install  — copy USB → computer (~/.uclaw/ or %USERPROFILE%)
                     {Mac,Windows}-Diagnose — health check / collect logs for bug reports
-                    {Mac-OpenClaw-CLI,OpenClaw-CLI.bat} — drop into raw `openclaw` CLI
-                    *.html (Welcome, Config, U-Claw, SkillHub) — local UI pages
-                    config-server/server.js — local HTTP server (port 18788-18798) backing
-                        Config.html: writes openclaw.json, WeChat QR login, update-status API
+                    {Mac-OpenClaw-CLI,OpenClaw-CLI.bat} — drop into raw `openclaw` CLI (chat channels are managed
+                        here: `openclaw channels add / login / status / remove`)
+                    快速上手.html — offline quick-start page
+                    config-server/server.js — local HTTP server (port 18788-18798) backing the
+                        配置中心 page (public/index.html): writes openclaw.json, 虾盘云 wallet,
+                        update-status API
                     lib/                   — Node helpers (see "lib/ helpers" below)
                     default-config.json    — seed config copied to data/.openclaw/ on first run
                     app/core/ (OpenClaw) + app/runtime/ (Node.js) — downloaded by setup.sh
@@ -94,16 +84,6 @@ portable/           THE USB content (= repo + setup.sh downloads)
                     skills-cn/             — 17 个中国本地化技能（小红书/微博/B站/抖音/知乎/
                                              微信公众号/Word/Excel/PPT/天气/搜索/翻译/DeepSeek/
                                              图片压缩/PDF工具/二维码/网页转Markdown）
-
-u-claw-app/         [DEPRECATED 2026-06-19, archived — not built/published] Electron desktop app
-                    (main.js ~400 lines). Kept for archive only; see u-claw-app/DEPRECATED.md.
-                    Bundles Node.js in resources/runtime/node-{platform}-{arch}
-
-bootable/           Linux 可启动 U 盘模块（完全独立，不依赖其他模块）
-                    4 步 PowerShell 脚本 (Windows 上制作)
-                    Ventoy 1.0.99 + Ubuntu 24.04 LTS + casper-rw 持久化
-                    linux-setup/ — setup-openclaw.sh 安装到 /opt/u-claw/
-                    独立仓库镜像: github.com/dongsheng123132/u-claw-linux
 
 install/            一键在线安装模块（curl | bash / irm | iex）
                     install.sh (Mac/Linux) + install.ps1 (Windows)
@@ -115,11 +95,11 @@ install/            一键在线安装模块（curl | bash / irm | iex）
 > **Note**: 官网 (u-claw.org) 已拆分到独立私有仓库 [u-claw.org](https://github.com/dongsheng123132/u-claw.org)，本仓库不再包含 website/ 和 vercel.json。
 > **虾航**: AI人导航站 (nav.u-claw.org) 在独立私有仓库 [xiahang](https://github.com/dongsheng123132/xiahang)。
 
-Both portable and desktop versions auto-find a free port in range 18789–18799 and start the OpenClaw gateway. On first run, they detect whether a model is configured — if not, they open Config.html; otherwise, they open the dashboard.
+The portable launchers auto-find a free port in range 18789–18799 and start the OpenClaw gateway. On first run, they detect whether a model is configured — if not, they open the 配置中心 (Config Center); otherwise, they open the dashboard.
 
 ## Key Technical Details
 
-- **Node.js discovery**: Portable looks at `app/runtime/node-mac-arm64/bin/node`; Electron looks at `resources/runtime/node-{platform}-{arch}` then falls back to system `node`
+- **Node.js discovery**: Portable looks at `app/runtime/node-mac-arm64/bin/node` (Windows: `app/runtime/node-win-x64/node.exe`)
 - **China mirrors**: All downloads use `npmmirror.com` — Node.js binaries from `npmmirror.com/mirrors/node`, npm packages from `registry.npmmirror.com`
 - **`OPENCLAW_VERSION` file**: single source of truth for the bundled OpenClaw runtime version (e.g. `2026.6.8`). CI reads it to pin the npm install; it's copied into `portable/` so USB users / `check-update.mjs` can compare installed vs latest. Bump this file to upgrade.
 - **Environment variables**: `OPENCLAW_HOME`, `OPENCLAW_STATE_DIR`, `OPENCLAW_CONFIG_PATH` control where OpenClaw reads config
@@ -128,7 +108,7 @@ Both portable and desktop versions auto-find a free port in range 18789–18799 
 - **Config hot-reload**: OpenClaw watches `openclaw.json` and applies changes without restart
 - **Two local servers on startup**: launchers start the OpenClaw **gateway** (18789–18799) AND
   the **config-server** (`config-server/server.js`, 18788–18798). The config-server backs
-  `Config.html` — it writes `openclaw.json`, drives WeChat QR login, and exposes update-status.
+  the 配置中心 page (`config-server/public/index.html`) — it writes `openclaw.json`, serves the 虾盘云 wallet API, and exposes update-status.
 
 ## lib/ Helpers (portable)
 
@@ -160,9 +140,9 @@ Pure-Node, zero-dependency `.mjs` modules (use `fetch` + `node:zlib` only). All 
 
 ### 模型配置 ("选模型填 Key")
 
-Config.html 列出国内外大模型供用户挑选。首选卡片是 **虾盘云** (Xiapan Cloud 中转站,`api.u-claw.org/v1`)
-——一个 Key 调用 DeepSeek / Claude / GPT / 通义 等全部模型,但和其它 provider 一样**需要用户自己去
-`https://u-claw.org/cloud.html` 注册拿 Key**,不再自动开户。其余 provider (DeepSeek/通义/Kimi/智谱/
+配置中心（`config-server/public/index.html`）列出国内外大模型供用户挑选，模型目录来自 `portable/models.json`（单一真相源）→ `node lib/sync-models.mjs` 生成的 `config-server/public/models-catalog.json`。首选卡片是 **虾盘云** (Xiapan Cloud 中转站,`api.u-claw.org/v1`)
+——一个 Key 调用 DeepSeek / Claude / GPT / 通义 等全部模型,但不会自动开户：用户可在页面里点按钮一键领取额度（设备钱包）/ 充值，或自己去
+`https://u-claw.org/cloud.html` 注册拿 Key。其余 provider (DeepSeek/通义/Kimi/智谱/
 豆包/MiniMax/OpenAI/Claude/Groq/硅基流动/自定义) 填各家官方 Key 即可。配置只写本地
 `data/.openclaw/openclaw.json`。
 
@@ -170,7 +150,6 @@ Config.html 列出国内外大模型供用户挑选。首选卡片是 **虾盘�
 
 Never commit runtime dependencies or build artifacts. These are all in .gitignore:
 - `portable/app/` and `portable/data/` (runtime + user data)
-- `u-claw-app/node_modules/`, `u-claw-app/release/`, `u-claw-app/resources/runtime/`
 - `*.dmg`, `*.exe`, `*.blockmap`
 
 Release artifacts go to GitHub Releases, not the repo.
@@ -188,14 +167,4 @@ Release artifacts go to GitHub Releases, not the repo.
 - Mac Apple Silicon (ARM64): ✅ Working
 - Mac Intel (x64): ✅ Working（portable 需先运行 setup.sh 下载 node-mac-x64）
 - Windows x64: 🚧 In development
-- Linux x64 (Bootable USB): ✅ `bootable/` 目录 + 独立仓库 [u-claw-linux](https://github.com/dongsheng123132/u-claw-linux)
-
-## Bootable Linux Key Details
-
-- **制作环境**: Windows 10/11 + PowerShell (Admin)，4 步脚本
-- **U 盘要求**: 32GB+ USB 3.0
-- **技术栈**: Ventoy 1.0.99 引导 → Ubuntu 24.04 ISO → casper-rw 持久化 → OpenClaw 安装到 /opt/u-claw/
-- **国内镜像**: ISO 下载走清华/阿里/中科大，Node.js 和 npm 走 npmmirror.com
-- **Linux 环境变量**: `OPENCLAW_HOME=/opt/u-claw/data/.openclaw`
-- **bootable/ 完全独立**: 不引用 portable/、u-claw-app/ 的任何文件，修改互不影响
-- **同步**: bootable/ 内容与 u-claw-linux 仓库保持一致，改一边要记得同步另一边
+- Linux x64 (Bootable USB): not in this repo — see the standalone repo [u-claw-linux](https://github.com/dongsheng123132/u-claw-linux)

@@ -10,7 +10,7 @@
 - [ ] 🐛 Bug 修复
 - [ ] ✨ 新功能
 - [ ] 📝 文档/README
-- [ ] 🔧 脚本/构建（portable, install, bootable, u-claw-app）
+- [ ] 🔧 脚本/构建（portable, install）
 - [ ] 🎨 技能 (skills-cn)
 - [ ] ♻️ 重构（不改变行为）
 - [ ] 🧪 测试
@@ -37,8 +37,6 @@
 <!-- 勾选受影响的模块 -->
 
 - [ ] portable/ (便携 USB)
-- [ ] u-claw-app/ (Electron 桌面)
-- [ ] bootable/ (Linux 可启动 U 盘)
 - [ ] install/ (一键安装脚本)
 - [ ] skills-cn/ (中国本地化技能)
 - [ ] 仅文档

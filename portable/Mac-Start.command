@@ -199,7 +199,7 @@ if [ ! -d "$CORE_DIR/node_modules" ]; then
     echo ""
 fi
 
-# WeChat is unavailable in Config Center; skip unused plugin staging.
+# The WeChat plugin is not staged at startup; Config Center no longer offers WeChat or channel setup.
 
 # ---- 7b. Async update check (non-blocking, 5s timeout, silent failure) ----
 # Writes data/.openclaw/update-available.json if a newer version is on OSS.

@@ -158,9 +158,10 @@ jobs:
 
           # 6b) Install WeChat (Weixin) plugin into app/extensions/openclaw-weixin
           # 官方 npm 包 @tencent-weixin/openclaw-weixin 自带 dist/index.js(发布时已编译,无需 build)。
-          # config-server/server.js 把 app/extensions/openclaw-weixin 当作插件源,扫码登录后整目录
-          # copy 到 ~/.openclaw/extensions/。它硬要求插件目录内 node_modules/qrcode-terminal 存在
-          # (server.js:52),而 npm 会把该依赖提升到顶层,故下面显式 copy 进插件的 node_modules。
+          # app/extensions/openclaw-weixin 是微信插件的预装源目录:Windows-Install.bat / Mac-Install.command
+          # 会把它整目录 copy 到安装目标的 data/.openclaw/extensions/。配置中心已不再提供微信扫码接入
+          # (原由 config-server 校验插件目录内 node_modules/qrcode-terminal 存在);打包行为保持不变:
+          # npm 会把该依赖提升到顶层,故下面仍显式 copy 进插件自己的 node_modules。
           wx_tmp="$(mktemp -d)"
           (
             cd "$wx_tmp"

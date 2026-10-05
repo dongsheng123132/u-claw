@@ -200,7 +200,7 @@ do_platforms() {
         a) echo "  飞书: 访问 open.feishu.cn/app 创建应用" ;;
         b) echo "  Telegram: 找 @BotFather 创建机器人" ;;
         c)
-            echo -e "  ${YELLOW}微信插件暂不可用：上游模块加载兼容问题（见 config-server 的 WECHAT_ENABLED）。${NC}"
+            echo -e "  ${YELLOW}微信插件暂不可用：上游模块加载兼容问题。${NC}"
             echo -e "  等上游修复后再安装，避免白装。"
             ;;
         d) echo "  Discord: 访问 discord.com/developers/applications" ;;
