@@ -199,25 +199,7 @@ if [ ! -d "$CORE_DIR/node_modules" ]; then
     echo ""
 fi
 
-# ---- 7a. Pre-stage WeChat plugin (parity with Windows) ----
-# OpenClaw 从 OPENCLAW_STATE_DIR/extensions 单一目录加载扩展（无 ~/.openclaw 兜底），
-# 而我们把 STATE_DIR 指向 U 盘，所以插件必须放到 $STATE_DIR/extensions 才会被加载。
-WECHAT_PLUGIN_SRC="$APP_DIR/extensions/openclaw-weixin"
-WECHAT_PLUGIN_DST="$STATE_DIR/extensions/openclaw-weixin"
-if [ -f "$WECHAT_PLUGIN_SRC/openclaw.plugin.json" ] && [ ! -f "$WECHAT_PLUGIN_DST/openclaw.plugin.json" ]; then
-    echo -e "  ${CYAN}Installing WeChat plugin...${NC}"
-    mkdir -p "$STATE_DIR/extensions"
-    cp -R "$WECHAT_PLUGIN_SRC" "$WECHAT_PLUGIN_DST" 2>/dev/null \
-        && echo -e "  ${GREEN}WeChat plugin installed${NC}"
-fi
-# 确保插件能解析到 'zod'：npm 包不带 zod，且宿主 node_modules 不在插件的解析路径上，
-# 否则插件以 "Cannot find module 'zod'" 加载失败。从内置 OpenClaw core 复制 zod 过去。
-# 每次启动都跑，已经装好但缺 zod 的旧盘会自愈。
-if [ -f "$WECHAT_PLUGIN_DST/openclaw.plugin.json" ] && [ ! -d "$WECHAT_PLUGIN_DST/node_modules/zod" ] && [ -d "$CORE_DIR/node_modules/zod" ]; then
-    echo -e "  ${CYAN}Repairing WeChat plugin dependency (zod)...${NC}"
-    mkdir -p "$WECHAT_PLUGIN_DST/node_modules"
-    cp -R "$CORE_DIR/node_modules/zod" "$WECHAT_PLUGIN_DST/node_modules/zod" 2>/dev/null
-fi
+# WeChat is unavailable in Config Center; skip unused plugin staging.
 
 # ---- 7b. Async update check (non-blocking, 5s timeout, silent failure) ----
 # Writes data/.openclaw/update-available.json if a newer version is on OSS.
@@ -306,39 +288,16 @@ OPENCLAW_MJS="$CORE_DIR/node_modules/openclaw/openclaw.mjs"
 "$NODE_BIN" "$OPENCLAW_MJS" gateway run --allow-unconfigured --port $PORT &
 GW_PID=$!
 
-# ---- 11. 立刻打开"启动首屏"，给用户即时反馈（移植自 4.0 splash）----
-# 首屏 loading.html 自己轮询 /ready，就绪后停在选择页，不再自动冲进 Dashboard。
-echo -e "  ${YELLOW}首次启动需准备运行环境，约 30-90 秒，请稍候...${NC}"
-# 用 file:// URL 确保 query string（?port=）能传给浏览器；裸路径 open 会把整串当文件名。
-open "file://$UCLAW_DIR/lib/loading.html?port=$PORT&token=uclaw&configPort=$CONFIG_PORT" 2>/dev/null || true
-
-# ---- 11a. 只在"未配置模型"时才自动弹 Config Center（issue #24）----
-# 以前这里无条件每次都 open Config Center，导致已经配置好模型的老用户每次双击启动
-# 都被强弹一次配置页。真正的设计（见仓库 CLAUDE.md）：首次运行（未配置模型）才自动打开
-# Config Center；已配置则只开 Dashboard。Config Center 端口以 $CONFIG_PORT 为准
-# （18788 起顺延，见上方轮询），Mac-Menu.command 的配置向导也还在，手动打开的能力没有被拿掉。
-# 助手静默失败：读不到/解析不了配置就当"未配置"，宁可多弹一次也不能少弹。
+# ---- 11. One startup tab; wait for readiness before first-run configuration ----
 MODEL_CONFIGURED="$("$NODE_BIN" "$UCLAW_DIR/lib/check-model-configured.mjs" "$CONFIG_FILE" 2>/dev/null)"
-if [ "$MODEL_CONFIGURED" = "UCLAW_MODEL_CONFIGURED=1" ]; then
-    echo -e "  ${GREEN}已配置模型，仅打开 Dashboard，不再弹出 Config Center。${NC}"
-else
-    open "http://127.0.0.1:$CONFIG_PORT/?gatewayPort=$PORT" 2>/dev/null || true
-fi
+CONFIGURED=0
+[ "$MODEL_CONFIGURED" = "UCLAW_MODEL_CONFIGURED=1" ] && CONFIGURED=1
+echo -e "  ${YELLOW}正在准备运行环境，首次从 U 盘启动可能需要几分钟...${NC}"
+open "http://127.0.0.1:$CONFIG_PORT/startup?port=$PORT&token=uclaw&configured=$CONFIGURED" 2>/dev/null || true
 
 # ---- 11b. gateway 首轮预热（后台、静默、非阻塞）----
 # 就绪后先唤醒 config/model 子系统，用户首次点发送时不再等。移植自 4.0 first-turn-prewarm。
 "$NODE_BIN" "$UCLAW_DIR/lib/prewarm.mjs" "$PORT" uclaw >/dev/null 2>&1 &
-
-# ---- 11c. 兜底：万一首屏页的 file:// fetch 被浏览器拦，仍静默轮询端口 ----
-# 慢盘首启可达 90s+，轮询上限覆盖这段。最多 ~3 分钟（180×1s）。
-(
-    for i in $(seq 1 180); do
-        if curl -s -o /dev/null "http://127.0.0.1:$PORT/" 2>/dev/null; then
-            exit 0
-        fi
-        sleep 1
-    done
-) &
 
 echo -e "  ${GREEN}════════════════════════════════${NC}"
 echo -e "  ${GREEN}🦞 U-Claw is running!${NC}"

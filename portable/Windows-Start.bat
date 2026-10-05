@@ -113,7 +113,7 @@ for /f "usebackq tokens=*" %%p in (`powershell -NoProfile -Command "$p=Get-CimIn
 set "INSTANCE_STATUS=unavailable"
 set "INSTANCE_PORT="
 if defined UCLAW_LAUNCHER_PID (
-    for /f "usebackq tokens=1,* delims==" %%a in (`"%NODE_BIN%" "%UCLAW_DIR%lib\portable-instance-lock.mjs" acquire "%INSTANCE_ROOT%" "%STATE_DIR%" "%UCLAW_LAUNCHER_PID%" 2^>nul`) do (
+    for /f "usebackq tokens=1,* delims==" %%a in (`""%NODE_BIN%" "%UCLAW_DIR%lib\portable-instance-lock.mjs" acquire "%INSTANCE_ROOT%" "%STATE_DIR%" "%UCLAW_LAUNCHER_PID%" 2^>nul"`) do (
         if "%%a"=="UCLAW_INSTANCE_STATUS" set "INSTANCE_STATUS=%%b"
         if "%%a"=="UCLAW_INSTANCE_PORT" set "INSTANCE_PORT=%%b"
     )
@@ -176,31 +176,7 @@ if exist "%VERSION_FILE%" (
 )
 
 
-REM Auto-install WeChat plugin if available.
-REM IMPORTANT: OpenClaw loads extensions from OPENCLAW_STATE_DIR\extensions (a single
-REM override, no ~/.openclaw fallback). Since we point STATE_DIR at the USB, the plugin
-REM MUST be staged under %STATE_DIR%\extensions or the gateway never sees it.
-REM We also copy 'zod' from the bundled OpenClaw core into the staged plugin: the npm
-REM tarball ships WITHOUT zod in node_modules and the host node_modules is off the
-REM plugin's resolution path, so otherwise the plugin dies with "Cannot find module
-REM 'zod'" and WeChat never loads. The zod copy runs every launch so drives that were
-REM already staged without it self-heal on next start.
-set "WECHAT_PLUGIN_SRC=%APP_DIR%\extensions\openclaw-weixin"
-set "WECHAT_PLUGIN_DST=%STATE_DIR%\extensions\openclaw-weixin"
-if exist "%WECHAT_PLUGIN_SRC%\openclaw.plugin.json" (
-    if not exist "%WECHAT_PLUGIN_DST%\openclaw.plugin.json" (
-        echo   Installing WeChat plugin...
-        mkdir "%STATE_DIR%\extensions" 2>nul
-        xcopy /s /e /q /y "%WECHAT_PLUGIN_SRC%" "%WECHAT_PLUGIN_DST%\" >nul
-        echo   WeChat plugin installed!
-        echo.
-    )
-    if not exist "%WECHAT_PLUGIN_DST%\node_modules\zod" if exist "%CORE_DIR%\node_modules\zod" (
-        echo   Repairing WeChat plugin dependency zod...
-        mkdir "%WECHAT_PLUGIN_DST%\node_modules" 2>nul
-        xcopy /s /e /q /y "%CORE_DIR%\node_modules\zod" "%WECHAT_PLUGIN_DST%\node_modules\zod\" >nul
-    )
-)
+REM WeChat is unavailable in Config Center; do not stage an unused plugin at startup.
 
 REM Start Config Server in background
 echo   Starting Config Center on port 18788...
@@ -276,22 +252,11 @@ REM Do not open Dashboard before the gateway is ready.
 REM Slow USB drives may need tens of seconds to stage bundled deps.
 REM Open the local startup page now; Config Center only auto-opens on first run.
 
-REM Open startup page with the gateway port and token in the query string.
+REM One browser tab, served by Config Center so readiness can be read same-origin.
+REM Wait for gateway initialization before allowing first-run configuration writes.
 echo   Opening startup screen...
-set "LOADING_PATH=%UCLAW_DIR%lib\loading.html"
-set "LOADING_URL=file:///%LOADING_PATH:\=/%?port=%PORT%&token=uclaw&configPort=%CONFIG_PORT%"
+set "LOADING_URL=http://127.0.0.1:%CONFIG_PORT%/startup?port=%PORT%&token=uclaw&configured=%MODEL_CONFIGURED%"
 start "" "%LOADING_URL%"
-
-if "%MODEL_CONFIGURED%"=="1" (
-    echo   Model already configured - Dashboard only, no Config Center popup.
-) else (
-    echo   Opening Config Center...
-    start "" "http://127.0.0.1:%CONFIG_PORT%/?gatewayPort=%PORT%"
-)
-
-REM Fallback watcher: if the startup page cannot poll from file URLs,
-REM keep polling and reopen Config Center after the gateway is ready.
-start /B "" cmd /c ""%UCLAW_DIR%lib\wait-gateway.bat" %PORT% %CONFIG_PORT%"
 
 REM Prewarm gateway in the background after it becomes ready.
 start /B "" "%NODE_BIN%" "%UCLAW_DIR%lib\prewarm.mjs" %PORT% uclaw >nul 2>&1
@@ -299,7 +264,7 @@ start /B "" "%NODE_BIN%" "%UCLAW_DIR%lib\prewarm.mjs" %PORT% uclaw >nul 2>&1
 echo.
 echo   ========================================
 echo   Starting OpenClaw Gateway on port %PORT%...
-echo   First run on a USB drive may take 30-90 seconds
+echo   First run on a USB drive may take several minutes
 echo   (unpacking bundled components). Please wait;
 echo   Config Center is open for model, key, recharge, and channel setup.
 echo   DO NOT close this window while using U-Claw!

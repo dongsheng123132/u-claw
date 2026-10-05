@@ -616,6 +616,7 @@ const server = http.createServer((req, res) => {
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), 1500);
         let ok = false;
+        let ready = false;
         try {
           const r = await fetch(`http://127.0.0.1:${port}/ready`, { signal: controller.signal });
           if (r.ok) {
@@ -624,6 +625,7 @@ const server = http.createServer((req, res) => {
               && Array.isArray(body.failing)
               && typeof body.uptimeMs === 'number'
               && body.eventLoop && typeof body.eventLoop === 'object';
+            ready = Boolean(ok && body.ready === true && body.failing.length === 0);
           }
         } catch (_) {
           ok = false;
@@ -631,7 +633,7 @@ const server = http.createServer((req, res) => {
           clearTimeout(timer);
         }
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ ok }));
+        res.end(JSON.stringify({ ok: Boolean(ok), ready }));
       } catch (err) {
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: false, error: err.message }));
@@ -937,9 +939,12 @@ const server = http.createServer((req, res) => {
   }
 
   // Serve static files
-  const filePath = req.url === '/'
-    ? path.join(__dirname, 'public/index.html')
-    : path.join(__dirname, 'public', req.url);
+  const requestPath = new URL(req.url, 'http://127.0.0.1').pathname;
+  const filePath = requestPath === '/startup'
+    ? path.join(__dirname, '../lib/loading.html')
+    : requestPath === '/'
+      ? path.join(__dirname, 'public/index.html')
+      : path.join(__dirname, 'public', requestPath);
 
   if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
     const ext = path.extname(filePath);

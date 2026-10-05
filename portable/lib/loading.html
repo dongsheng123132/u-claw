@@ -4,20 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>U-Claw 正在启动…</title>
-<!--
-  启动首屏（移植自 v2 u-clawx 4.0 的 splash 思路）。
-  双击启动脚本后立刻打开本页，给用户即时反馈，消除"黑窗假死"体感。
-  本页每秒自查 gateway 是否就绪（fetch /ready）。
-
-  就绪后【不自动跳转】，而是停在选择页，给两个大按钮：
-    🚀 进入 Dashboard（开始聊天）
-    ⚙️ 配置 / 改模型（打开配置中心）
-  让用户自己决定去聊天还是改配置——避免"配过模型就被冲进 Dashboard、想改配置还得自己翻标签"。
-
-  端口通过 URL 查询参数传入：loading.html?port=18789&configPort=18788
-  （启动脚本打开时拼好。默认 18789 / 18788。v2.2.1 起 configPort 不再硬编码——
-  config-server 可能因端口冲突顺延，不带这个参数时才退回 18788 兜底。）
--->
+<!-- Served by Config Center at /startup. Read actual gateway readiness same-origin,
+then continue in this tab: configured -> chat, first run -> model setup. -->
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html, body { height: 100%; }
@@ -109,13 +97,13 @@ body.ready .ready-wrap { display: block; }
     <div class="loading-wrap">
       <div class="logo">🦞</div>
       <h1>U-Claw 正在启动</h1>
-      <div class="tip">首次从 U 盘启动需要展开内置组件，<br>稍等片刻，就绪后会提示你下一步。</div>
+      <div class="tip">首次从 U 盘启动需要展开内置组件，<br>就绪后会自动进入下一步。</div>
       <div class="spinner"></div>
       <div class="bar"><i></i></div>
       <div class="status" id="status">正在等待 OpenClaw 网关…</div>
       <div class="elapsed" id="elapsed"></div>
       <div class="note">
-        慢 U 盘首次启动通常 30–90 秒。<br>
+        首次从 U 盘启动可能需要几分钟。<br>
         如果迟迟没反应，可先打开
         <a class="manual" id="manual" href="#">配置中心</a>。
       </div>
@@ -131,7 +119,7 @@ body.ready .ready-wrap { display: block; }
           <span class="sub">开始和 AI 聊天</span>
         </a>
         <a class="btn" id="goConfig">⚙️ 配置 / 改模型
-          <span class="sub">填写或更换模型 Key、充值、连接微信等渠道</span>
+          <span class="sub">填写或更换模型 Key、充值</span>
         </a>
       </div>
       <div class="foot">没配过模型或余额不足？先点「配置 / 改模型」处理 Key 或充值。</div>
@@ -144,7 +132,7 @@ body.ready .ready-wrap { display: block; }
   var params = new URLSearchParams(location.search);
   var port = parseInt(params.get('port'), 10) || 18789;
   var token = params.get('token') || 'uclaw';
-  var configPort = parseInt(params.get('configPort'), 10) || 18788;
+  var configPort = parseInt(location.port || params.get('configPort'), 10) || 18788;
   var base = 'http://127.0.0.1:' + port;
   var dashboard = base + '/#token=' + encodeURIComponent(token);
   var configCenter = 'http://127.0.0.1:' + configPort + '/';
@@ -172,16 +160,27 @@ body.ready .ready-wrap { display: block; }
     if (ready) return;
     ready = true;
     document.body.classList.add('ready');
+    location.replace(params.get('configured') === '1' ? dashboard : configCenter);
   }
 
   function poll() {
     if (ready) return;
-    // /ready 就绪即显示选择页。no-cors 下拿不到 status，但 fetch 成功 resolve 就说明端口活了。
-    fetch(base + '/ready', { mode: 'no-cors', cache: 'no-store' })
-      .then(function () { showChoice(); })
-      .catch(function () {
-        // 端口还没起，继续等
-        setTimeout(poll, 1000);
+    // An opaque no-cors response can also be HTTP 503. Only explicit ready=true
+    // from our same-origin server is permission to leave the startup page.
+    var controller = new AbortController();
+    var timer = setTimeout(function () { controller.abort(); }, 3000);
+    fetch('/api/gateway-check?port=' + port, { cache: 'no-store', signal: controller.signal })
+      .then(function (response) {
+        if (!response.ok) throw new Error('Startup check failed');
+        return response.json();
+      })
+      .then(function (result) {
+        if (result.ok === true && result.ready === true) showChoice();
+      })
+      .catch(function () {})
+      .finally(function () {
+        clearTimeout(timer);
+        if (!ready) setTimeout(poll, 1000);
       });
   }
   poll();
