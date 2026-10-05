@@ -180,7 +180,6 @@ test('customer-facing .bat launchers are pure ASCII (cmd.exe mis-parses UTF-8 Ch
   for (const name of [
     'Windows-Start.bat',
     'Windows-IntranetFix.bat',
-    'Windows-LocalModel.bat',
     'OpenClaw-Doctor.bat',
   ]) {
     const bytes = readFileSync(join(repoRoot, 'portable', name));
@@ -194,7 +193,6 @@ test('macOS .command launchers are LF-only (CRLF breaks #!/bin/bash on macOS)', 
   for (const name of [
     'Mac-Start.command',
     'Mac-IntranetFix.command',
-    'Mac-LocalModel.command',
     'Mac-OpenClaw-Doctor.command',
   ]) {
     const bytes = readFileSync(join(repoRoot, 'portable', name));
@@ -204,15 +202,9 @@ test('macOS .command launchers are LF-only (CRLF breaks #!/bin/bash on macOS)', 
   }
 });
 
-test('macOS local-model / intranet launchers call the shared cross-platform scripts', () => {
+test('macOS intranet / doctor launchers call the shared cross-platform scripts', () => {
   assert.match(readRepoFile('portable', 'Mac-IntranetFix.command'), /lib\/intranet-check\.mjs/);
-  assert.match(readRepoFile('portable', 'Mac-LocalModel.command'), /lib\/setup-local-model\.mjs/);
   assert.match(readRepoFile('portable', 'Mac-OpenClaw-Doctor.command'), /doctor --non-interactive/);
-});
-
-test('local-model setup launcher calls setup-local-model.mjs', () => {
-  const bat = readRepoFile('portable', 'Windows-LocalModel.bat');
-  assert.match(bat, /lib\\setup-local-model\.mjs/);
 });
 
 test('portable menus expose a CLI terminal entry point (issue #53)', () => {
@@ -269,7 +261,6 @@ test('Windows launchers have no unescaped parens in echoes inside IF/FOR blocks 
   for (const name of [
     'Windows-Start.bat',
     'Windows-IntranetFix.bat',
-    'Windows-LocalModel.bat',
     'OpenClaw-Doctor.bat',
     'Windows-Diagnose.bat',
     'Windows-Menu.bat',

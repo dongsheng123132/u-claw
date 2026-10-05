@@ -42,7 +42,7 @@ if (req.method === 'OPTIONS') { res.writeHead(200); res.end(); return; }
 - 不带 `Origin` 头的请求（curl、Node fetch、桌面壳走 127.0.0.1 直连）不受影响——CORS 是浏览器策略。
 - 桌面壳走 `http://127.0.0.1:<port>` 即落在白名单内，无需额外配置。
 
-## 1. 端点清单（14 个）
+## 1. 端点清单（13 个）
 
 | # | Method | Path | 联网 | 备注 |
 | - | ------ | ---- | --- | ---- |
@@ -52,14 +52,13 @@ if (req.method === 'OPTIONS') { res.writeHead(200); res.end(); return; }
 | 4 | GET | `/api/gateway-check` | ✓ | `?port=` |
 | 5 | GET | `/api/update-status` | ✗ | 读状态文件 |
 | 6 | POST | `/api/update-check` | ✓ | 触发联网检查 |
-| 7 | GET | `/api/local-models` | ✓(本机) | Ollama/LM Studio 1.2s 探活 |
-| 8 | POST | `/api/provider-models` | ✓ | 带 Key 拉 `/v1/models` |
-| 9 | GET | `/api/wallet/status` | ✗ | **回显明文 apiKey + rechargeUrl** |
-| 10 | POST | `/api/wallet/claim` | ✓ | 一键领取 |
-| 11 | GET | `/api/wallet/balance` | ✓ | 查余额 |
-| 12 | POST | `/api/wallet/rotate` | ✓ | 换 Key，两阶段提交 |
-| 13 | POST | `/api/wallet/adopt` | ✓ | body `{key}` |
-| 14 | POST | `/api/wallet/reset-local` | ✗ | 仅清本地 |
+| 7 | POST | `/api/provider-models` | ✓ | 带 Key 拉 `/v1/models` |
+| 8 | GET | `/api/wallet/status` | ✗ | **回显明文 apiKey + rechargeUrl** |
+| 9 | POST | `/api/wallet/claim` | ✓ | 一键领取 |
+| 10 | GET | `/api/wallet/balance` | ✓ | 查余额 |
+| 11 | POST | `/api/wallet/rotate` | ✓ | 换 Key，两阶段提交 |
+| 12 | POST | `/api/wallet/adopt` | ✓ | body `{key}` |
+| 13 | POST | `/api/wallet/reset-local` | ✗ | 仅清本地 |
 
 ## 2. 端点契约
 
@@ -203,22 +202,7 @@ if (req.method === 'OPTIONS') { res.writeHead(200); res.end(); return; }
 
 ---
 
-### 2.7 `GET /api/local-models`
-
-并发探测 Ollama 与 LM Studio（1.2s 超时/路，`Promise.all`）：
-
-| provider | base | api（期望响应） |
-| -------- | ---- | ---- |
-| `ollama` | `http://127.0.0.1:11434/v1` | `http://127.0.0.1:11434/api/tags`（`{models:[{name}]}`） |
-| `lmstudio` | `http://127.0.0.1:1234/v1` | `http://127.0.0.1:1234/v1/models`（`{data:[{id}]}`） |
-
-**响应 200**：`{providers:[{provider, label, base, models:[...]}, ...]}`；都探测不到 `providers:[]`。
-
-**敏感字段**：无。
-
----
-
-### 2.8 `POST /api/provider-models`
+### 2.7 `POST /api/provider-models`
 
 带用户 Key 调平台 `/v1/models`。Key 仅本次使用，**不落盘、不打日志**。
 
@@ -231,7 +215,7 @@ if (req.method === 'OPTIONS') { res.writeHead(200); res.end(); return; }
 
 ---
 
-### 2.9 `GET /api/wallet/status`
+### 2.8 `GET /api/wallet/status`
 
 `lib/wallet-client.mjs` 的 `getStatus()`，**不联网**；有 wallet 时额外拼 `rechargeUrl`（用 `payBaseUrl()`）。
 
@@ -245,7 +229,7 @@ if (req.method === 'OPTIONS') { res.writeHead(200); res.end(); return; }
 
 ---
 
-### 2.10 `POST /api/wallet/claim`
+### 2.9 `POST /api/wallet/claim`
 
 一键领取。`claimWallet()`：`state.apiKey` 已存在 → `{alreadyClaimed:true}`；否则 POST `/device/bind`（failover 走 `lib/uclaw-cloud-endpoints.mjs.fetchWithFailover`），拿 `apiKey+walletId` 后落 `<stateDir>/uclaw-device.json`，再 `applyKey()` 合并写 openclaw.json（清旧 `uclaw-cloud` provider → 插新 Key）。并发去重 `claimInFlight`。
 
@@ -254,14 +238,14 @@ if (req.method === 'OPTIONS') { res.writeHead(200); res.end(); return; }
 
 **敏感字段**：🚫 `apiKey` 明文。
 
-### 2.11 `GET /api/wallet/balance`
+### 2.10 `GET /api/wallet/balance`
 
 并行调 `/v1/dashboard/billing/subscription` + `/v1/dashboard/billing/usage`，换算 USD 与 quota（`500,000 quota = $1`）。
 
 **响应 200**：成功 → `{ok:true, remainingUsd, usedUsd, grantedUsd, remainingQuota, usedQuota, grantedQuota}`
 **响应 200**：失败 → `{ok:false, error:"查询余额失败：HTTP <n>"|"查询用量失败：HTTP <n>"|"余额返回格式不认识"|"还没有设备钱包"|<底层>}`
 
-### 2.12 `POST /api/wallet/rotate`
+### 2.11 `POST /api/wallet/rotate`
 
 两阶段提交换 Key：mint `/device/rotate` → 只读 `GET /v1/models` 验证（**不消耗额度**）→ `/device/rotate/commit`；若有 `pendingKey` 先 `settlePendingState()`。并发去重 `rotateInFlight`。
 
@@ -270,7 +254,7 @@ if (req.method === 'OPTIONS') { res.writeHead(200); res.end(); return; }
 
 **敏感字段**：🚫 `apiKey` 明文。
 
-### 2.13 `POST /api/wallet/adopt`
+### 2.12 `POST /api/wallet/adopt`
 
 填入已有 Key（跨机迁移）：本地校验前缀 `sk-`、长度 ≥8、无空白字符；`GET /v1/models` 只读验签；通过则覆盖本地五字段 + `applyKey()` 合并写 openclaw.json。
 
@@ -280,7 +264,7 @@ if (req.method === 'OPTIONS') { res.writeHead(200); res.end(); return; }
 
 **敏感字段**：🚫 请求体 `key` + 响应 `apiKey`。
 
-### 2.14 `POST /api/wallet/reset-local`
+### 2.13 `POST /api/wallet/reset-local`
 
 只清本机五字段 + 清 `openclaw.json.models.providers.uclaw-cloud` + 若主模型指向它一并清空。**绝不调服务端**——旧钱包余额不受影响，旧 Key 仍可在别的机器上 `adopt`。
 
@@ -348,7 +332,6 @@ if (req.method === 'OPTIONS') { res.writeHead(200); res.end(); return; }
 - `/api/wallet/*` 的所有失败路径都在 200 里——客户端必须看 `ok` 字段，不能只看 HTTP 状态。
 - `/api/update-status` 永不 5xx；桌面壳 UI 上看到 `available:false` 就是「无更新或还没检查」，不要重试风暴。
 - `/api/runtime` 的 `gatewayPort:null` 是合法降级；桌面壳应再走一次本地 18778-18798 盲扫兜底（旧的 `findGatewayPort()` 行为）。
-- `/api/local-models` 同时探测 Ollama 与 LM Studio，单边超时 1.2s，最坏情况 1.2s 后返回（两个 Promise.all 并发）——不要在前端把这个接口的 timeout 设短于 2s。
 
 ---
 
