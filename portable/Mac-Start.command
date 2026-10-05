@@ -203,7 +203,7 @@ fi
 
 # ---- 7b. Async update check (non-blocking, 5s timeout, silent failure) ----
 # Writes data/.openclaw/update-available.json if a newer version is on OSS.
-# Welcome.html / Config.html read this file and show a banner.
+# config-server serves this file via GET /api/update-status for the desktop shell.
 # Version file lookup: portable/OPENCLAW_VERSION (USB) → ../OPENCLAW_VERSION (dev)
 VERSION_FILE="$UCLAW_DIR/OPENCLAW_VERSION"
 [ -f "$VERSION_FILE" ] || VERSION_FILE="$UCLAW_DIR/../OPENCLAW_VERSION"

@@ -7,7 +7,6 @@ import assert from 'node:assert/strict';
 const repoRoot = fileURLToPath(new URL('..', import.meta.url));
 const server = readFileSync(join(repoRoot, 'portable', 'config-server', 'server.js'), 'utf8');
 const configPage = readFileSync(join(repoRoot, 'portable', 'config-server', 'public', 'index.html'), 'utf8');
-const portableConfigPage = readFileSync(join(repoRoot, 'portable', 'Config.html'), 'utf8');
 
 test('config save stores API keys as SecretRef through OpenClaw secret store stdin', () => {
   for (const token of ['secrets', 'store', 'set', '--kind', 'secret', '--value-file', 'UCLAW_MODEL_']) {
@@ -35,12 +34,8 @@ test('incoming API key is replaced before merged config is written', () => {
 test('config page keeps saved secrets out of the API key input and reports reload state', () => {
   assert.match(configPage, /SECRET_REF_INPUT_VALUE = '（已加密保存，无需重填）'/);
   assert.match(configPage, /input\.value = SECRET_REF_INPUT_VALUE/);
-  assert.match(portableConfigPage, /SECRET_REF_INPUT_VALUE = '（已加密保存，无需重填）'/);
-  assert.match(portableConfigPage, /input\.value = isSecretRefValue\(value\) \? SECRET_REF_INPUT_VALUE/);
   assert.match(configPage, /已保存的密钥已脱敏；输入新值可更换/);
   assert.match(configPage, /pendingRestart/);
-  for (const page of [configPage, portableConfigPage]) {
-    assert.match(page, /inputApiKey === SECRET_REF_INPUT_VALUE && !isSecretRefValue\(savedProviderApiKey\)/,
-      'saving an unbacked placeholder must be rejected');
-  }
+  assert.match(configPage, /inputApiKey === SECRET_REF_INPUT_VALUE && !isSecretRefValue\(savedProviderApiKey\)/,
+    'saving an unbacked placeholder must be rejected');
 });

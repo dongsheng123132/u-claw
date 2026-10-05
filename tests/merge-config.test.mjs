@@ -210,16 +210,6 @@ test('saveConfigMerged: 端到端——已有 plugins 时保存模型配置，pl
   });
 });
 
-test('MANAGED_TOP_LEVEL_KEYS 与 Config.html 里前端双保险的清单保持一致', () => {
-  // 这条测试是"防漂移"——Config.html 的 saveConfig() 里手写了一份同样的白名单
-  // (MANAGED_CONFIG_KEYS) 用于前端双保险，两边分叉会导致文档说的策略跟实际代码不一致。
-  const html = readFileSync(new URL('../portable/Config.html', import.meta.url), 'utf8');
-  const m = html.match(/MANAGED_CONFIG_KEYS\s*=\s*\[([^\]]*)\]/);
-  assert.ok(m, 'Config.html 里应有 MANAGED_CONFIG_KEYS 常量');
-  const frontendKeys = m[1].split(',').map((s) => s.trim().replace(/^'|'$/g, '')).filter(Boolean);
-  assert.deepEqual(new Set(frontendKeys), new Set(MANAGED_TOP_LEVEL_KEYS));
-});
-
 // ── issue #67：channels（请求带了才整体替换，没带保留磁盘版本）─────────────
 
 test('REPLACE_IF_PRESENT_KEYS: 只含 channels，且不与受管字段重叠（否则保存模型会清空渠道）', () => {

@@ -897,7 +897,7 @@ else
             echo ""
             read -p "  请输入 $KEY_LABEL: " API_KEY
             if [ -z "$API_KEY" ]; then
-                echo -e "  ${YELLOW}⚠ 未输入 API Key，稍后可通过 Config.html 配置${NC}"
+                echo -e "  ${YELLOW}⚠ 未输入 API Key，稍后可编辑 $CONFIG_PATH 配置${NC}"
             fi
         else
             echo -e "  ${CYAN}$KEY_HINT${NC}"
@@ -976,7 +976,7 @@ CFGEOF
     else
         # 非交互模式，写默认配置
         echo -e "  ${YELLOW}⚠${NC}  管道模式，跳过模型选择"
-        echo -e "  ${DIM}启动后用 Config.html 配置模型${NC}"
+        echo -e "  ${DIM}稍后编辑 $CONFIG_PATH 配置模型${NC}"
         if [ ! -f "$CONFIG_PATH" ]; then
             cat > "$CONFIG_PATH" << 'CFGEOF'
 {

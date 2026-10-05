@@ -522,7 +522,7 @@ if ($hasConfig) {
     if ($cfg.needKey) {
         $apiKey = Read-Host "  Enter $($cfg.label)"
         if ([string]::IsNullOrEmpty($apiKey)) {
-            Write-Yellow "  [WARN] No API Key entered. You can configure later via Config.html"
+            Write-Yellow "  [WARN] No API Key entered. You can configure later by editing $CONFIG_PATH"
         }
     }
 

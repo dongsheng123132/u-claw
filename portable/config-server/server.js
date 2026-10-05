@@ -588,7 +588,7 @@ function listenWithFallback(port) {
       console.log(`\n🦞 U-Claw Config Center`);
       console.log(`   http://127.0.0.1:${port}`);
       console.log(`\n   Config file: ${CONFIG_PATH}\n`);
-      // Persist the live port so Config.html / launchers can discover it after restarts.
+      // Persist the live port so the desktop shell / launchers can discover it after restarts.
       try {
         fs.mkdirSync(path.dirname(RUNTIME_PATH), { recursive: true });
         const existing = fs.existsSync(RUNTIME_PATH) ? JSON.parse(fs.readFileSync(RUNTIME_PATH, 'utf8')) : {};

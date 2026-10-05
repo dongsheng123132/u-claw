@@ -169,7 +169,7 @@ if !ERROR_COUNT!==0 (
     echo.
     echo   下一步:
     echo   - 双击 Windows-Start.bat 启动服务
-    echo   - 或双击 Config.html 配置 AI 模型
+    echo     （首次启动会自动打开配置中心，在里面配置 AI 模型）
 ) else (
     echo   ❌ 检查结果: 发现 !ERROR_COUNT! 个问题
     echo.
