@@ -73,9 +73,9 @@ test('产物文件名与 release.yml 的命名一致', () => {
   const expected = `u-claw-portable-windows-v${shellVersion()}.zip`;
 
   // 直接从 workflow 里读命名模板，避免这里和 CI 各写一份约定
-  const workflow = readFileSync(join(REPO, '.github', 'workflows', 'release.yml'), 'utf8');
+  const workflow = readFileSync(join(REPO, 'tools', 'build-windows-release.ps1'), 'utf8');
   assert.ok(
-    workflow.includes('u-claw-portable-windows-${tag_name}.zip'),
+    workflow.includes('u-claw-portable-windows-$tag') && workflow.includes('$name.zip'),
     'release.yml 的产物命名变了，本测试的期望也要跟着改',
   );
 

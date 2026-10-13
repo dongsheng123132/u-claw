@@ -25,7 +25,7 @@
 
 ## 三步开始
 
-> **Windows 用户：推荐使用 NTFS 格式的 U 盘。** exFAT 的首次工作区创建与对话兼容性仍在验证，当前不推荐；FAT32 也不作为本版支持格式。macOS 不应照搬 NTFS 建议，请使用本机目录或可写的原生文件系统。格式化会清空盘内文件，操作前请备份。
+> **Windows 用户：推荐使用 NTFS 格式的 U 盘。** exFAT 在新内核实测中仍有文件写入错误，本版不支持；FAT32 也不作为本版支持格式。macOS 不应照搬 NTFS 建议，请使用本机目录或可写的原生文件系统。格式化会清空盘内文件，操作前请备份。
 
 > 📺 图文教程：[docs/快速上手.md](docs/快速上手.md)（含真实界面截图，5 步从插 U 盘到开始对话）
 
@@ -151,7 +151,7 @@ Linux 可启动 U 盘套件已移出本仓库，在独立仓库 [u-claw-linux](h
 - `u-claw-portable-windows-vX.Y.Z.zip` — Windows 便携完整版（已预装 Node + OpenClaw，**解压到 U 盘双击 `Windows-Start.bat` 即用**）
 - **Mac**：源码在 [`portable/`](portable/) 目录，`bash setup.sh` 自动下载 Node + OpenClaw（国内镜像约 1 分钟），双击 `Mac-Start.command` 启动
 
-> **Windows 用户：推荐使用 NTFS 格式的 U 盘。** exFAT 的首次工作区创建与对话兼容性仍在验证，当前不推荐；FAT32 也不作为本版支持格式。macOS 不应照搬 NTFS 建议，请使用本机目录或可写的原生文件系统。格式化会清空盘内文件，操作前请备份。
+> **Windows 用户：推荐使用 NTFS 格式的 U 盘。** exFAT 在新内核实测中仍有文件写入错误，本版不支持；FAT32 也不作为本版支持格式。macOS 不应照搬 NTFS 建议，请使用本机目录或可写的原生文件系统。格式化会清空盘内文件，操作前请备份。
 
 | 数据类型 | 存放位置 |
 |---|---|
@@ -243,10 +243,10 @@ MIT 协议，随便复制分发。
 2. 切换淘宝镜像重新安装：`cd portable/app/core && npm install --registry=https://registry.npmmirror.com`
 
 **Q: 电脑已有其他版本的 Node.js，应该用哪个？**
-本版内置并验证的是 **Node.js 22.22.3 + OpenClaw 2026.9.2**。优先使用发行包自带的启动脚本和 Node，不需要更换电脑上的 Node。若运行时缺失，重新解压完整发行包，或从源码运行 `setup.bat` / `setup.sh`；不要单独升级 OpenClaw 后继续沿用旧运行时。
+本版内置并验证的是 **Node.js 24.16.0 + OpenClaw 2026.10.2**。优先使用发行包自带的启动脚本和 Node，不需要更换电脑上的 Node。若运行时缺失，重新解压完整发行包，或从源码运行 `setup.bat` / `setup.sh`；不要单独升级 OpenClaw 后继续沿用旧运行时。
 
 **Q: Mac 上提示 `.toSorted is not a function`？**
-系统旧版 Node.js 被检测到并跳过了内置版本下载，但旧版 Node 不支持 `.toSorted()`（需要 v20+）。删除 runtime 目录让脚本重新下载内置 Node v22：
+系统旧版 Node.js 被检测到并跳过了内置版本下载，但旧版 Node 不支持 `.toSorted()`（需要 v20+）。删除 runtime 目录让脚本重新下载内置 Node v24：
 ```bash
 rm -rf portable/app/runtime/node-mac-arm64
 bash setup.sh
@@ -256,7 +256,7 @@ bash setup.sh
 启动 `Windows-Start.bat` / `Mac-Start.command` 后使用配置中心（首次启动自动打开，之后可从启动页进入）。它一次只配置一个模型服务（保存后作为主模型），再次保存会替换原有的模型配置。需要同时保留多个 provider（如 DeepSeek、Kimi、通义等）时，请用 OpenClaw 自带的 `openclaw configure`（双击 `OpenClaw-CLI.bat` / `Mac-OpenClaw-CLI.command` 打开命令行）或直接编辑 `data/.openclaw/openclaw.json`，之后在聊天界面左上角下拉菜单切换；此后不要再在配置中心保存模型，否则会覆盖 `models`。配置持久保存在 U 盘上。
 
 **Q: U 盘安装后无法创建文件 / 写入失败？**
-先检查写保护、剩余空间和目录权限。仅在 Windows 使用时推荐 NTFS；exFAT 的完整兼容性仍在验证。不要把所有写入失败都归因于格式，先运行诊断工具并保存错误信息；需要格式化时请先备份数据。
+先检查写保护、剩余空间和目录权限。仅在 Windows 使用时推荐 NTFS；本版不支持 exFAT。不要把所有写入失败都归因于格式，先运行诊断工具并保存错误信息；需要格式化时请先备份数据。
 
 **Q: 从 Ubuntu 向 U 盘复制时符号链接丢失？**
 `node_modules/.bin/` 下有大量符号链接，FAT32/exFAT 在直接 `cp -R` 时会跳过。用 `rsync -aL` 可将符号链接展开为真实文件：
@@ -355,7 +355,7 @@ See [`install/README.md`](install/README.md) for details.
 
 ### Quick Start: Build a Portable USB
 
-> **Windows-only USB use: NTFS is recommended.** First-workspace and first-chat compatibility on exFAT is still being validated; exFAT and FAT32 are not recommended for this release. On macOS, use a local folder or a writable native filesystem instead of applying the Windows NTFS advice. Formatting erases the drive; back up your files first.
+> **Windows-only USB use: NTFS is recommended.** exFAT failed file-write acceptance with the new runtime; this release does not support exFAT or FAT32. On macOS, use a local folder or a writable native filesystem instead of applying the Windows NTFS advice. Formatting erases the drive; back up your files first.
 
 ```bash
 # 1. Clone
@@ -520,10 +520,10 @@ Usually caused by a network interruption during `npm install`, leaving `node_mod
 2. Reinstall using China mirror: `cd portable/app/core && npm install --registry=https://registry.npmmirror.com`
 
 **Q: Which Node.js version should I use?**
-This release bundles and validates **Node.js 22.22.3 with OpenClaw 2026.9.2**. Use the bundled launcher and runtime; you do not need to replace your system Node. If runtime files are missing, extract a fresh full release or run `setup.bat` / `setup.sh` from source. Do not upgrade OpenClaw independently of its runtime requirements.
+This release bundles and validates **Node.js 24.16.0 with OpenClaw 2026.10.2**. Use the bundled launcher and runtime; you do not need to replace your system Node. If runtime files are missing, extract a fresh full release or run `setup.bat` / `setup.sh` from source. Do not upgrade OpenClaw independently of its runtime requirements.
 
 **Q: Mac shows `.toSorted is not a function`?**
-Your system Node.js was detected and the bundled version was skipped, but the system version is too old (needs v20+). Delete the runtime folder to re-download the bundled Node v22:
+Your system Node.js was detected and the bundled version was skipped, but the system version is too old (needs v20+). Delete the runtime folder to re-download the bundled Node v24:
 ```bash
 rm -rf portable/app/runtime/node-mac-arm64
 bash setup.sh

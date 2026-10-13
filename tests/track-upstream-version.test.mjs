@@ -7,12 +7,14 @@ import { fileURLToPath } from 'node:url';
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (...path) => readFileSync(join(repoRoot, ...path), 'utf8');
 
-test('上游跟踪按 git tag 版本序计算并安全跳过撞车版本', () => {
+test('upstream discovery cannot publish unvalidated runtimes', () => {
   const workflow = read('.github', 'workflows', 'track-upstream.yml');
-
-  assert.match(workflow, /git fetch --tags --force/, '必须完整拉取 tag 后再计算版本');
-  assert.match(workflow, /--sort=-v:refname/, '必须按版本序而非字典序选择最新 tag');
-  assert.match(workflow, /already exists/, '目标 tag 已存在时必须安静跳过');
+  assert.match(workflow, /contents: read/);
+  assert.doesNotMatch(workflow, /git push|git tag|git commit/);
+  const release = read('.github', 'workflows', 'release.yml');
+  assert.match(release, /runs-on: windows-latest/);
+  assert.match(release, /--draft/);
+  assert.match(release, /Refusing to overwrite a published release/);
 });
 
 // vendor patch 的 bundle 锚定是跨文件不变量：patch 脚本定义 BUNDLE 名，
@@ -21,7 +23,7 @@ test('上游跟踪按 git tag 版本序计算并安全跳过撞车版本', () =>
 function extractBundles(patchSource) {
   const bundles = new Set();
   // BUNDLE 常量（patch2，2026.9.1 起指向 @openclaw/fs-safe 包内）与 bundlePath 字面量（patch1）
-  for (const m of patchSource.matchAll(/(?:BUNDLE = 'node_modules\/(?:@openclaw\/fs-safe\/dist\/|openclaw\/dist\/)|openclaw\/dist\/)([A-Za-z][A-Za-z0-9._-]*\.js)'/g)) {
+  for (const m of patchSource.matchAll(/(?:BUNDLE = 'node_modules\/(?:@openclaw\/fs-safe\/dist\/|openclaw\/dist\/)|openclaw\/dist\/)([A-Za-z][A-Za-z0-9._-]*\.m?js)'/g)) {
     bundles.add(m[1]);
   }
   return bundles;
@@ -30,7 +32,7 @@ function extractBundles(patchSource) {
 test('vendor patch 锚定的 bundle 在 release.yml 与 setup.sh 三处一致（跨文件不变量）', () => {
   const browserPatch = read('portable', 'lib', 'patch-managed-browser-root.mjs');
   const pairingPatch = read('portable', 'lib', 'patch-device-pairing-retry.mjs');
-  const release = read('.github', 'workflows', 'release.yml');
+  const release = read('portable', 'setup.ps1');
   const setupSh = read('portable', 'setup.sh');
 
   const bundles = new Set([...extractBundles(browserPatch), ...extractBundles(pairingPatch)]);
@@ -42,7 +44,7 @@ test('vendor patch 锚定的 bundle 在 release.yml 与 setup.sh 三处一致（
   }
 
   // 全仓三个关键文件不得残留任何其他 chrome-*/replace-file-* bundle 硬编码
-  const pattern = /(chrome|replace-file)-[A-Za-z0-9_-]{8}\.js/g;
+  const pattern = /(chrome|replace-file)-[A-Za-z0-9_-]{8}\.m?js/g;
   for (const [name, text] of [['release.yml', release], ['setup.sh', setupSh], ['patch1', browserPatch], ['patch2', pairingPatch]]) {
     for (const m of text.matchAll(pattern)) {
       assert.ok(bundles.has(m[0]), `${name} 残留未锚定的 bundle 名: ${m[0]}`);

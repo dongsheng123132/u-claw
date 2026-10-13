@@ -1,301 +1,55 @@
-param(
-    [switch]$AllPlatforms
-)
+param([switch]$AllPlatforms)
+$ErrorActionPreference = 'Stop'
+$nodeVersion = "v24.16.0"
+if ($AllPlatforms) { throw 'Prepare macOS separately with setup.sh on a Mac; native dependencies cannot be shared with Windows.' }
+$coreDir = Join-Path $PSScriptRoot 'app/core'
+$nodeDir = Join-Path $PSScriptRoot 'app/runtime/node-win-x64'
+$nodeExe = Join-Path $nodeDir 'node.exe'
+$pin = (Get-Content -LiteralPath (Join-Path $PSScriptRoot 'OPENCLAW_VERSION') -Raw).Trim()
 
-$ErrorActionPreference = "Stop"
-
-$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$appDir = Join-Path $scriptDir "app"
-$coreDir = Join-Path $appDir "core"
-$runtimeDir = Join-Path $appDir "runtime"
-
-$mirror = "https://registry.npmmirror.com"
-$nodeMirror = "https://npmmirror.com/mirrors/node"
-$nodeVersion = "v22.22.3"
-
-function Write-Step {
-    param(
-        [string]$Symbol,
-        [string]$Message,
-        [string]$Color = "Gray"
-    )
-
-    Write-Host ("  {0} {1}" -f $Symbol, $Message) -ForegroundColor $Color
+function Download([string]$Url, [string]$Destination) {
+    & curl.exe -fL --retry 2 --connect-timeout 15 --max-time 300 $Url -o $Destination
+    if ($LASTEXITCODE -ne 0) { throw "Download failed: $Url" }
 }
-
-function Ensure-Directory {
-    param(
-        [string]$Path
-    )
-
-    if (-not (Test-Path -Path $Path -PathType Container)) {
-        New-Item -ItemType Directory -Path $Path -Force | Out-Null
-    }
+if (Test-Path -LiteralPath $nodeExe) {
+    if ((& $nodeExe --version) -ne $nodeVersion) { throw 'Old Node runtime. Extract the full release in a new folder; do not mix app folders.' }
+} else {
+    $downloadDir = Join-Path ([IO.Path]::GetTempPath()) ('uclaw-node-' + [guid]::NewGuid())
+    New-Item -ItemType Directory -Path $downloadDir -Force | Out-Null
+    $archiveName = "node-$nodeVersion-win-x64.zip"
+    $archive = Join-Path $downloadDir $archiveName
+    Download "https://nodejs.org/dist/$nodeVersion/SHASUMS256.txt" (Join-Path $downloadDir 'SHASUMS256.txt')
+    try { Download "https://npmmirror.com/mirrors/node/$nodeVersion/$archiveName" $archive }
+    catch { Download "https://nodejs.org/dist/$nodeVersion/$archiveName" $archive }
+    $line = Get-Content -LiteralPath (Join-Path $downloadDir 'SHASUMS256.txt') | Where-Object { $_.EndsWith('  ' + $archiveName) }
+    if (-not $line -or (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash -ne ($line -split '\s+')[0]) { throw 'Node archive checksum mismatch' }
+    Expand-Archive -LiteralPath $archive -DestinationPath $downloadDir
+    New-Item -ItemType Directory -Path $nodeDir -Force | Out-Null
+    Copy-Item -Path (Join-Path $downloadDir "node-$nodeVersion-win-x64/*") -Destination $nodeDir -Recurse
+    $resolved = (Resolve-Path -LiteralPath $downloadDir).Path
+    if (-not $resolved.StartsWith([IO.Path]::GetTempPath(), [StringComparison]::OrdinalIgnoreCase)) { throw 'Unsafe temporary path' }
+    Remove-Item -LiteralPath $resolved -Recurse -Force
 }
-
-function Download-File {
-    param(
-        [string]$Url,
-        [string]$Destination
-    )
-
-    Invoke-WebRequest -Uri $Url -OutFile $Destination
+$package = Join-Path $coreDir 'node_modules/openclaw/package.json'
+if (Test-Path -LiteralPath $package) {
+    if ((Get-Content -LiteralPath $package -Raw | ConvertFrom-Json).version -ne $pin) { throw 'Old OpenClaw runtime. Extract the full release in a new folder.' }
+    $platformFile=Join-Path $coreDir '.uclaw-runtime-platform'
+    if (-not (Test-Path -LiteralPath $platformFile) -or (Get-Content -LiteralPath $platformFile -Raw).Trim() -ne 'win32-x64') { throw 'Unverified native runtime platform. Use a fresh Windows release folder.' }
+} else {
+    New-Item -ItemType Directory -Path $coreDir -Force | Out-Null
+    Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'runtime-package.json') -Destination (Join-Path $coreDir 'package.json')
+    Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'runtime-package-lock.json') -Destination (Join-Path $coreDir 'package-lock.json')
+    $env:PATH = "$nodeDir;" + $env:PATH
+    & $nodeExe (Join-Path $nodeDir 'node_modules/npm/bin/npm-cli.js') ci --prefix $coreDir --registry=https://registry.npmjs.org --ignore-scripts --no-audit --no-fund --omit=dev --fetch-timeout=60000
+    if ($LASTEXITCODE -ne 0) { throw 'OpenClaw installation failed' }
 }
-
-function Install-WindowsNode {
-    param(
-        [string]$TargetDir
-    )
-
-    $nodeExe = Join-Path $TargetDir "node.exe"
-    if (Test-Path -Path $nodeExe -PathType Leaf) {
-        Write-Step "OK" "Node.js (win-x64) already exists, skipping download." "Green"
-        return
-    }
-
-    Write-Step "->" "Downloading Node.js $nodeVersion (win-x64)..." "Cyan"
-    Ensure-Directory -Path $TargetDir
-
-    $zipName = "node-$nodeVersion-win-x64.zip"
-    $nodeUrl = "$nodeMirror/$nodeVersion/$zipName"
-    $tempZip = Join-Path $env:TEMP $zipName
-    $extractRoot = Join-Path $env:TEMP "uclaw-node-win-x64"
-    $extractDir = Join-Path $extractRoot "node-$nodeVersion-win-x64"
-
-    Write-Host "    $nodeUrl"
-    Download-File -Url $nodeUrl -Destination $tempZip
-
-    if (Test-Path -Path $extractRoot) {
-        Remove-Item -Path $extractRoot -Recurse -Force
-    }
-
-    Expand-Archive -Path $tempZip -DestinationPath $extractRoot -Force
-    Copy-Item -Path (Join-Path $extractDir "*") -Destination $TargetDir -Recurse -Force
-
-    Remove-Item -Path $tempZip -Force -ErrorAction SilentlyContinue
-    Remove-Item -Path $extractRoot -Recurse -Force -ErrorAction SilentlyContinue
-
-    if (Test-Path -Path $nodeExe -PathType Leaf) {
-        Write-Step "OK" "Node.js (win-x64) download completed." "Green"
-    }
-    else {
-        Write-Step "ERR" "Node.js (win-x64) download failed." "Red"
-        exit 1
-    }
+foreach ($patch in @('patch-managed-browser-root.mjs','patch-device-pairing-retry.mjs')) {
+    & $nodeExe (Join-Path $PSScriptRoot "lib/$patch") $coreDir
+    if ($LASTEXITCODE -ne 0) { throw "Runtime patch failed: $patch" }
 }
-
-function Install-TarNodeRuntime {
-    param(
-        [string]$Platform,
-        [string]$NodeDirName
-    )
-
-    $targetDir = Join-Path $runtimeDir $NodeDirName
-    $nodeBinary = Join-Path $targetDir "bin/node"
-    if (Test-Path -Path $nodeBinary -PathType Leaf) {
-        Write-Step "OK" "Node.js ($Platform) already exists, skipping download." "Green"
-        return
-    }
-
-    $tarExe = Get-Command tar.exe -ErrorAction SilentlyContinue
-    if (-not $tarExe) {
-        Write-Step "WARN" "tar.exe was not found, skipping $Platform runtime." "Yellow"
-        return
-    }
-
-    Write-Step "->" "Downloading Node.js $nodeVersion ($Platform)..." "Cyan"
-    Ensure-Directory -Path $targetDir
-
-    $archiveName = "node-$nodeVersion-$Platform.tar.gz"
-    $nodeUrl = "$nodeMirror/$nodeVersion/$archiveName"
-    $tempArchive = Join-Path $env:TEMP $archiveName
-    $extractRoot = Join-Path $env:TEMP ("uclaw-{0}" -f $NodeDirName)
-    $extractDir = Join-Path $extractRoot "node-$nodeVersion-$Platform"
-
-    Write-Host "    $nodeUrl"
-    Download-File -Url $nodeUrl -Destination $tempArchive
-
-    if (Test-Path -Path $extractRoot) {
-        Remove-Item -Path $extractRoot -Recurse -Force
-    }
-
-    Ensure-Directory -Path $extractRoot
-    & $tarExe.Path -xzf $tempArchive -C $extractRoot
-
-    if ($LASTEXITCODE -ne 0) {
-        Write-Step "WARN" "$Platform runtime extraction failed, skipping it." "Yellow"
-        Remove-Item -Path $tempArchive -Force -ErrorAction SilentlyContinue
-        Remove-Item -Path $extractRoot -Recurse -Force -ErrorAction SilentlyContinue
-        return
-    }
-
-    Copy-Item -Path (Join-Path $extractDir "*") -Destination $targetDir -Recurse -Force
-    Remove-Item -Path $tempArchive -Force -ErrorAction SilentlyContinue
-    Remove-Item -Path $extractRoot -Recurse -Force -ErrorAction SilentlyContinue
-
-    if (Test-Path -Path $nodeBinary -PathType Leaf) {
-        Write-Step "OK" "Node.js ($Platform) download completed." "Green"
-    }
-    else {
-        Write-Step "WARN" "$Platform runtime download failed, but Windows setup can continue." "Yellow"
-    }
-}
-
-function Ensure-QQPluginBuild {
-    param(
-        [string]$CoreDir,
-        [string]$NpmCmd
-    )
-
-    $qqDir = Join-Path $CoreDir "node_modules\@sliverp\qqbot"
-    if (-not (Test-Path -Path $qqDir -PathType Container)) {
-        return
-    }
-
-    $distIndex = Join-Path $qqDir "dist\index.js"
-    if (-not (Test-Path -Path $distIndex -PathType Leaf)) {
-        Write-Step "->" "Building QQ plugin runtime files..." "Cyan"
-        Push-Location $qqDir
-        try {
-            & $NpmCmd install --include=dev --registry=$mirror
-            & $NpmCmd run build
-            & $NpmCmd prune --omit=dev
-        }
-        catch {
-            Write-Step "WARN" "QQ plugin build command failed; continuing setup." "Yellow"
-        }
-        finally {
-            Pop-Location
-        }
-    }
-
-    $nestedOpenClaw = Join-Path $qqDir "node_modules\openclaw"
-    if (Test-Path -Path $nestedOpenClaw -PathType Container) {
-        Remove-Item -Path $nestedOpenClaw -Recurse -Force -ErrorAction SilentlyContinue
-    }
-
-    if (Test-Path -Path $distIndex -PathType Leaf) {
-        Write-Step "OK" "QQ plugin runtime files are ready." "Green"
-    }
-    else {
-        Write-Step "WARN" "QQ plugin is installed but dist/index.js is missing." "Yellow"
-    }
-}
-
-Write-Host ""
-Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "  U-Claw Portable Setup" -ForegroundColor Cyan
-Write-Host "========================================" -ForegroundColor Cyan
-Write-Host ""
-Write-Host ("  System: {0}" -f [System.Runtime.InteropServices.RuntimeInformation]::OSDescription) -ForegroundColor Green
-Write-Host ""
-
-Ensure-Directory -Path $appDir
-Ensure-Directory -Path $coreDir
-Ensure-Directory -Path $runtimeDir
-
-$windowsNodeTarget = Join-Path $runtimeDir "node-win-x64"
-Install-WindowsNode -TargetDir $windowsNodeTarget
-
-if ($AllPlatforms) {
-    Install-TarNodeRuntime -Platform "darwin-arm64" -NodeDirName "node-mac-arm64"
-    Install-TarNodeRuntime -Platform "darwin-x64" -NodeDirName "node-mac-x64"
-}
-
-$packageJsonPath = Join-Path $coreDir "package.json"
-if (-not (Test-Path -Path $packageJsonPath -PathType Leaf)) {
-    $openclawVersionFile = Join-Path $PSScriptRoot "OPENCLAW_VERSION"
-    if (-not (Test-Path -Path $openclawVersionFile -PathType Leaf)) {
-        $openclawVersionFile = Join-Path $PSScriptRoot "..\OPENCLAW_VERSION"
-    }
-    $openclawVersion = "2026.4.29"
-    if (Test-Path -Path $openclawVersionFile -PathType Leaf) {
-        $openclawVersion = (Get-Content -Path $openclawVersionFile -Raw).Trim()
-    }
-    $packageJson = @"
-{
-  "name": "u-claw-core",
-  "version": "1.0.0",
-  "private": true,
-  "dependencies": {
-    "openclaw": "$openclawVersion"
-  }
-}
-"@
-    $packageJson | Out-File -FilePath $packageJsonPath -Encoding utf8
-}
-
-$npmCmd = Join-Path $windowsNodeTarget "npm.cmd"
-
-if (Test-Path -Path (Join-Path $coreDir "node_modules\openclaw") -PathType Container) {
-    Write-Step "OK" "OpenClaw is already installed, skipping." "Green"
-}
-else {
-    Write-Step "->" "Installing OpenClaw..." "Cyan"
-    Push-Location $coreDir
-    try {
-        & $npmCmd install --prefix $coreDir --registry=$mirror
-    }
-    finally {
-        Pop-Location
-    }
-
-    if (Test-Path -Path (Join-Path $coreDir "node_modules\openclaw") -PathType Container) {
-        Write-Step "OK" "OpenClaw installation completed." "Green"
-    }
-    else {
-        Write-Step "ERR" "OpenClaw installation failed." "Red"
-        exit 1
-    }
-}
-
-if (Test-Path -Path (Join-Path $coreDir "node_modules\@sliverp\qqbot") -PathType Container) {
-    Write-Step "OK" "QQ plugin is already installed, skipping." "Green"
-}
-else {
-    Write-Step "->" "Installing QQ plugin..." "Cyan"
-    Push-Location $coreDir
-    try {
-        & $npmCmd install "@sliverp/qqbot@latest" --prefix $coreDir --registry=$mirror 2>$null
-    }
-    catch {
-    }
-    finally {
-        Pop-Location
-    }
-    Write-Step "OK" "QQ plugin installation finished." "Green"
-}
-
-Ensure-QQPluginBuild -CoreDir $coreDir -NpmCmd $npmCmd
-
-$skillsCn = Join-Path $scriptDir "skills-cn"
-$skillsTarget = Join-Path $coreDir "node_modules\openclaw\skills"
-
-if ((Test-Path -Path $skillsCn -PathType Container) -and (Test-Path -Path $skillsTarget -PathType Container)) {
-    Write-Step "->" "Installing localized skills from skills-cn..." "Cyan"
-    $skillCount = 0
-    Get-ChildItem -Path $skillsCn -Directory | ForEach-Object {
-        $targetPath = Join-Path $skillsTarget $_.Name
-        if (-not (Test-Path -Path $targetPath -PathType Container)) {
-            Copy-Item -Path $_.FullName -Destination $targetPath -Recurse -Force
-            $skillCount++
-        }
-    }
-    Write-Step "OK" ("Localized skills installed (+{0})." -f $skillCount) "Green"
-}
-
-Write-Host ""
-Write-Host "========================================" -ForegroundColor Green
-Write-Host "  Setup Complete" -ForegroundColor Green
-Write-Host "========================================" -ForegroundColor Green
-Write-Host ""
-Write-Host "  Launch:"
-Write-Host "    Mac:     bash Mac-Start.command" -ForegroundColor Cyan
-Write-Host "    Windows: double-click Windows-Start.bat" -ForegroundColor Cyan
-Write-Host ""
-Write-Host "  Structure:"
-Write-Host "    app/core/       -> OpenClaw and dependencies"
-Write-Host "    app/runtime/    -> Node.js $nodeVersion"
-Write-Host "    data/           -> created automatically after launch"
-Write-Host ""
-Write-Host "  Tip: use .\setup.ps1 -AllPlatforms to prepare a cross-platform USB." -ForegroundColor Cyan
+& $nodeExe --check (Join-Path $coreDir 'node_modules/openclaw/dist/chrome-D7PwFEoa.mjs')
+if ($LASTEXITCODE -ne 0) { throw 'Browser runtime syntax check failed' }
+& $nodeExe --check (Join-Path $coreDir 'node_modules/@openclaw/fs-safe/dist/replace-file.js')
+if ($LASTEXITCODE -ne 0) { throw 'Filesystem runtime syntax check failed' }
+[IO.File]::WriteAllText((Join-Path $coreDir '.uclaw-runtime-platform'), 'win32-x64')
+Write-Host "Ready: OpenClaw $pin / Node $nodeVersion. Launch Windows-Start.bat on NTFS."

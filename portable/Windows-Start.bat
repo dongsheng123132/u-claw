@@ -53,6 +53,13 @@ echo.
 
 set "PATH=%NODE_DIR%;%NODE_DIR%\node_modules\.bin;%PATH%"
 
+REM Validate before creating or migrating user state.
+"%NODE_BIN%" "%UCLAW_DIR%lib\runtime-preflight.mjs" "%UCLAW_DIR%."
+if errorlevel 1 (
+    pause
+    exit /b 1
+)
+
 REM Init data directories
 if not exist "%DATA_DIR%" mkdir "%DATA_DIR%"
 if not exist "%STATE_DIR%" mkdir "%STATE_DIR%"
@@ -253,10 +260,18 @@ REM Slow USB drives may need tens of seconds to stage bundled deps.
 REM Open the local startup page now; Config Center only auto-opens on first run.
 
 REM One browser tab, served by Config Center so readiness can be read same-origin.
-REM Wait for gateway initialization before allowing first-run configuration writes.
+REM First run saves the model before gateway initialization; returning users wait for readiness.
 echo   Opening startup screen...
 set "LOADING_URL=http://127.0.0.1:%CONFIG_PORT%/startup?port=%PORT%&token=uclaw&configured=%MODEL_CONFIGURED%"
-start "" "%LOADING_URL%"
+if "%MODEL_CONFIGURED%"=="1" goto :open_loading
+echo   Select a model and save its API Key in Config Center.
+if not defined UCLAW_HEADLESS start "" "http://127.0.0.1:%CONFIG_PORT%/?gatewayPort=%PORT%&start=1"
+"%NODE_BIN%" "%UCLAW_DIR%lib\wait-model-config.mjs" "%OPENCLAW_CONFIG_PATH%"
+if errorlevel 1 exit /b 1
+goto :model_ready
+:open_loading
+if not defined UCLAW_HEADLESS start "" "%LOADING_URL%"
+:model_ready
 
 REM Prewarm gateway in the background after it becomes ready.
 start /B "" "%NODE_BIN%" "%UCLAW_DIR%lib\prewarm.mjs" %PORT% uclaw >nul 2>&1
@@ -266,7 +281,7 @@ echo   ========================================
 echo   Starting OpenClaw Gateway on port %PORT%...
 echo   First run on a USB drive may take several minutes
 echo   (unpacking bundled components). Please wait;
-echo   Config Center is open for model, key, and recharge setup.
+echo   Model configuration is complete. Waiting for Gateway readiness.
 echo   DO NOT close this window while using U-Claw!
 echo   ========================================
 echo.

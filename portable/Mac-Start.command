@@ -201,6 +201,11 @@ fi
 
 # The WeChat plugin is not staged at startup; Config Center no longer offers WeChat or channel setup.
 
+if ! "$NODE_BIN" "$UCLAW_DIR/lib/runtime-preflight.mjs" "$UCLAW_DIR"; then
+    echo "请在新的文件夹运行 setup.sh，勿混用 Windows 与 Mac 的 app/core。"
+    exit 1
+fi
+
 # ---- 7b. Async update check (non-blocking, 5s timeout, silent failure) ----
 # Writes data/.openclaw/update-available.json if a newer version is on OSS.
 # config-server serves this file via GET /api/update-status for the desktop shell.

@@ -1,4 +1,4 @@
-﻿@echo off
+@echo off
 setlocal EnableDelayedExpansion
 chcp 65001 >nul 2>&1
 title U-Claw - Install to Windows
@@ -15,7 +15,7 @@ set "APP_DIR=%UCLAW_DIR%app"
 set "INSTALL_TARGET=%USERPROFILE%\.uclaw"
 set "MIRROR=https://registry.npmmirror.com"
 set "NODE_MIRROR=https://npmmirror.com/mirrors/node"
-set "NODE_VER=v22.22.3"
+set "NODE_VER=v24.16.0"
 
 REM ---- Step 1: Check environment ----
 echo   [1/4] 检查环境...

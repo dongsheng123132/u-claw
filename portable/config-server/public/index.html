@@ -183,8 +183,20 @@ details#advancedModelsBox[open] summary { border-bottom: 1px solid #333; margin-
     <!-- Step 1: Select Model -->
     <div class="section active" id="step1">
         <h2>选择 AI 模型</h2>
-        <p class="desc">可用下方「高级」选择 DeepSeek 等模型并填写自己的 API Key；也可以创建虾盘云设备钱包。</p>
+        <p class="desc">选择 DeepSeek 等模型，填写对应平台的 API Key，保存后进入 OpenClaw。</p>
 
+        <details id="advancedModelsBox" open>
+        <summary>使用自己的 API Key（DeepSeek / 通义 / OpenAI / 自定义…）</summary>
+        <div class="model-grid" id="cloudModelGrid">
+            <!-- 云端提供商卡片由 models-catalog.json 渲染：每家一卡，卡内下拉选模型；
+                 填 Key 后点「拉取模型」可实时刷新该家最新模型列表。目录见同目录 models-catalog.json -->
+        </div>
+
+        <div class="btn-row">
+            <button class="btn btn-primary" id="nextStep1" disabled>下一步 →</button>
+        </div>
+        </details>
+        <details id="optionalWallet"><summary>可选：虾盘云钱包与充值</summary>
         <!-- 虾盘云 · 设备钱包 —— 只在用户点击按钮之后才会联网，绝不在打开这个页面时自动请求。 -->
         <div class="wallet-card" id="walletCard">
             <div class="wallet-head">
@@ -195,7 +207,7 @@ details#advancedModelsBox[open] summary { border-bottom: 1px solid #333; margin-
                 <span id="walletBalanceText">余额 —</span>
                 <button class="btn-mini" id="walletRefreshBtn" onclick="walletRefreshBalance()">刷新余额</button>
             </div>
-            <p class="hint" id="walletHint">生成密钥后，可在这里充值使用云模型。你的密钥就是你的钱包，请自行截图/复制备份——重装、换电脑都要靠它找回余额。没有钱包也完全不影响使用，可以直接用下方「高级」配置本地模型或自己的 API Key。</p>
+            <p class="hint" id="walletHint">生成密钥后，可在这里充值使用云模型。你的密钥就是你的钱包，请自行截图/复制备份——重装、换电脑都要靠它找回余额。没有钱包也完全不影响使用，可以直接用上方选择模型并填写自己的 API Key。</p>
 
             <div class="btn-row" id="walletClaimRow" style="justify-content:flex-start;">
                 <button class="btn btn-primary" id="walletClaimBtn" onclick="walletClaim()">🔑 生成钱包密钥</button>
@@ -227,16 +239,6 @@ details#advancedModelsBox[open] summary { border-bottom: 1px solid #333; margin-
             </div>
         </div>
 
-        <details id="advancedModelsBox">
-        <summary>🔧 高级：使用自己的 API Key（DeepSeek / 通义 / OpenAI / 自定义…）</summary>
-        <div class="model-grid" id="cloudModelGrid">
-            <!-- 云端提供商卡片由 models-catalog.json 渲染：每家一卡，卡内下拉选模型；
-                 填 Key 后点「拉取模型」可实时刷新该家最新模型列表。目录见同目录 models-catalog.json -->
-        </div>
-
-        <div class="btn-row">
-            <button class="btn btn-primary" id="nextStep1" disabled>下一步 →</button>
-        </div>
         </details>
     </div>
 
@@ -281,7 +283,7 @@ details#advancedModelsBox[open] summary { border-bottom: 1px solid #333; margin-
 
         <div class="btn-row">
             <button class="btn btn-secondary" onclick="goStep(1)">← 返回</button>
-            <button class="btn btn-primary" onclick="saveConfig()">保存并继续 →</button>
+            <button class="btn btn-primary" onclick="saveConfig()">保存并启动 →</button>
         </div>
     </div>
 
@@ -663,6 +665,14 @@ async function saveConfig() {
         else if (result.pendingRestart) showToast('已保存，启动 Gateway 后生效');
         else showToast('配置已保存并生效');
         goStep(3);
+        if (!result.reloadError) {
+            try {
+                var runtime = await fetch('/api/runtime').then(function(r) { return r.json(); });
+                if (Number.isInteger(runtime.gatewayPort)) {
+                    location.assign('/startup?port=' + runtime.gatewayPort + '&token=uclaw&configured=1');
+                }
+            } catch (_) { showToast('配置已保存，请在启动窗口确认 Gateway 状态', true); }
+        }
     } catch (e) {
         showToast('保存失败: ' + e.message, true);
     }

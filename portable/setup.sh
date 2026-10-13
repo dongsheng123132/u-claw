@@ -13,7 +13,7 @@ CORE_DIR="$APP_DIR/core"
 RUNTIME_DIR="$APP_DIR/runtime"
 MIRROR="https://registry.npmmirror.com"
 NODE_MIRROR="https://npmmirror.com/mirrors/node"
-NODE_VERSION="v22.22.3"
+NODE_VERSION="v24.16.0"
 ALL_PLATFORMS=false
 [ "$1" = "--all-platforms" ] && ALL_PLATFORMS=true
 
@@ -51,6 +51,10 @@ echo ""
 # ---- 1. Download Node.js (Current Platform) ----
 NODE_TARGET="$RUNTIME_DIR/$NODE_DIR_NAME"
 
+if [ -f "$NODE_TARGET/bin/node" ] && [ "$("$NODE_TARGET/bin/node" --version)" != "$NODE_VERSION" ]; then
+    echo "运行时版本过旧，请在新文件夹运行 setup.sh，再迁移 data。"
+    exit 1
+fi
 if [ -f "$NODE_TARGET/bin/node" ]; then
     echo -e "  ${GREEN}✓${NC} Node.js ($PLATFORM) 已存在，跳过下载"
 else
@@ -147,21 +151,12 @@ PKGJSON
     # instead of silently producing a partially portable installation.
     "$NODE_BIN" "$SCRIPT_DIR/lib/patch-managed-browser-root.mjs" "$CORE_DIR"
     "$NODE_BIN" "$SCRIPT_DIR/lib/patch-device-pairing-retry.mjs" "$CORE_DIR"
-    "$NODE_BIN" --check "$CORE_DIR/node_modules/openclaw/dist/chrome-CtUCaDWQ.js"
+    "$NODE_BIN" --check "$CORE_DIR/node_modules/openclaw/dist/chrome-D7PwFEoa.mjs"
     "$NODE_BIN" --check "$CORE_DIR/node_modules/@openclaw/fs-safe/dist/replace-file.js"
 
+    if [ "$ARCH" = "arm64" ]; then RUNTIME_ARCH=arm64; else RUNTIME_ARCH=x64; fi
+    printf 'darwin-%s\n' "$RUNTIME_ARCH" > "$CORE_DIR/.uclaw-runtime-platform"
     echo -e "  ${GREEN}✓${NC} OpenClaw 安装完成"
-fi
-
-# ---- 3. Install QQ Plugin ----
-if [ -d "$CORE_DIR/node_modules/@sliverp/qqbot" ]; then
-    echo -e "  ${GREEN}✓${NC} QQ 插件已安装，跳过"
-else
-    echo -e "  ${CYAN}↓${NC} 安装 QQ 插件..."
-    NODE_BIN="$NODE_TARGET/bin/node"
-    NPM_BIN="$NODE_TARGET/bin/npm"
-    npm_config_cache="$APP_DIR/.npm-cache" "$NODE_BIN" "$NPM_BIN" install @sliverp/qqbot@latest --prefix "$CORE_DIR" --registry="$MIRROR" --ignore-scripts --no-audit --no-fund --omit=dev 2>/dev/null || true
-    echo -e "  ${GREEN}✓${NC} QQ 插件安装完成"
 fi
 
 # ---- 4. Install China-optimized skills ----
