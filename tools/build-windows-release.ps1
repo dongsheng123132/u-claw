@@ -25,8 +25,12 @@ try {
     $node=Join-Path $stage 'app/runtime/node-win-x64/node.exe'
     & $node (Join-Path $stage 'lib/runtime-preflight.mjs') $stage
     if ($LASTEXITCODE -ne 0) { throw 'Runtime preflight failed' }
-    & $node --test 'tests/*.test.mjs'
-    if ($LASTEXITCODE -ne 0) { throw 'Source tests failed' }
+    $previousTestCore=$env:UCLAW_RUNTIME_CORE
+    try {
+        $env:UCLAW_RUNTIME_CORE=Join-Path $stage 'app/core'
+        & $node --test 'tests/*.test.mjs'
+        if ($LASTEXITCODE -ne 0) { throw 'Source and built-runtime tests failed' }
+    } finally { $env:UCLAW_RUNTIME_CORE=$previousTestCore }
     $pin=(Get-Content -LiteralPath 'OPENCLAW_VERSION' -Raw).Trim()
     $info=@{tag=$tag;sourceRevision=$revision;openclaw=$pin;node=(& $node --version);platform='win32-x64';runtimeLockSha256=(Get-FileHash -LiteralPath (Join-Path $stage 'runtime-package-lock.json')).Hash.ToLowerInvariant()}
     $info | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $stage 'BUILD-INFO.json') -Encoding utf8

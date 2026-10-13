@@ -25,7 +25,7 @@
 
 ## 三步开始
 
-> **仅 Windows 使用时推荐 NTFS。** v2.3.0 候选加入 Windows exFAT 兼容：自动选择文件系统适配，配置与会话仍留在 U 盘。FAT32 不支持。Mac/Windows 共盘尚待 Mac 实机验收，不能把 Windows 原生运行时直接当作 Mac 运行时。格式化会清空盘内文件，操作前请备份。
+> **仅 Windows 使用时推荐 NTFS。** v2.3.0 加入 Windows exFAT 兼容：自动选择文件系统适配，配置与会话仍留在 U 盘。FAT32 不支持。Mac/Windows 共盘尚待 Mac 实机验收，不能把 Windows 原生运行时直接当作 Mac 运行时。格式化会清空盘内文件，操作前请备份。
 
 > 📺 图文教程：[docs/快速上手.md](docs/快速上手.md)（含真实界面截图，5 步从插 U 盘到开始对话）
 
@@ -151,7 +151,7 @@ Linux 可启动 U 盘套件已移出本仓库，在独立仓库 [u-claw-linux](h
 - `u-claw-portable-windows-vX.Y.Z.zip` — Windows 便携完整版（已预装 Node + OpenClaw，**解压到 U 盘双击 `Windows-Start.bat` 即用**）
 - **Mac**：源码在 [`portable/`](portable/) 目录，`bash setup.sh` 自动下载 Node + OpenClaw（国内镜像约 1 分钟），双击 `Mac-Start.command` 启动
 
-> **仅 Windows 使用时推荐 NTFS。** v2.3.0 候选加入 Windows exFAT 兼容：自动选择文件系统适配，配置与会话仍留在 U 盘。FAT32 不支持。Mac/Windows 共盘尚待 Mac 实机验收，不能把 Windows 原生运行时直接当作 Mac 运行时。格式化会清空盘内文件，操作前请备份。
+> **仅 Windows 使用时推荐 NTFS。** v2.3.0 加入 Windows exFAT 兼容：自动选择文件系统适配，配置与会话仍留在 U 盘。FAT32 不支持。Mac/Windows 共盘尚待 Mac 实机验收，不能把 Windows 原生运行时直接当作 Mac 运行时。格式化会清空盘内文件，操作前请备份。
 
 | 数据类型 | 存放位置 |
 |---|---|
@@ -355,7 +355,7 @@ See [`install/README.md`](install/README.md) for details.
 
 ### Quick Start: Build a Portable USB
 
-> **Windows-only USB use: NTFS is recommended.** The v2.3.0 candidate adds Windows exFAT compatibility while keeping configuration and sessions on the drive. FAT32 is unsupported. Shared-drive operation on macOS still needs real-device acceptance; Windows native dependencies are not a Mac runtime. Formatting erases the drive; back up your files first.
+> **Windows-only USB use: NTFS is recommended.** v2.3.0 adds Windows exFAT compatibility while keeping configuration and sessions on the drive. FAT32 is unsupported. Shared-drive operation on macOS still needs real-device acceptance; Windows native dependencies are not a Mac runtime. Formatting erases the drive; back up your files first.
 
 ```bash
 # 1. Clone

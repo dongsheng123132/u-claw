@@ -8,6 +8,8 @@ const hashes={
  'pinned-write.js':'c739599f4c75581438d3a2913f68db25ecb926f2556cf4df5eda80b685f36146',
  'root-write-verification.js':'52ff89d18ef177474bf063a3adf245dc9a1e32dac66f30d551b683a2f62121b6',
  'publish-copy-stage.js':'a1003721d5c21cb471837c2af92e74f0cb4226241735fc9213e23e881f9a144c',
+ 'openclaw-cli-shim-I4WwJOH3.mjs':'b2cfd55f263e3923fa0639b84dd166490b2ed74573d405bc482bf900cb72f98a',
+ 'diagnostic-stability-bundle-vmtXgIWw.mjs':'a8e8b62d00016687b2326b168b68623294e00a3d1ff272a54555304487285e4d',
 };
 const sha=s=>createHash('sha256').update(s).digest('hex');
 export function patchExfatCompatibility(core) {
@@ -18,6 +20,20 @@ export function patchExfatCompatibility(core) {
  const changes=new Map();
  function patch(file,from,to){if(!changes.has(file))changes.set(file,[]);changes.get(file).push([from,to]);}
 const gate='process.platform === "win32" && process.env.FS_SAFE_NATIVE_MODE === "off" && process.env.OPENCLAW_PORTABLE_RENAME_IDENTITY === "verify-content-with-lock"';
+// These startup writers use the atomic API directly, bypassing pinned-write's
+// default policy. Keep NTFS's original async writer; opt in only on exFAT.
+patch('openclaw-cli-shim-I4WwJOH3.mjs','import fs from "node:fs/promises";','import fs from "node:fs/promises";\nimport { replaceFileAtomic } from "@openclaw/fs-safe/atomic";');
+const shimOriginal='\tawait writeTextAtomic(executablePath, content, {\n\t\tmode: 448,\n\t\tdirMode: 448,\n\t\tdurable: false,\n\t\ttempPrefix: "openclaw-agent-cli"\n\t});';
+patch('openclaw-cli-shim-I4WwJOH3.mjs',shimOriginal,`\tif (${gate}) {
+\t\tawait replaceFileAtomic({
+\t\t\tfilePath: executablePath, content, mode: 448, dirMode: 448,
+\t\t\tcopyFallbackOnPermissionError: true, syncTempFile: false, syncParentDir: false,
+\t\t\ttempPrefix: "openclaw-agent-cli", renameIdentity: "verify-content-with-lock"
+\t\t});
+\t} else {
+${shimOriginal.replaceAll('\n','\n\t').replace(/^\t/,'\t\t')}
+\t}`);
+patch('diagnostic-stability-bundle-vmtXgIWw.mjs','\t\t\ttempPrefix: ".openclaw-stability"',`\t\t\ttempPrefix: ".openclaw-stability",\n\t\t\trenameIdentity: ${gate} ? "verify-content-with-lock" : "strict"`);
 patch('pinned-write.js','if (renameIdentity !== "verify-content-with-lock") {',`if (renameIdentity !== "verify-content-with-lock" && !(renameIdentity === undefined && ${gate})) {`);
 patch('root-write-verification.js','    let needsPathOpen = false;',`    // Rebase onto the same retained handle after exFAT rename. Never accept a different file on the volume.
     if (${gate}) {
@@ -74,7 +90,7 @@ if(-not [UClawExclusiveMove]::MoveFileEx($sourcePath,$destinationPath,8)){
 `;
  const prepared=[];
  for(const [file,replacements] of changes){
-  const target=path.join(base,file),source=fs.readFileSync(target,'utf8');
+  const target=path.join(file.endsWith('.mjs') ? path.join(core,'node_modules/openclaw/dist') : base,file),source=fs.readFileSync(target,'utf8');
   let restored=source;
   for(const [from,to] of [...replacements].reverse())restored=restored.replace(to,()=>from);
   if(replacements.every(([,to])=>source.split(to).length===2)&&sha(restored)===hashes[file])continue;
