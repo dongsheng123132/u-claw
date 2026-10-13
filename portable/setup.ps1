@@ -43,7 +43,7 @@ if (Test-Path -LiteralPath $package) {
     & $nodeExe (Join-Path $nodeDir 'node_modules/npm/bin/npm-cli.js') ci --prefix $coreDir --registry=https://registry.npmjs.org --ignore-scripts --no-audit --no-fund --omit=dev --fetch-timeout=60000
     if ($LASTEXITCODE -ne 0) { throw 'OpenClaw installation failed' }
 }
-foreach ($patch in @('patch-managed-browser-root.mjs','patch-device-pairing-retry.mjs')) {
+foreach ($patch in @('patch-managed-browser-root.mjs','patch-device-pairing-retry.mjs','patch-exfat-compatibility.mjs')) {
     & $nodeExe (Join-Path $PSScriptRoot "lib/$patch") $coreDir
     if ($LASTEXITCODE -ne 0) { throw "Runtime patch failed: $patch" }
 }
@@ -52,4 +52,4 @@ if ($LASTEXITCODE -ne 0) { throw 'Browser runtime syntax check failed' }
 & $nodeExe --check (Join-Path $coreDir 'node_modules/@openclaw/fs-safe/dist/replace-file.js')
 if ($LASTEXITCODE -ne 0) { throw 'Filesystem runtime syntax check failed' }
 [IO.File]::WriteAllText((Join-Path $coreDir '.uclaw-runtime-platform'), 'win32-x64')
-Write-Host "Ready: OpenClaw $pin / Node $nodeVersion. Launch Windows-Start.bat on NTFS."
+Write-Host "Ready: OpenClaw $pin / Node $nodeVersion. Launch Windows-Start.bat on NTFS or exFAT."

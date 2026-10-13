@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { supportsNode, validateRuntime } from '../portable/lib/runtime-preflight.mjs';
+import { supportsNode, validateRuntime, runtimeEnvironment } from '../portable/lib/runtime-preflight.mjs';
 import { readFileSync } from 'node:fs';
 
 test('new runtime rejects old Node and the unsupported Node 25 branch', () => {
@@ -10,11 +10,16 @@ test('new runtime rejects old Node and the unsupported Node 25 branch', () => {
 test('Windows filesystem and runtime mismatch fail before state creation', () => {
   const valid = { nodeVersion:'24.16.0', expected:'2026.10.2', installed:'2026.10.2', platform:'win32', filesystem:'NTFS' };
   assert.doesNotThrow(() => validateRuntime(valid));
-  for (const filesystem of ['exFAT','FAT32',undefined]) assert.throws(() => validateRuntime({...valid,filesystem}), /requires NTFS/);
+  assert.doesNotThrow(() => validateRuntime({...valid,filesystem:'exFAT'}));
+  for (const filesystem of ['FAT32',undefined]) assert.throws(() => validateRuntime({...valid,filesystem}), /requires NTFS/);
   assert.throws(() => validateRuntime({...valid,installed:'2026.9.2'}), /version mismatch/);
   assert.doesNotThrow(() => validateRuntime({...valid,platform:'darwin',filesystem:'APFS'}));
   assert.throws(() => validateRuntime({...valid,arch:'x64',installedPlatform:'darwin-arm64'}), /platform mismatch/);
   assert.doesNotThrow(() => validateRuntime({...valid,arch:'x64',installedPlatform:'win32-x64'}));
+});
+test('compatibility applies only on exFAT, and NTFS clears inherited opt-ins', () => {
+  assert.deepEqual(runtimeEnvironment('exFAT'), {FS_SAFE_NATIVE_MODE:'off',OPENCLAW_PORTABLE_RENAME_IDENTITY:'verify-content-with-lock'});
+  assert.deepEqual(runtimeEnvironment('NTFS'), {FS_SAFE_NATIVE_MODE:'auto',OPENCLAW_PORTABLE_RENAME_IDENTITY:'strict'});
 });
 test('locked runtime matches both public pins and declares a supported Node engine', () => {
   const read = name => readFileSync(new URL('../'+name, import.meta.url),'utf8');

@@ -54,7 +54,7 @@ echo.
 set "PATH=%NODE_DIR%;%NODE_DIR%\node_modules\.bin;%PATH%"
 
 REM Validate before creating or migrating user state.
-"%NODE_BIN%" "%UCLAW_DIR%lib\runtime-preflight.mjs" "%UCLAW_DIR%."
+call "%UCLAW_DIR%lib\windows-runtime-env.bat" "%UCLAW_DIR%." "%NODE_BIN%"
 if errorlevel 1 (
     pause
     exit /b 1
@@ -134,6 +134,13 @@ if defined INSTANCE_PORT start "" http://127.0.0.1:%INSTANCE_PORT%/#token=uclaw
 if not defined INSTANCE_PORT echo   The existing instance is still starting. Please wait a moment.
 exit /b 0
 :instance_check_done
+
+REM Upgrade copied legacy sessions before Config Center or Gateway writes state.
+"%NODE_BIN%" "%UCLAW_DIR%lib\upgrade-session-schema.mjs" "%UCLAW_DIR%."
+if errorlevel 1 (
+    pause
+    exit /b 1
+)
 
 REM Check dependencies
 REM Note: avoid unescaped parens inside this block -- cmd.exe treats ) as block-end.

@@ -13,12 +13,18 @@ export function supportsNode(version) {
 }
 
 export function validateRuntime({ nodeVersion, expected, installed, filesystem, platform, installedPlatform, arch }) {
-  if (platform === 'win32' && filesystem !== 'NTFS') {
-    throw new Error(`Windows requires NTFS; detected ${filesystem || 'unknown filesystem'}. Extract the full release to an NTFS USB drive or local disk. exFAT/FAT32 are not supported. Your data has not been changed.`);
+  if (platform === 'win32' && !['NTFS','EXFAT'].includes(String(filesystem).toUpperCase())) {
+    throw new Error(`Windows requires NTFS or exFAT; detected ${filesystem || 'unknown filesystem'}. FAT32 is not supported. Your data has not been changed.`);
   }
   if (!supportsNode(nodeVersion)) throw new Error(`OpenClaw requires Node >=24.16.0 <25 or >=26.1.0; found ${nodeVersion}. Extract a fresh full release; do not mix old and new app folders.`);
   if (!expected || expected !== installed) throw new Error(`OpenClaw version mismatch: expected ${expected}, found ${installed || 'missing'}. Extract a fresh full release or run setup.`);
   if (arch && installedPlatform !== `${platform}-${arch}`) throw new Error('Native runtime platform mismatch. Prepare Windows and macOS in separate folders with their own setup script.');
+}
+
+export function runtimeEnvironment(filesystem) {
+  return String(filesystem).toUpperCase() === 'EXFAT'
+    ? { FS_SAFE_NATIVE_MODE: 'off', OPENCLAW_PORTABLE_RENAME_IDENTITY: 'verify-content-with-lock' }
+    : { FS_SAFE_NATIVE_MODE: 'auto', OPENCLAW_PORTABLE_RENAME_IDENTITY: 'strict' };
 }
 
 export async function preflight(root) {
@@ -38,6 +44,12 @@ export async function preflight(root) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
-  try { console.log('[OK] Runtime: ' + JSON.stringify(await preflight(resolve(process.argv[2] || '.')))); }
+  try {
+    const result = await preflight(resolve(process.argv[2] || '.'));
+    if (process.argv.includes('--env')) {
+      for (const [key,value] of Object.entries(runtimeEnvironment(result.filesystem))) console.log(key+'='+value);
+      console.log('UCLAW_RUNTIME_OK=1');
+    } else console.log('[OK] Runtime: ' + JSON.stringify(result));
+  }
   catch (error) { console.error('[ERROR] ' + error.message); process.exitCode = 1; }
 }

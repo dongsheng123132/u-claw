@@ -25,7 +25,7 @@
 
 ## 三步开始
 
-> **Windows 用户：推荐使用 NTFS 格式的 U 盘。** exFAT 在新内核实测中仍有文件写入错误，本版不支持；FAT32 也不作为本版支持格式。macOS 不应照搬 NTFS 建议，请使用本机目录或可写的原生文件系统。格式化会清空盘内文件，操作前请备份。
+> **仅 Windows 使用时推荐 NTFS。** v2.3.0 候选加入 Windows exFAT 兼容：自动选择文件系统适配，配置与会话仍留在 U 盘。FAT32 不支持。Mac/Windows 共盘尚待 Mac 实机验收，不能把 Windows 原生运行时直接当作 Mac 运行时。格式化会清空盘内文件，操作前请备份。
 
 > 📺 图文教程：[docs/快速上手.md](docs/快速上手.md)（含真实界面截图，5 步从插 U 盘到开始对话）
 
@@ -151,14 +151,14 @@ Linux 可启动 U 盘套件已移出本仓库，在独立仓库 [u-claw-linux](h
 - `u-claw-portable-windows-vX.Y.Z.zip` — Windows 便携完整版（已预装 Node + OpenClaw，**解压到 U 盘双击 `Windows-Start.bat` 即用**）
 - **Mac**：源码在 [`portable/`](portable/) 目录，`bash setup.sh` 自动下载 Node + OpenClaw（国内镜像约 1 分钟），双击 `Mac-Start.command` 启动
 
-> **Windows 用户：推荐使用 NTFS 格式的 U 盘。** exFAT 在新内核实测中仍有文件写入错误，本版不支持；FAT32 也不作为本版支持格式。macOS 不应照搬 NTFS 建议，请使用本机目录或可写的原生文件系统。格式化会清空盘内文件，操作前请备份。
+> **仅 Windows 使用时推荐 NTFS。** v2.3.0 候选加入 Windows exFAT 兼容：自动选择文件系统适配，配置与会话仍留在 U 盘。FAT32 不支持。Mac/Windows 共盘尚待 Mac 实机验收，不能把 Windows 原生运行时直接当作 Mac 运行时。格式化会清空盘内文件，操作前请备份。
 
 | 数据类型 | 存放位置 |
 |---|---|
 | 模型配置、钱包、SQLite 会话、工作区 | U 盘 `data/.openclaw` |
 | Node 编译缓存、受管浏览器用户目录 | 当前电脑本地缓存目录 |
 
-浏览器网站登录状态不会自动随盘迁移，换电脑后需要重新登录。部分界面缓存和运行时依赖仍会读写 U 盘。Windows NTFS 候选包已完成多轮启动、真实对话与重启保留数据测试；这不代表 exFAT 或所有电脑环境已验收。
+浏览器网站登录状态不会自动随盘迁移，换电脑后需要重新登录。部分界面缓存和运行时依赖仍会读写 U 盘。Windows NTFS 与 exFAT 的隔离测试已完成真实对话和重启读回；exFAT 的目录监听会降级为轮询，部分插件技能链接不能创建，启动可能更慢。发布成品仍须单独验收，这不代表所有电脑或 Mac 共盘已通过。
 
 ### 支持的 AI 模型
 
@@ -256,7 +256,7 @@ bash setup.sh
 启动 `Windows-Start.bat` / `Mac-Start.command` 后使用配置中心（首次启动自动打开，之后可从启动页进入）。它一次只配置一个模型服务（保存后作为主模型），再次保存会替换原有的模型配置。需要同时保留多个 provider（如 DeepSeek、Kimi、通义等）时，请用 OpenClaw 自带的 `openclaw configure`（双击 `OpenClaw-CLI.bat` / `Mac-OpenClaw-CLI.command` 打开命令行）或直接编辑 `data/.openclaw/openclaw.json`，之后在聊天界面左上角下拉菜单切换；此后不要再在配置中心保存模型，否则会覆盖 `models`。配置持久保存在 U 盘上。
 
 **Q: U 盘安装后无法创建文件 / 写入失败？**
-先检查写保护、剩余空间和目录权限。仅在 Windows 使用时推荐 NTFS；本版不支持 exFAT。不要把所有写入失败都归因于格式，先运行诊断工具并保存错误信息；需要格式化时请先备份数据。
+先检查写保护、剩余空间和目录权限。仅在 Windows 使用时推荐 NTFS；exFAT 需要使用带有兼容补丁的完整新版，不能只替换旧版启动脚本。不要把所有写入失败都归因于格式，先运行诊断工具并保存错误信息；需要格式化时请先备份数据。
 
 **Q: 从 Ubuntu 向 U 盘复制时符号链接丢失？**
 `node_modules/.bin/` 下有大量符号链接，FAT32/exFAT 在直接 `cp -R` 时会跳过。用 `rsync -aL` 可将符号链接展开为真实文件：
@@ -355,7 +355,7 @@ See [`install/README.md`](install/README.md) for details.
 
 ### Quick Start: Build a Portable USB
 
-> **Windows-only USB use: NTFS is recommended.** exFAT failed file-write acceptance with the new runtime; this release does not support exFAT or FAT32. On macOS, use a local folder or a writable native filesystem instead of applying the Windows NTFS advice. Formatting erases the drive; back up your files first.
+> **Windows-only USB use: NTFS is recommended.** The v2.3.0 candidate adds Windows exFAT compatibility while keeping configuration and sessions on the drive. FAT32 is unsupported. Shared-drive operation on macOS still needs real-device acceptance; Windows native dependencies are not a Mac runtime. Formatting erases the drive; back up your files first.
 
 ```bash
 # 1. Clone
