@@ -11,10 +11,10 @@ try {
     $stage=Join-Path $output $name
     if (Test-Path -LiteralPath $stage) { throw 'Output stage already exists; choose a new output directory' }
     New-Item -ItemType Directory -Path $stage -Force | Out-Null
-    $skeleton=Join-Path $output 'skeleton.tar'
-    git archive --format=tar --output=$skeleton HEAD:portable
+    $skeleton=Join-Path $output 'skeleton.zip'
+    git archive --format=zip --output=$skeleton HEAD:portable
     if ($LASTEXITCODE -ne 0) { throw 'git archive failed' }
-    & tar.exe -xf $skeleton -C $stage
+    & python -m zipfile -e $skeleton $stage
     if ($LASTEXITCODE -ne 0) { throw 'Source extraction failed' }
     Remove-Item -LiteralPath $skeleton
     Get-ChildItem -LiteralPath $stage -Recurse -File | Where-Object { $_.Extension -in '.bat','.cmd','.ps1' } | ForEach-Object {
