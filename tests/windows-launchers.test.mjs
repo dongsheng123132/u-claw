@@ -99,8 +99,9 @@ test('Windows startup only auto-opens Config Center when no model is configured 
   );
   assert.match(script, /\/startup\?port=%PORT%&token=uclaw&configured=%MODEL_CONFIGURED%/,
     'one startup page receives the configuration state and selects the destination after readiness');
-  assert.doesNotMatch(script, /start "" "?http:\/\/127\.0\.0\.1:%CONFIG_PORT%\/\?gatewayPort=/,
-    'first run must not open configuration while gateway initialization is still writing');
+  const wait = script.indexOf('lib\\wait-model-config.mjs');
+  const run = script.indexOf('gateway run --allow-unconfigured --port');
+  assert.ok(wait > 0 && wait < run, 'first run saves configuration before Gateway starts, preventing concurrent initialization writes');
 });
 
 test('Windows launcher publishes the actually-selected gateway port to runtime.json (v2.2.1)', () => {

@@ -1,351 +1,47 @@
 name: Release
-
 on:
   push:
-    tags:
-      - 'v*'
+    tags: ['v*']
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Tag to publish (e.g. v2.1.0). Leave empty to use the most recent tag.'
-        required: false
-        default: ''
-
+        description: 'Existing tag to build as a draft'
+        required: true
 permissions:
   contents: write
-
-# 产品只发「便携 U 盘版」(portable/ — .bat/.command 解压即用)。
-# Electron 桌面版已于 2026-06-19 停发,源码已从仓库移除。
 jobs:
   portable-windows-full:
-    name: Portable Windows full bundle (Node + OpenClaw pre-installed)
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-
-      - name: Stage portable directory
-        run: |
-          mkdir -p dist
-          tag_name="${GITHUB_REF_NAME:-${{ github.event.inputs.tag }}}"
-          stage_dir="dist/u-claw-portable-windows-${tag_name}"
-          mkdir -p "$stage_dir"
-          cp -R portable/. "$stage_dir/"
-          cp OPENCLAW_VERSION "$stage_dir/OPENCLAW_VERSION"
-          rm -rf "$stage_dir/data/logs" 2>/dev/null || true
-
-      - name: Pre-install Node.js (Windows) and OpenClaw deps
-        run: |
-          tag_name="${GITHUB_REF_NAME:-${{ github.event.inputs.tag }}}"
-          # Absolute paths so `cd "$core_dir"` later doesn't break `du`/`find`
-          stage_dir="$(pwd)/dist/u-claw-portable-windows-${tag_name}"
-          openclaw_version=$(tr -d '[:space:]' < OPENCLAW_VERSION)
-          node_version="v22.22.3"
-          mirror_node="https://npmmirror.com/mirrors/node"
-          mirror_npm="https://registry.npmmirror.com"
-
-          app_dir="$stage_dir/app"
-          runtime_dir="$app_dir/runtime"
-          core_dir="$app_dir/core"
-          mkdir -p "$runtime_dir" "$core_dir"
-
-          # 1) Download Node for Windows x64 only.
-          #    Mac users: Mac-Start.command runs setup.sh on first launch which
-          #    downloads node-mac-arm64 from npmmirror.com (~30MB, ~10s in China).
-          #    Stanley pattern: ship one platform per zip, keep size reasonable.
-          win_node="$runtime_dir/node-win-x64"
-          mkdir -p "$win_node"
-          curl -fSL "$mirror_node/$node_version/node-$node_version-win-x64.zip" -o /tmp/node-win.zip
-          unzip -q /tmp/node-win.zip -d /tmp/node-win-extract
-          cp -r /tmp/node-win-extract/node-$node_version-win-x64/* "$win_node/"
-          rm -rf /tmp/node-win.zip /tmp/node-win-extract
-
-          # 2) Use linux Node to npm-install OpenClaw + bundled runtime deps
-          #    into core/node_modules — these are platform-agnostic JS, work on any OS
-          curl -fSL "$mirror_node/$node_version/node-$node_version-linux-x64.tar.xz" \
-            | tar xJ -C /tmp
-          export PATH="/tmp/node-$node_version-linux-x64/bin:$PATH"
-          node --version
-
-          cat > "$core_dir/package.json" <<PKGJSON
-          {
-            "name": "u-claw-core",
-            "version": "1.0.0",
-            "private": true,
-            "dependencies": {
-              "openclaw": "$openclaw_version"
-            }
-          }
-          PKGJSON
-
-          # Install OpenClaw + ALL bundled runtime deps in one shot, no native scripts
-          # (--ignore-scripts skips sharp/playwright/sqlite-vec native postinstall —
-          #  those are not needed for OpenClaw gateway core path)
-          cd "$core_dir"
-          npm install \
-            --registry="$mirror_npm" \
-            --ignore-scripts \
-            --no-audit \
-            --no-fund \
-            --omit=dev
-
-          # OpenClaw 2026.7.1-2 hard-codes managed Chromium below STATE_DIR.
-          # U-Claw keeps state (SQLite sessions/device identity) portable on USB,
-          # so apply a fail-closed vendor patch that adds a browser-only local root.
-          node "$GITHUB_WORKSPACE/portable/lib/patch-managed-browser-root.mjs" "$core_dir"
-          node "$GITHUB_WORKSPACE/portable/lib/patch-device-pairing-retry.mjs" "$core_dir"
-          node --check "$core_dir/node_modules/openclaw/dist/chrome-CtUCaDWQ.js"
-          node --check "$core_dir/node_modules/@openclaw/fs-safe/dist/replace-file.js"
-          # 回到 repo 根：后续步骤（test suite / normalize / zip）都用相对路径，
-          # 这个 step 把 cwd 留在 core/ 的话，"cd dist" 会报 No such file or directory
-          # （v2.1.19 首跑实录：engines gate 和测试都过了，zip 步骤挂在 cd dist）。
-          cd "$GITHUB_WORKSPACE"
-
-          # Note: do NOT pre-install OpenClaw's bundled runtime deps.
-          # First v2.1.3 attempt did this and the zip ballooned to 540MB
-          # because clawdbot drags in @node-llama-cpp (701MB local LLM
-          # binaries). Stanley's v2026.5.2 package only installs `openclaw`
-          # main package (153MB total) and lets OpenClaw lazy-stage the
-          # subset of bundled deps it actually needs at runtime.
-
-          # 5) Install QQ plugin
-          # 注意：上一步已 cd "$GITHUB_WORKSPACE"，这里必须 --prefix 指回 core_dir，
-          # 否则插件会装进仓库根的 node_modules 而不是产物（v2.1.27/28 实测丢包根因）。
-          npm install --prefix "$core_dir" @sliverp/qqbot@latest \
-            --registry="$mirror_npm" \
-            --ignore-scripts \
-            --no-audit \
-            --no-fund || true
-
-          # 5a) Pre-install official deepseek provider plugin (2026.8.1+)
-          # OpenClaw 2026.8.1 起把「provider id=deepseek」映射到官方 @openclaw/deepseek-provider 插件，
-          # 用户首次选 DeepSeek 保存后会触发 gateway 现场自装：NTFS 上会卡 capability consent
-          # （需交互确认才 ready），exFAT 上直接因无法建 symlink 而永不 ready。
-          # 预装进 app/core 后 gateway 直接识别（无需用户 consent，信任官方源），双平台开箱即用。
-          npm install --prefix "$core_dir" "@openclaw/deepseek-provider@2026.8.1" \
-            --registry="$mirror_npm" \
-            --ignore-scripts \
-            --no-audit \
-            --no-fund || echo "WARN: deepseek-provider pre-install failed (便携版仍可手选其他 provider)"
-
-          # 5b) Pre-install China channel plugins (钉钉/飞书中国版/企业微信)
-          # 借鉴自 BytePioneer-AI/openclaw-china 生态：这些是非官方主仓库插件，
-          # 官方镜像默认不带 → U-Claw 离线预置 = 最大差异化价值。国内客户开箱即用，
-          # 不用自己 npm install（很多客户机没法翻墙装非镜像包）。
-          # 钉钉走 WebSocket 出站免公网 IP，是国内最易接入的渠道。
-          # 全部 || true：装不上不阻断发版（个别包偶发 404 时便携版仍可用 QQ；微信入口已降级待上游）。
-          for cn_pkg in \
-            "@openclaw-china/dingtalk" \
-            "@openclaw-china/feishu-china" \
-            "@openclaw-china/wecom" \
-            "@openclaw-china/qqbot"; do
-            echo "Installing China channel plugin: $cn_pkg"
-            npm install --prefix "$core_dir" "${cn_pkg}@latest" \
-              --registry="$mirror_npm" \
-              --ignore-scripts \
-              --no-audit \
-              --no-fund || echo "WARN: $cn_pkg install failed, skipping (便携版仍可用其它渠道)"
-          done
-
-          # 6) Copy China-optimized skills if present
-          skills_cn="$stage_dir/skills-cn"
-          skills_target="$core_dir/node_modules/openclaw/skills"
-          if [ -d "$skills_cn" ] && [ -d "$skills_target" ]; then
-            for skill_dir in "$skills_cn"/*/; do
-              skill_name=$(basename "$skill_dir")
-              [ ! -d "$skills_target/$skill_name" ] && cp -R "$skill_dir" "$skills_target/$skill_name"
-            done
-          fi
-
-          # 6b) Install WeChat (Weixin) plugin into app/extensions/openclaw-weixin
-          # 官方 npm 包 @tencent-weixin/openclaw-weixin 自带 dist/index.js(发布时已编译,无需 build)。
-          # app/extensions/openclaw-weixin 是微信插件的预装源目录:Windows-Install.bat / Mac-Install.command
-          # 会把它整目录 copy 到安装目标的 data/.openclaw/extensions/。配置中心已不再提供微信扫码接入
-          # (原由 config-server 校验插件目录内 node_modules/qrcode-terminal 存在);打包行为保持不变:
-          # npm 会把该依赖提升到顶层,故下面仍显式 copy 进插件自己的 node_modules。
-          wx_tmp="$(mktemp -d)"
-          (
-            cd "$wx_tmp"
-            echo '{"name":"wx-tmp","version":"1.0.0","private":true}' > package.json
-            npm install @tencent-weixin/openclaw-weixin@latest \
-              --registry="$mirror_npm" --no-audit --no-fund
-          )
-          wx_pkg="$wx_tmp/node_modules/@tencent-weixin/openclaw-weixin"
-          if [ -f "$wx_pkg/dist/index.js" ] && [ -f "$wx_pkg/openclaw.plugin.json" ]; then
-            wx_dest="$app_dir/extensions/openclaw-weixin"
-            mkdir -p "$wx_dest"
-            cp -R "$wx_pkg/." "$wx_dest/"
-            # 把 qrcode-terminal(被 npm 提升到顶层)放进插件自己的 node_modules
-            mkdir -p "$wx_dest/node_modules"
-            cp -R "$wx_tmp/node_modules/qrcode-terminal" "$wx_dest/node_modules/qrcode-terminal"
-            echo "WeChat plugin installed: $(du -sm "$wx_dest" | cut -f1) MB"
-          else
-            echo "WARN: WeChat plugin install failed, skipping (dist/index.js or openclaw.plugin.json missing)"
-          fi
-          rm -rf "$wx_tmp"
-
-          # 7) Belt-and-suspenders: even though we don't pre-install bundled
-          # deps, openclaw's own dependencies might still pull large native
-          # binaries. Prune known offenders just in case.
-          echo "Before prune: $(du -sm "$core_dir/node_modules" | cut -f1) MB"
-          for big_pat in '@node-llama-cpp' 'node-llama-cpp'; do
-            find "$core_dir/node_modules" -maxdepth 3 -type d -name "$big_pat" -prune -exec rm -rf {} + 2>/dev/null || true
-          done
-          echo "After prune:  $(du -sm "$core_dir/node_modules" | cut -f1) MB"
-
-          du -sh "$stage_dir"
-          echo "Portable bundle staged: $stage_dir"
-
-      # ── 发版闸门 ──────────────────────────────────────────────────────────
-      # v2.1.15/16/17 三个版本发出去的产物网关根本起不来：openclaw 2026.7.1 把
-      # engines 提到 >=22.22.3，而我们一直 pin 着 Node v22.22.1，差两个补丁号。
-      # 构建绿、CI 绿、发布成功，客户下下来打不开——因为这个仓库此前**在 CI 里
-      # 一个测试都不跑**，而 track-upstream.yml 每天自动跟随上游发版时，
-      # 也从不检查随包发出去的 Node 还够不够新。自动化只跟了一半。
-      #
-      # 这一步对着**打包好的产物本身**验（不是对着源码），不通过就不许发。
-      - name: Verify bundle can actually run (engines gate)
-        run: |
-          tag_name="${GITHUB_REF_NAME:-${{ github.event.inputs.tag }}}"
-          stage_dir="$(pwd)/dist/u-claw-portable-windows-${tag_name}"
-          pkg="$stage_dir/app/core/node_modules/openclaw/package.json"
-
-          if [ ! -f "$pkg" ]; then
-            echo "::error::产物里找不到 openclaw：$pkg"
-            exit 1
-          fi
-
-          # 产物里实际打进去的那个 Node（不是 runner 上的 node）
-          bundled_node="$stage_dir/app/runtime/node-win-x64/node.exe"
-          if [ ! -f "$bundled_node" ]; then
-            echo "::error::产物里找不到内置 Node：$bundled_node"
-            exit 1
-          fi
-          node_version="v22.22.3"   # 与 Pre-install 步骤保持一致
-
-          engines=$(node -p "JSON.parse(require('fs').readFileSync('$pkg','utf8')).engines.node")
-          openclaw_version=$(node -p "JSON.parse(require('fs').readFileSync('$pkg','utf8')).version")
-          echo "产物内 openclaw: $openclaw_version"
-          echo "它要求 Node:     $engines"
-          echo "产物内 Node:     $node_version"
-
-          node -e '
-            const [ver, range] = [process.argv[1], process.argv[2]];
-            const p = v => { const m = String(v).replace(/^v/,"").match(/^(\d+)\.(\d+)\.(\d+)/); return m && {ma:+m[1],mi:+m[2],pa:+m[3]}; };
-            const cmp = (a,b) => a.ma-b.ma || a.mi-b.mi || a.pa-b.pa;
-            const v = p(ver);
-            const ok = String(range).split("||").some(br =>
-              br.trim().split(/\s+/).filter(Boolean).every(c => {
-                const m = c.match(/^(>=|<=|>|<|=)?\s*v?(\d+(?:\.\d+){0,2})$/);
-                if (!m) return false;
-                const t = m[2].split(".").map(Number);
-                const r = cmp(v, {ma:t[0], mi:t[1]??0, pa:t[2]??0});
-                const op = m[1] || "=";
-                return op===">=" ? r>=0 : op===">" ? r>0 : op==="<=" ? r<=0 : op==="<" ? r<0 : r===0;
-              })
-            );
-            if (!ok) {
-              console.error(`::error::内置 Node ${ver} 跑不动这个 openclaw（要求 ${range}）。发出去的包会直接报 "OpenClaw exited unexpectedly (code 1)"。请同步升级所有脚本里 pin 的 Node 版本。`);
-              process.exit(1);
-            }
-            console.log(`✅ ${ver} 满足 ${range}`);
-          ' "$node_version" "$engines"
-
-      - name: Run test suite (含 Node/engines 一致性守卫)
-        run: node --test "tests/*.test.mjs"
-
-      - name: Normalize line endings (CRLF for Windows scripts, LF for shell)
-        run: |
-          tag_name="${GITHUB_REF_NAME:-${{ github.event.inputs.tag }}}"
-          stage_dir="dist/u-claw-portable-windows-${tag_name}"
-          # Windows batch files MUST be CRLF — cmd.exe mis-parses LF-only files
-          find "$stage_dir" -type f \( -name '*.bat' -o -name '*.cmd' -o -name '*.ps1' \) -print0 \
-            | xargs -0 -I {} sh -c 'sed -i "s/\r$//; s/$/\r/" "{}"'
-          # Strip UTF-8 BOM from .bat files — cmd.exe interprets BOM as
-          # part of the first command and reports "not internal/external command"
-          find "$stage_dir" -type f \( -name '*.bat' -o -name '*.cmd' \) -print0 \
-            | xargs -0 -I {} sh -c 'sed -i "1s/^\xef\xbb\xbf//" "{}"'
-          # Ensure shell scripts stay LF (mac/linux double-click won't run otherwise)
-          find "$stage_dir" -type f \( -name '*.sh' -o -name '*.command' -o -name '*.mjs' -o -name '*.js' \) -print0 \
-            | xargs -0 -I {} sh -c 'sed -i "s/\r$//" "{}"'
-          # Restore +x on shell entry points
-          chmod +x "$stage_dir"/*.sh "$stage_dir"/*.command 2>/dev/null || true
-
-      - name: Zip portable bundle
-        run: |
-          tag_name="${GITHUB_REF_NAME:-${{ github.event.inputs.tag }}}"
-          cd dist
-          zip -qry "u-claw-portable-windows-${tag_name}.zip" "u-claw-portable-windows-${tag_name}"
-          ls -lh "u-claw-portable-windows-${tag_name}.zip"
-
-      - name: Size guard (lesson from 5916ff5 — GitHub 2GB asset cap)
-        run: |
-          tag_name="${GITHUB_REF_NAME:-${{ github.event.inputs.tag }}}"
-          zip_path="dist/u-claw-portable-windows-${tag_name}.zip"
-          size_bytes=$(stat -c%s "$zip_path")
-          size_mb=$((size_bytes / 1024 / 1024))
-          echo "Portable zip size: ${size_mb} MB"
-          # Hard cap at 1500 MB to leave buffer below GitHub's 2GB single-asset limit.
-          # Inspired by StanleyChanH/openclaw-offline-package which ships ~150MB.
-          if [ "$size_mb" -gt 1500 ]; then
-            echo "::error::Portable zip is ${size_mb} MB, exceeds 1500 MB safety cap"
-            echo "Consider removing more optional deps or splitting into platform-specific zips"
-            exit 1
-          fi
-
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.16.0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Build on Windows with locked native dependencies
+        shell: pwsh
+        run: ./tools/build-windows-release.ps1 -OutputDir "${{ runner.temp }}/uclaw-release"
       - uses: actions/upload-artifact@v4
         with:
           name: portable-windows-full
-          path: dist/u-claw-portable-windows-*.zip
-
-  publish:
-    name: Publish GitHub Release
-    needs: [portable-windows-full]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-
-      - name: Resolve tag
-        id: tag
-        run: |
-          if [ -n "${{ github.event.inputs.tag }}" ]; then
-            tag="${{ github.event.inputs.tag }}"
-          else
-            tag="${GITHUB_REF_NAME}"
-          fi
-          echo "tag=$tag" >> "$GITHUB_OUTPUT"
-
-      - name: Read OpenClaw version
-        id: openclaw_version
-        run: |
-          version=$(tr -d '[:space:]' < OPENCLAW_VERSION)
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-
-      - name: Create or update release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.tag.outputs.tag }}
-          name: U-Claw ${{ steps.tag.outputs.tag }}
-          body: |
-            ## U-Claw ${{ steps.tag.outputs.tag }}
-
-            - 打开 Config 选模型、填入自己的 API Key 即可使用，支持 DeepSeek / 通义 / Claude / GPT 等国内外大模型
-            - 想用「虾盘云」中转站（一个 Key 调用国内外全部模型、免翻墙）：先到 https://cloud.u-claw.org 注册并创建 Key
-            - **聊天渠道开箱即用**：便携版已离线预装 QQ / 钉钉 / 飞书 / 企业微信 插件，无需自己 npm 安装；**「个人微信」入口暂不可用**（上游插件兼容问题，等待官方修复，修复后随版本更新自动恢复）
-            - OpenClaw runtime: `${{ steps.openclaw_version.outputs.version }}`
-
-            ### 下载
-
-            - **Windows 便携完整版（U 盘版）**：`u-claw-portable-windows-*.zip`（约 150-200 MB，已预装 Node.js + OpenClaw，**解压即用，零网络依赖**）。解压到 U 盘后双击 `Windows-Start.bat` 启动。
-            - **macOS 便携版**：源码在 `portable/` 目录，`bash setup.sh` 自动下载 Node + OpenClaw（国内镜像约 1 分钟），双击 `Mac-Start.command` 启动。
-
-            > **U 盘格式建议**：请用 **NTFS** 格式化 U 盘（NOT exFAT/FAT32）。Node.js 在 exFAT 上 IO 极慢且不支持符号链接，可能导致启动失败。
-            > Windows 下右键 U 盘 → 格式化 → 文件系统选择 NTFS。
-          files: |
-            artifacts/portable-windows-full/*
-          fail_on_unmatched_files: false
+          path: |
+            ${{ runner.temp }}/uclaw-release/*.zip
+            ${{ runner.temp }}/uclaw-release/*.sha256
+      - name: Create draft only; physical NTFS acceptance precedes publication
+        shell: pwsh
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $tag='v'+(Get-Content VERSION -Raw).Trim()
+          $existing = gh release view $tag --json isDraft 2>$null | ConvertFrom-Json
+          if ($existing -and -not $existing.isDraft) { throw 'Refusing to overwrite a published release' }
+          if (-not $existing) { gh release create $tag --verify-tag --draft --title "U-Claw $tag" --notes-file "docs/release-notes/$tag.md" }
+          if ($LASTEXITCODE -ne 0) { throw 'Draft creation failed' }
+          $assets=(Get-ChildItem "${{ runner.temp }}/uclaw-release/*" -Include '*.zip','*.sha256').FullName
+          gh release upload $tag @assets --clobber
+          if ($LASTEXITCODE -ne 0) { throw 'Draft upload failed' }

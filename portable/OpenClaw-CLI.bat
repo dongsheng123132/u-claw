@@ -34,6 +34,12 @@ if not exist "%CORE_DIR%\node_modules\.bin\openclaw.cmd" (
     exit /b 1
 )
 
+call "%UCLAW_DIR%lib\windows-runtime-env.bat" "%UCLAW_DIR%." "%NODE_BIN%"
+if errorlevel 1 (
+    pause
+    exit /b 1
+)
+
 echo.
 echo   ========================================
 echo     U-Claw Interactive CLI

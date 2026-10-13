@@ -28,6 +28,12 @@ set "OPENCLAW_MJS=%CORE_DIR%\node_modules\openclaw\openclaw.mjs"
 set "LOG_DIR=%DATA_DIR%\logs"
 set "BACKUP_DIR=%DATA_DIR%\backups"
 
+call "%UCLAW_DIR%lib\windows-runtime-env.bat" "%UCLAW_DIR%." "%NODE_BIN%"
+if errorlevel 1 (
+    pause
+    exit /b 1
+)
+
 if not exist "%STATE_DIR%" mkdir "%STATE_DIR%"
 if not exist "%DATA_DIR%\memory" mkdir "%DATA_DIR%\memory"
 if not exist "%BACKUP_DIR%" mkdir "%BACKUP_DIR%"

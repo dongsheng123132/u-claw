@@ -16,40 +16,6 @@
   "updated": "2026-07-27",
   "providers": [
     {
-      "id": "uclaw-cloud",
-      "baseUrl": "https://api.u-claw.org/v1",
-      "model": "deepseek-v4-flash",
-      "title": "虾盘云",
-      "tags": [
-        {
-          "cls": "hot",
-          "text": "首选"
-        },
-        {
-          "cls": "",
-          "text": "中转站"
-        }
-      ],
-      "desc": "一个 Key 用 DeepSeek / Claude / GPT / 通义 等国内外全部大模型，无需翻墙",
-      "link": "https://u-claw.org/cloud.html",
-      "linkText": "→ 注册 / 充值 / 获取 API Key",
-      "verified": "relay-200",
-      "models": [
-        "deepseek-v4-flash",
-        "deepseek-v4-pro",
-        "kimi-k2.6",
-        "kimi-k3",
-        "glm-5",
-        "glm-5.2",
-        "MiniMax-M3",
-        "qwen3.7-plus",
-        "claude-sonnet-5",
-        "gpt-5.4",
-        "gemini-3.5-flash",
-        "grok-4.5"
-      ]
-    },
-    {
       "id": "deepseek",
       "baseUrl": "https://api.deepseek.com/v1",
       "model": "deepseek-v4-flash",
@@ -73,6 +39,36 @@
         "deepseek-v4-pro",
         "deepseek-v3.2",
         "deepseek-r1"
+      ]
+    },
+    {
+      "id": "uclaw-cloud",
+      "baseUrl": "https://api.u-claw.org/v1",
+      "model": "deepseek-v4-flash",
+      "title": "虾盘云",
+      "tags": [
+        {
+          "cls": "",
+          "text": "中转站"
+        }
+      ],
+      "desc": "一个 Key 用 DeepSeek / Claude / GPT / 通义 等国内外全部大模型，无需翻墙",
+      "link": "https://u-claw.org/cloud.html",
+      "linkText": "→ 注册 / 充值 / 获取 API Key",
+      "verified": "relay-200",
+      "models": [
+        "deepseek-v4-flash",
+        "deepseek-v4-pro",
+        "kimi-k2.6",
+        "kimi-k3",
+        "glm-5",
+        "glm-5.2",
+        "MiniMax-M3",
+        "qwen3.7-plus",
+        "claude-sonnet-5",
+        "gpt-5.4",
+        "gemini-3.5-flash",
+        "grok-4.5"
       ]
     },
     {

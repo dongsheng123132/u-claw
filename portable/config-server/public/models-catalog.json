@@ -3,13 +3,35 @@
   "updated": "2026-07-27",
   "providers": [
     {
+      "id": "deepseek",
+      "name": "DeepSeek",
+      "tags": [
+        {
+          "cls": "cn",
+          "text": "国内"
+        },
+        {
+          "cls": "cheap",
+          "text": "便宜"
+        }
+      ],
+      "desc": "deepseek-v4-flash / deepseek-v4-pro，超低价格",
+      "base": "https://api.deepseek.com/v1",
+      "models": [
+        "deepseek-v4-flash",
+        "deepseek-v4-pro",
+        "deepseek-v3.2",
+        "deepseek-r1"
+      ],
+      "recommended": "deepseek-v4-flash",
+      "link": "https://platform.deepseek.com/",
+      "linkLabel": "获取 API Key",
+      "verified": "direct-400"
+    },
+    {
       "id": "uclaw-cloud",
       "name": "虾盘云",
       "tags": [
-        {
-          "cls": "hot",
-          "text": "首选"
-        },
         {
           "cls": "",
           "text": "中转站"
@@ -35,32 +57,6 @@
       "link": "https://u-claw.org/cloud.html",
       "linkLabel": "注册 / 充值 / 获取 API Key",
       "verified": "relay-200"
-    },
-    {
-      "id": "deepseek",
-      "name": "DeepSeek",
-      "tags": [
-        {
-          "cls": "cn",
-          "text": "国内"
-        },
-        {
-          "cls": "cheap",
-          "text": "便宜"
-        }
-      ],
-      "desc": "deepseek-v4-flash / deepseek-v4-pro，超低价格",
-      "base": "https://api.deepseek.com/v1",
-      "models": [
-        "deepseek-v4-flash",
-        "deepseek-v4-pro",
-        "deepseek-v3.2",
-        "deepseek-r1"
-      ],
-      "recommended": "deepseek-v4-flash",
-      "link": "https://platform.deepseek.com/",
-      "linkLabel": "获取 API Key",
-      "verified": "direct-400"
     },
     {
       "id": "minimax",
