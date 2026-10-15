@@ -25,7 +25,11 @@ export async function probeRenameIdentity(stateDir, platform = process.platform)
     const changed = before.dev !== after.dev || before.ino !== after.ino;
     const verified = published.isFile() && !published.isSymbolicLink()
       && after.dev === published.dev && after.ino === published.ino && content.equals(bytes);
-    return { mode: changed && verified ? 'verify-content-with-lock' : 'strict', changed, verified,
+    // Windows exFAT/FAT32 report a constant (usually 0) inode via stat, so
+    // rename never looks "changed" even though identity is unstable. Treat an
+    // unavailable inode as unreliable identity and fall back to content+lock.
+    const inoUnavailable = before.ino === 0n && after.ino === 0n && published.ino === 0n;
+    return { mode: (changed || inoUnavailable) && verified ? 'verify-content-with-lock' : 'strict', changed, verified,
       before: before.ino.toString(), after: after.ino.toString(), published: published.ino.toString() };
   } catch (error) {
     return { mode: 'strict', error: error.code || error.name };

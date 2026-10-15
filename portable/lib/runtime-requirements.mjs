@@ -15,7 +15,10 @@ export function needsSetup(root, nodeVersion = process.version, platform = `${pr
     const expected = readFileSync(join(root, 'OPENCLAW_VERSION'), 'utf8').trim();
     const installed = JSON.parse(readFileSync(join(root, 'app/core/node_modules/openclaw/package.json'), 'utf8'));
     const installedPlatform = readFileSync(join(root, 'app/core/.uclaw-runtime-platform'), 'utf8').trim();
-    return installed.version !== expected || installedPlatform !== platform;
+    // Multi-platform portable images (e.g. Windows+Mac on one exFAT drive) list
+    // every supported platform in the marker, separated by comma/newline.
+    const platforms = installedPlatform.split(/[\s,]+/).filter(Boolean);
+    return installed.version !== expected || !platforms.includes(platform);
   } catch {
     return true;
   }
