@@ -1,276 +1,87 @@
 #!/bin/bash
-# ============================================================
-# U-Claw - Install to Mac (从 U 盘安装到电脑)
-# 优先使用 U 盘内的离线资源，缺失时从国内镜像下载
-# ============================================================
-
+# Install the same portable structure locally; Mac-Start.command remains the
+# single startup path for USB and local installs. Existing user data is kept.
 set -e
 
 UCLAW_DIR="$(cd "$(dirname "$0")" && pwd)"
 APP_DIR="$UCLAW_DIR/app"
 INSTALL_TARGET="$HOME/.uclaw"
+NODE_VER="v24.16.0"
 
 GREEN='\033[0;32m'
 CYAN='\033[0;36m'
-RED='\033[0;31m'
 YELLOW='\033[1;33m'
+RED='\033[0;31m'
 NC='\033[0m'
-BOLD='\033[1m'
-DIM='\033[2m'
 
-NODE_VER="v22.22.3"
-MIRROR="https://registry.npmmirror.com"
-NODE_MIRROR="https://npmmirror.com/mirrors/node"
-
-clear
 echo ""
-echo -e "${CYAN}${BOLD}"
-echo "  ╔══════════════════════════════════════╗"
-echo "  ║   U-Claw 安装到 Mac                  ║"
-echo "  ║   从 U 盘离线安装                     ║"
-echo "  ╚══════════════════════════════════════╝"
-echo -e "${NC}"
+echo -e "${CYAN}🦞 U-Claw 安装到 Mac${NC}"
 echo ""
 
-# ---- Check CPU ----
 ARCH=$(uname -m)
-if [ "$ARCH" = "arm64" ]; then
-    echo -e "  ${GREEN}Apple Silicon (M 系列) ✓${NC}"
-    NODE_PLATFORM="node-mac-arm64"
-else
-    echo -e "  ${YELLOW}Intel Mac${NC}"
-    NODE_PLATFORM="node-mac-x64"
-fi
-echo ""
+case "$ARCH" in
+    arm64) NODE_PLATFORM="node-mac-arm64" ;;
+    x86_64) NODE_PLATFORM="node-mac-x64" ;;
+    *) echo -e "${RED}不支持的架构: $ARCH${NC}"; exit 1 ;;
+esac
 
-# ---- Check existing installation ----
+if [ "$UCLAW_DIR" = "$INSTALL_TARGET" ]; then
+    echo "已经位于本机安装目录，请运行 start.command。"
+    exit 0
+fi
 if [ -d "$INSTALL_TARGET" ]; then
-    echo -e "  ${YELLOW}检测到已有安装: $INSTALL_TARGET${NC}"
-    read -p "  覆盖安装？(y/n): " -n 1 OVERWRITE
-    echo ""
-    if [ "$OVERWRITE" != "y" ] && [ "$OVERWRITE" != "Y" ]; then
-        echo -e "  ${DIM}已取消${NC}"
-        exit 0
-    fi
-    echo ""
+    echo -e "${YELLOW}检测到已有安装: $INSTALL_TARGET${NC}"
+    read -r -p "更新程序并保留现有数据？(y/n): " OVERWRITE
+    case "$OVERWRITE" in y|Y) ;; *) echo "已取消"; exit 0 ;; esac
 fi
 
-# ---- Step 1: Check environment ----
-echo -e "  ${BOLD}[1/4] 检查环境...${NC}"
-
-NEED_DOWNLOAD_NODE=false
-NEED_DOWNLOAD_OPENCLAW=false
-
-# Check Node.js - prefer USB, then system, then download
 USB_NODE="$APP_DIR/runtime/$NODE_PLATFORM/bin/node"
-USB_NPM="$APP_DIR/runtime/$NODE_PLATFORM/bin/npm"
-
-if [ -f "$USB_NODE" ]; then
-    echo -e "  ${GREEN}Node.js: 使用 U 盘内的 ($("$USB_NODE" --version))${NC}"
-    USE_NODE="usb"
-elif command -v node >/dev/null 2>&1; then
-    SYS_VER=$(node --version)
-    MAJOR=$(echo "$SYS_VER" | sed 's/v//' | cut -d. -f1)
-    if [ "$MAJOR" -ge 20 ] 2>/dev/null; then
-        echo -e "  ${GREEN}Node.js: 使用系统的 ($SYS_VER)${NC}"
-        USE_NODE="system"
-    else
-        echo -e "  ${YELLOW}Node.js: 系统版本太低 ($SYS_VER)，需要 v20+${NC}"
-        NEED_DOWNLOAD_NODE=true
-        USE_NODE="download"
-    fi
-else
-    echo -e "  ${YELLOW}Node.js: 未安装${NC}"
-    NEED_DOWNLOAD_NODE=true
-    USE_NODE="download"
+VERSION_FILE="$UCLAW_DIR/OPENCLAW_VERSION"
+[ -f "$VERSION_FILE" ] || VERSION_FILE="$UCLAW_DIR/../OPENCLAW_VERSION"
+REQUIRED_VERSION="$(tr -d '[:space:]' < "$VERSION_FILE")"
+echo -e "${CYAN}准备 Node.js $NODE_VER 和 OpenClaw $REQUIRED_VERSION...${NC}"
+bash "$UCLAW_DIR/setup.sh"
+REQUIREMENTS="$("$USB_NODE" "$UCLAW_DIR/lib/runtime-requirements.mjs" "$UCLAW_DIR" 2>/dev/null)"
+if [ "$REQUIREMENTS" != "UCLAW_SETUP_NEEDED=0" ]; then
+    echo -e "${RED}Node.js 或 OpenClaw 版本不符合要求，安装中止。${NC}"
+    exit 1
 fi
 
-# Check OpenClaw
-USB_OPENCLAW="$APP_DIR/core/node_modules/openclaw/openclaw.mjs"
-if [ -f "$USB_OPENCLAW" ]; then
-    echo -e "  ${GREEN}OpenClaw: 使用 U 盘内的${NC}"
-    USE_OPENCLAW="usb"
-else
-    echo -e "  ${YELLOW}OpenClaw: U 盘内未找到，需要在线下载${NC}"
-    NEED_DOWNLOAD_OPENCLAW=true
-    USE_OPENCLAW="download"
-fi
-
-echo ""
-
-# ---- Step 2: Create install directory ----
-echo -e "  ${BOLD}[2/4] 安装到 $INSTALL_TARGET ...${NC}"
-
-mkdir -p "$INSTALL_TARGET"
-mkdir -p "$INSTALL_TARGET/data/.openclaw"
-mkdir -p "$INSTALL_TARGET/data/memory"
+# Save the previous program before replacing files. User data is never copied
+# from this USB drive and never overwritten by installation.
 mkdir -p "$INSTALL_TARGET/data/backups"
-
-# ---- Step 3: Copy/Download Node.js ----
-echo -e "  ${BOLD}[3/4] 安装 Node.js...${NC}"
-
-NODE_INSTALL_DIR="$INSTALL_TARGET/runtime/$NODE_PLATFORM"
-
-case $USE_NODE in
-    usb)
-        echo -e "  ${CYAN}从 U 盘复制 Node.js...${NC}"
-        mkdir -p "$NODE_INSTALL_DIR"
-        cp -R "$APP_DIR/runtime/$NODE_PLATFORM/"* "$NODE_INSTALL_DIR/"
-        chmod +x "$NODE_INSTALL_DIR/bin/node"
-        INSTALL_NODE="$NODE_INSTALL_DIR/bin/node"
-        INSTALL_NPM="$NODE_INSTALL_DIR/bin/npm"
-        echo -e "  ${GREEN}Node.js 安装完成 ✓${NC}"
-        ;;
-    system)
-        INSTALL_NODE="$(which node)"
-        INSTALL_NPM="$(which npm)"
-        echo -e "  ${GREEN}使用系统 Node.js ✓${NC}"
-        ;;
-    download)
-        echo -e "  ${CYAN}从国内镜像下载 Node.js $NODE_VER...${NC}"
-        PLATFORM_NAME="darwin-$ARCH"
-        TARBALL="node-${NODE_VER}-${PLATFORM_NAME}.tar.gz"
-        URL="${NODE_MIRROR}/${NODE_VER}/${TARBALL}"
-
-        mkdir -p "$NODE_INSTALL_DIR"
-        curl -# -L "$URL" -o "/tmp/$TARBALL"
-        tar -xzf "/tmp/$TARBALL" -C "$NODE_INSTALL_DIR" --strip-components=1
-        rm -f "/tmp/$TARBALL"
-        chmod +x "$NODE_INSTALL_DIR/bin/node"
-        INSTALL_NODE="$NODE_INSTALL_DIR/bin/node"
-        INSTALL_NPM="$NODE_INSTALL_DIR/bin/npm"
-        echo -e "  ${GREEN}Node.js 下载安装完成 ✓${NC}"
-        ;;
-esac
-
-echo ""
-
-# ---- Step 4: Copy/Download OpenClaw ----
-echo -e "  ${BOLD}[4/4] 安装 OpenClaw...${NC}"
-
-CORE_INSTALL_DIR="$INSTALL_TARGET/core"
-
-case $USE_OPENCLAW in
-    usb)
-        echo -e "  ${CYAN}从 U 盘复制 OpenClaw + 插件...${NC}"
-        mkdir -p "$CORE_INSTALL_DIR"
-        cp -R "$APP_DIR/core/"* "$CORE_INSTALL_DIR/"
-        echo -e "  ${GREEN}OpenClaw 安装完成 ✓${NC}"
-        ;;
-    download)
-        echo -e "  ${CYAN}从国内镜像下载 OpenClaw...${NC}"
-        mkdir -p "$CORE_INSTALL_DIR"
-        cat > "$CORE_INSTALL_DIR/package.json" << 'PKGEOF'
-{
-  "name": "u-claw-core",
-  "version": "1.0.0",
-  "private": true,
-  "dependencies": {
-    "openclaw": "latest"
-  }
-}
-PKGEOF
-        cd "$CORE_INSTALL_DIR"
-        "$INSTALL_NODE" "$INSTALL_NPM" install --registry="$MIRROR" 2>&1 | tail -3
-        "$INSTALL_NODE" "$INSTALL_NPM" install @sliverp/qqbot@latest --registry="$MIRROR" 2>&1 | tail -2
-        echo -e "  ${GREEN}OpenClaw 下载安装完成 ✓${NC}"
-        ;;
-esac
-
-# ---- Stage WeChat plugin into the dir OpenClaw actually reads ----
-# OpenClaw loads extensions ONLY from OPENCLAW_STATE_DIR/extensions; start.command
-# points STATE_DIR at $INSTALL_TARGET/data/.openclaw, so the plugin must live there.
-WECHAT_DST="$INSTALL_TARGET/data/.openclaw/extensions/openclaw-weixin"
-if [ -f "$APP_DIR/extensions/openclaw-weixin/openclaw.plugin.json" ]; then
-    echo -e "  ${CYAN}Installing WeChat plugin...${NC}"
-    mkdir -p "$INSTALL_TARGET/data/.openclaw/extensions"
-    if cp -R "$APP_DIR/extensions/openclaw-weixin" "$WECHAT_DST" 2>/dev/null; then
-        echo -e "  ${GREEN}WeChat plugin installed ✓${NC}"
-    fi
-    # Copy zod from the bundled OpenClaw core: the plugin's npm tarball ships without it
-    # and the host node_modules is off the plugin's resolution path, so otherwise it
-    # fails to load with "Cannot find module 'zod'".
-    if [ ! -d "$WECHAT_DST/node_modules/zod" ] && [ -d "$APP_DIR/core/node_modules/zod" ]; then
-        mkdir -p "$WECHAT_DST/node_modules"
-        cp -R "$APP_DIR/core/node_modules/zod" "$WECHAT_DST/node_modules/zod" 2>/dev/null
-    fi
+BACKUP_DIR="$INSTALL_TARGET/data/backups/program-$(date +%Y%m%d-%H%M%S)-$$"
+if [ -d "$INSTALL_TARGET/app" ] || [ -f "$INSTALL_TARGET/Mac-Start.command" ] || [ -f "$INSTALL_TARGET/start.command" ]; then
+    mkdir -p "$BACKUP_DIR"
+    [ ! -d "$INSTALL_TARGET/app" ] || mv "$INSTALL_TARGET/app" "$BACKUP_DIR/app"
+    [ ! -f "$INSTALL_TARGET/start.command" ] || cp "$INSTALL_TARGET/start.command" "$BACKUP_DIR/"
+    for source in "$UCLAW_DIR"/*; do
+        name="${source##*/}"
+        case "$name" in app|data) continue ;; esac
+        [ ! -e "$INSTALL_TARGET/$name" ] || cp -R "$INSTALL_TARGET/$name" "$BACKUP_DIR/"
+    done
+    echo "旧程序备份: $BACKUP_DIR"
 fi
 
-# ---- Default config ----
-CONFIG_PATH="$INSTALL_TARGET/data/.openclaw/openclaw.json"
-if [ ! -f "$CONFIG_PATH" ]; then
-    cat > "$CONFIG_PATH" << 'CFGEOF'
-{
-  "gateway": {
-    "mode": "local",
-    "auth": { "token": "uclaw" }
-  }
-}
-CFGEOF
-fi
-
-# ---- Copy launch scripts ----
-for f in Config.html U-Claw.html; do
-    [ -f "$UCLAW_DIR/$f" ] && cp "$UCLAW_DIR/$f" "$INSTALL_TARGET/"
+echo -e "${CYAN}复制程序到 $INSTALL_TARGET ...${NC}"
+mkdir -p "$INSTALL_TARGET/app/runtime" "$INSTALL_TARGET/data/.openclaw"
+cp -R "$APP_DIR/core" "$INSTALL_TARGET/app/core"
+cp -R "$APP_DIR/runtime/$NODE_PLATFORM" "$INSTALL_TARGET/app/runtime/$NODE_PLATFORM"
+for source in "$UCLAW_DIR"/*; do
+    [ -e "$source" ] || continue
+    name="${source##*/}"
+    case "$name" in app|data) continue ;; esac
+    cp -R "$source" "$INSTALL_TARGET/"
 done
 
-# ---- Create launch script ----
 cat > "$INSTALL_TARGET/start.command" << 'STARTEOF'
 #!/bin/bash
 DIR="$(cd "$(dirname "$0")" && pwd)"
-ARCH=$(uname -m)
-NODE_PLATFORM="node-mac-$( [ "$ARCH" = "arm64" ] && echo "arm64" || echo "x64" )"
-
-NODE_BIN="$DIR/runtime/$NODE_PLATFORM/bin/node"
-[ ! -f "$NODE_BIN" ] && NODE_BIN="$(which node)"
-
-CORE_DIR="$DIR/core"
-OPENCLAW_MJS="$CORE_DIR/node_modules/openclaw/openclaw.mjs"
-
-export OPENCLAW_HOME="$DIR/data"
-export OPENCLAW_STATE_DIR="$DIR/data/.openclaw"
-export OPENCLAW_CONFIG_PATH="$DIR/data/.openclaw/openclaw.json"
-
-PORT=18789
-while lsof -i :$PORT >/dev/null 2>&1; do
-    PORT=$((PORT + 1))
-    [ $PORT -gt 18799 ] && echo "No available port" && exit 1
-done
-
-cd "$CORE_DIR"
-"$NODE_BIN" "$OPENCLAW_MJS" gateway run --allow-unconfigured --force --port $PORT &
-PID=$!
-
-for i in $(seq 1 30); do
-    sleep 0.5
-    if curl -s -o /dev/null "http://127.0.0.1:$PORT/" 2>/dev/null; then
-        open "http://127.0.0.1:$PORT/#token=uclaw"
-        break
-    fi
-done
-
-wait $PID
+exec bash "$DIR/Mac-Start.command"
 STARTEOF
-chmod +x "$INSTALL_TARGET/start.command"
+chmod +x "$INSTALL_TARGET/"*.command "$INSTALL_TARGET/app/runtime/$NODE_PLATFORM/bin/node"
 
 echo ""
-
-# ---- Summary ----
-INSTALL_SIZE=$(du -sh "$INSTALL_TARGET" | cut -f1)
-
-echo -e "  ${GREEN}${BOLD}╔══════════════════════════════════════╗"
-echo -e "  ║   ✅ 安装成功！                       ║"
-echo -e "  ╚══════════════════════════════════════╝${NC}"
-echo ""
-echo -e "  ${BOLD}安装位置:${NC} $INSTALL_TARGET"
-echo -e "  ${BOLD}大小:${NC}     $INSTALL_SIZE"
-echo ""
-echo -e "  ${BOLD}启动方式:${NC}"
-echo -e "    双击 ${CYAN}$INSTALL_TARGET/start.command${NC}"
-echo -e "    或终端运行: ${CYAN}bash ~/.uclaw/start.command${NC}"
-echo ""
-echo -e "  ${BOLD}首次使用:${NC}"
-echo -e "    启动后浏览器自动打开配置页面"
-echo -e "    选择 AI 模型 → 填写 API Key → 开始用"
-echo ""
-read -p "  按回车关闭..."
+echo -e "${GREEN}安装完成: $INSTALL_TARGET${NC}"
+echo "双击 $INSTALL_TARGET/start.command 启动，在网页侧栏打开虾盘云钱包配置模型。"
+read -r -p "按回车关闭..."

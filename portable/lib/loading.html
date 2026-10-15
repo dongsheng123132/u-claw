@@ -125,16 +125,16 @@ body.ready .ready-wrap { display: block; }
     <div class="ready-wrap">
       <div class="logo">🦞</div>
       <h1>U-Claw 已就绪</h1>
-      <div class="tip">选择下一步 — 直接开始聊天，或先去配置模型和渠道。</div>
+      <div class="tip">即将进入 WebUI，可在设备钱包里启用虾盘云并充值。</div>
       <div class="actions">
         <a class="btn btn-primary" id="goDash">🚀 进入 Dashboard
           <span class="sub">开始和 AI 聊天</span>
         </a>
-        <a class="btn" id="goConfig">⚙️ 配置 / 改模型
-          <span class="sub">填写或更换模型 Key、充值、连接微信等渠道</span>
+        <a class="btn" id="goConfig">⚙️ 备用配置中心
+          <span class="sub">恢复虾盘云密钥、检查启动状态</span>
         </a>
       </div>
-      <div class="foot">没配过模型或余额不足？先点「配置 / 改模型」处理 Key 或充值。</div>
+      <div class="foot">设备钱包和充值入口在 WebUI 内。</div>
     </div>
 
   </div>
@@ -168,17 +168,11 @@ body.ready .ready-wrap { display: block; }
   setInterval(tickElapsed, 1000);
   tickElapsed();
 
-  function showChoice() {
-    if (ready) return;
-    ready = true;
-    document.body.classList.add('ready');
-  }
-
   function poll() {
     if (ready) return;
-    // /ready 就绪即显示选择页。no-cors 下拿不到 status，但 fetch 成功 resolve 就说明端口活了。
+    // /ready 连通后进入 WebUI。no-cors 下拿不到 status，fetch resolve 表示端口已连通。
     fetch(base + '/ready', { mode: 'no-cors', cache: 'no-store' })
-      .then(function () { showChoice(); })
+      .then(function () { ready = true; location.replace(dashboard); })
       .catch(function () {
         // 端口还没起，继续等
         setTimeout(poll, 1000);

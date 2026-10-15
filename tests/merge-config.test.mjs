@@ -31,7 +31,7 @@ function withTempDir(fn) {
 
 test('mergeConfig: 保存模型配置时，plugins 必须存活（issue #58 回归测试）', () => {
   const existing = {
-    plugins: { entries: { 'openclaw-weixin': { enabled: true } } },
+    plugins: { entries: { 'local-tools': { enabled: true } } },
     models: { mode: 'merge', providers: { oldProvider: { baseUrl: 'https://old' } } },
   };
   const incoming = {
@@ -46,7 +46,7 @@ test('mergeConfig: 保存模型配置时，plugins 必须存活（issue #58 回�
 
   assert.deepEqual(
     merged.plugins,
-    { entries: { 'openclaw-weixin': { enabled: true } } },
+    { entries: { 'local-tools': { enabled: true } } },
     '磁盘上已有的 plugins 字段必须原样保留'
   );
   // 受管字段以本次请求为准
@@ -188,7 +188,7 @@ test('saveConfigMerged: 端到端——已有 plugins 时保存模型配置，pl
   withTempDir((dir) => {
     const p = join(dir, 'openclaw.json');
     writeFileSync(p, JSON.stringify({
-      plugins: { entries: { 'openclaw-weixin': { enabled: true } } },
+      plugins: { entries: { 'local-tools': { enabled: true } } },
     }));
 
     const incoming = {
@@ -199,17 +199,20 @@ test('saveConfigMerged: 端到端——已有 plugins 时保存模型配置，pl
     saveConfigMerged(p, incoming);
 
     const onDisk = JSON.parse(readFileSync(p, 'utf8'));
-    assert.deepEqual(onDisk.plugins, { entries: { 'openclaw-weixin': { enabled: true } } });
+    assert.deepEqual(onDisk.plugins, { entries: { 'local-tools': { enabled: true } } });
     assert.deepEqual(onDisk.models, incoming.models);
   });
 });
 
-test('MANAGED_TOP_LEVEL_KEYS 与 Config.html 里前端双保险的清单保持一致', () => {
-  // 这条测试是"防漂移"——Config.html 的 saveConfig() 里手写了一份同样的白名单
-  // (MANAGED_CONFIG_KEYS) 用于前端双保险，两边分叉会导致文档说的策略跟实际代码不一致。
-  const html = readFileSync(new URL('../portable/Config.html', import.meta.url), 'utf8');
-  const m = html.match(/MANAGED_CONFIG_KEYS\s*=\s*\[([^\]]*)\]/);
-  assert.ok(m, 'Config.html 里应有 MANAGED_CONFIG_KEYS 常量');
-  const frontendKeys = m[1].split(',').map((s) => s.trim().replace(/^'|'$/g, '')).filter(Boolean);
-  assert.deepEqual(new Set(frontendKeys), new Set(MANAGED_TOP_LEVEL_KEYS));
+test('模型保存主动移除旧渠道并保留非渠道插件和未知配置', () => {
+  const old = { channels: { telegram: { botToken: 'test-only-secret' } }, bindings: [{ match: { channel: 'telegram' }, agentId: 'main' }],
+    plugins: { entries: { 'openclaw-weixin': { enabled: true }, 'local-tools': { enabled: true } }, allow: ['telegram', 'uclaw-wallet'], load: { paths: ['C:/portable/extensions/openclaw-weixin', 'C:/portable/extensions/uclaw-wallet'] } }, unknown: { retained: true } };
+  const merged = mergeConfig(old, { models: { providers: {} } });
+  assert.equal(merged.channels, undefined);
+  assert.equal(merged.bindings, undefined);
+  assert.deepEqual(merged.plugins.entries, { 'local-tools': { enabled: true } });
+  assert.deepEqual(merged.plugins.allow, ['uclaw-wallet']);
+  assert.deepEqual(merged.plugins.load.paths, ['C:/portable/extensions/uclaw-wallet']);
+  assert.deepEqual(merged.unknown, { retained: true });
+  assert.ok(old.channels.telegram);
 });

@@ -50,7 +50,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24.16.0'
 
       - name: Resolve upstream OpenClaw version
         id: upstream
@@ -60,13 +60,7 @@ jobs:
             latest="${force#v}"
             echo "强制指定上游版本: $latest"
           else
-            latest="$(npm view openclaw version --registry=https://registry.npmmirror.com 2>/dev/null | tr -d '[:space:]')"
-            # npmmirror 偶尔缓存陈旧，官方源兜底取较大值
-            official="$(npm view openclaw version 2>/dev/null | tr -d '[:space:]')"
-            if [ -n "$official" ] && [ "$official" != "$latest" ]; then
-              # 取版本号较大的那个（npmmirror 缓存滞后时用官方源）
-              latest="$(printf '%s\n%s\n' "$latest" "$official" | sort -V | tail -1)"
-            fi
+            latest="$(npm view openclaw version --registry=https://registry.npmjs.org --fetch-retries=2 --fetch-timeout=30000 2>/dev/null | tr -d '[:space:]')"
             echo "npm latest openclaw: $latest"
           fi
           if [ -z "$latest" ]; then
@@ -126,10 +120,10 @@ jobs:
             exit 1
           fi
 
-          engines=$(npm view "openclaw@$latest" engines.node 2>/dev/null)
+          engines=$(npm view "openclaw@$latest" engines.node --registry=https://registry.npmjs.org --fetch-retries=2 --fetch-timeout=30000 2>/dev/null)
           if [ -z "$engines" ]; then
-            echo "::warning::拿不到 openclaw@$latest 的 engines，跳过本检查（release.yml 里还有一道产物闸门兜底）"
-            exit 0
+            echo "::error::拿不到 openclaw@$latest 的 engines，停止更新 pin"
+            exit 1
           fi
 
           echo "上游新版 openclaw $latest 要求 Node: $engines"
@@ -158,6 +152,18 @@ jobs:
           ' "$node_version" "$engines"
         env:
           LATEST: ${{ steps.upstream.outputs.latest }}
+
+      - name: Guard vendor patches are reviewed for the target runtime
+        if: steps.decide.outputs.changed == 'true'
+        run: |
+          latest="${{ steps.upstream.outputs.latest }}"
+          for patch in portable/lib/patch-managed-browser-root.mjs portable/lib/patch-device-pairing-retry.mjs portable/lib/patch-control-ui-channels.mjs portable/lib/patch-portable-filesystem.mjs; do
+            expected=$(sed -n "s/^const EXPECTED_VERSION = '\([^']*\)';/\1/p" "$patch")
+            if [ "$expected" != "$latest" ]; then
+              echo "::error::$patch has not been reviewed for OpenClaw $latest; stopping before changing the pin."
+              exit 1
+            fi
+          done
 
       - name: Compute next shell version (patch bump)
         if: steps.decide.outputs.changed == 'true'

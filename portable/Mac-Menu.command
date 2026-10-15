@@ -72,142 +72,52 @@ show_menu() {
     echo -e "  Node: ${GREEN}${NODE_VER}${NC}  配置: ${CFG_STATUS}"
     echo ""
     echo -e "  ${WHITE}${BOLD}── 配置 ──────────────────────────────${NC}"
-    echo -e "  ${GREEN}[1]${NC}  配置向导（选模型、填 API Key）"
+    echo -e "  ${GREEN}[1]${NC}  模型配置（填写 API Key）"
     echo -e "  ${GREEN}[2]${NC}  打开网页控制台"
     echo ""
-    echo -e "  ${WHITE}${BOLD}── 聊天平台 ──────────────────────────${NC}"
-    echo -e "  ${GREEN}[3]${NC}  接入 QQ 机器人（推荐，1分钟搞定）"
-    echo -e "  ${GREEN}[4]${NC}  接入其他平台（飞书/Telegram/微信）"
-    echo ""
     echo -e "  ${WHITE}${BOLD}── 维护 ──────────────────────────────${NC}"
-    echo -e "  ${GREEN}[5]${NC}  诊断修复"
-    echo -e "  ${GREEN}[6]${NC}  备份配置"
-    echo -e "  ${GREEN}[7]${NC}  恢复备份"
-    echo -e "  ${GREEN}[8]${NC}  系统信息"
+    echo -e "  ${GREEN}[3]${NC}  诊断修复"
+    echo -e "  ${GREEN}[4]${NC}  备份配置"
+    echo -e "  ${GREEN}[5]${NC}  恢复备份"
+    echo -e "  ${GREEN}[6]${NC}  系统信息"
     echo ""
     echo -e "  ${WHITE}${BOLD}── 高级维护 ──────────────────────────${NC}"
-    echo -e "  ${GREEN}[9]${NC}  杀死残留进程"
-    echo -e "  ${GREEN}[10]${NC} 查看日志"
-    echo -e "  ${GREEN}[11]${NC} 恢复出厂设置"
-    echo -e "  ${GREEN}[12]${NC} 卸载"
-    echo -e "  ${GREEN}[13]${NC} 检查更新"
-    echo -e "  ${GREEN}[14]${NC} 清理空间"
-    echo -e "  ${GREEN}[15]${NC} 插件管理"
-    echo -e "  ${GREEN}[16]${NC} 进入 CLI 终端（openclaw chat/configure/doctor）"
+    echo -e "  ${GREEN}[7]${NC}  杀死残留进程"
+    echo -e "  ${GREEN}[8]${NC}  查看日志"
+    echo -e "  ${GREEN}[9]${NC}  恢复出厂设置"
+    echo -e "  ${GREEN}[10]${NC} 卸载"
+    echo -e "  ${GREEN}[11]${NC} 检查更新"
+    echo -e "  ${GREEN}[12]${NC} 清理空间"
+    echo -e "  ${GREEN}[13]${NC} 进入 CLI 终端"
     echo ""
     echo -e "  ${DIM}[0]  退出${NC}"
     echo ""
 }
 
-# [1] Config wizard
+# [1] Shared model configuration page
 do_config() {
-    echo ""
-    echo -e "  ${CYAN}${BOLD}━━━ 配置向导 ━━━${NC}"
-    echo ""
-    echo -e "  ${WHITE}国产模型选择提示:${NC}"
-    echo ""
-    echo -e "  DeepSeek  → 选 Custom Provider"
-    echo -e "              URL: https://api.deepseek.com/v1"
-    echo -e "              模型: deepseek-v4-flash"
-    echo -e "  Kimi      → 选 Moonshot AI"
-    echo -e "  通义千问  → 选 Qwen"
-    echo -e "  豆包      → 选 Volcano Engine"
-    echo ""
-    read -p "  按回车启动配置向导..."
-    run_oc onboard
+    local CONFIG_PORT=""
+    local STARTED=0
+    for i in $(seq 1 60); do
+        while IFS='=' read -r _k _v; do
+            case "$_k" in UCLAW_CONFIG_PORT) CONFIG_PORT="$_v" ;; esac
+        done < <("$NODE_BIN" "$UCLAW_DIR/lib/runtime-ports.mjs" read "$STATE_DIR" 2>/dev/null)
+        if [ -n "$CONFIG_PORT" ] && curl --noproxy '*' --max-time 1 -fsS "http://127.0.0.1:$CONFIG_PORT/api/runtime" >/dev/null 2>&1; then
+            open "http://127.0.0.1:$CONFIG_PORT/" 2>/dev/null || true
+            return
+        fi
+        if [ "$STARTED" = "0" ]; then
+            open "$UCLAW_DIR/Mac-Start.command" 2>/dev/null || { echo "请先双击 Mac-Start.command 启动。"; return; }
+            STARTED=1
+        fi
+        sleep 0.5
+    done
+    echo "配置页面尚未就绪，请在启动完成后重试。"
 }
 
 # [2] Web dashboard
 do_dashboard() {
-    echo ""
-    echo -e "  ${CYAN}启动网页控制台...${NC}"
-    echo ""
-    cd "$CORE_DIR"
-
-    # Find free port
-    local PORT=18789
-    while lsof -i :$PORT >/dev/null 2>&1; do
-        PORT=$((PORT + 1))
-        if [ $PORT -gt 18799 ]; then
-            echo -e "  ${RED}端口 18789-18799 全被占用${NC}"
-            return
-        fi
-    done
-
-    local TOKEN=$(python3 -c "import json,os; p='$CONFIG_PATH'; d=json.load(open(p)) if os.path.exists(p) else {}; print(d.get('gateway',{}).get('auth',{}).get('token','uclaw'))" 2>/dev/null || echo "uclaw")
-
-    "$NODE_BIN" "$OPENCLAW_MJS" gateway run --allow-unconfigured --force --port $PORT &
-    local PID=$!
-
-    for i in $(seq 1 30); do
-        sleep 0.5
-        if curl --noproxy '*' -s -o /dev/null "http://127.0.0.1:$PORT/" 2>/dev/null; then
-            local URL="http://127.0.0.1:$PORT/#token=$TOKEN"
-            echo -e "  ${GREEN}控制台: $URL${NC}"
-            open "$URL" 2>/dev/null
-            break
-        fi
-    done
-
-    echo "  关闭此窗口会停止服务"
-    wait $PID
-}
-
-# [3] QQ Bot (pre-installed)
-do_qq() {
-    echo ""
-    echo -e "  ${CYAN}${BOLD}━━━ 接入 QQ 机器人 ━━━${NC}"
-    echo ""
-    echo -e "  ${GREEN}QQ 插件已预装！只需输入 AppID 和 AppSecret。${NC}"
-    echo ""
-    echo "  获取方式: 访问 q.qq.com → 创建机器人"
-    echo ""
-    read -p "  AppID: " QQ_ID
-    read -p "  AppSecret: " QQ_SECRET
-    echo ""
-
-    if [ -z "$QQ_ID" ] || [ -z "$QQ_SECRET" ]; then
-        echo -e "  ${YELLOW}已取消${NC}"
-        return
-    fi
-
-    run_oc channels add --channel qqbot --token "${QQ_ID}:${QQ_SECRET}" 2>&1 || true
-    echo ""
-    read -p "  你的 QQ 号（设白名单，留空跳过）: " QQ_ALLOW
-    if [ -n "$QQ_ALLOW" ]; then
-        run_oc config set channels.qqbot.allowFrom "\"${QQ_ALLOW}\"" 2>&1 || true
-        echo -e "  ${GREEN}白名单已设置${NC}"
-    fi
-    echo ""
-    echo -e "  ${GREEN}QQ 机器人配置完成！重启网关后生效。${NC}"
-}
-
-# [4] Other platforms
-do_platforms() {
-    echo ""
-    echo -e "  ${CYAN}${BOLD}━━━ 其他聊天平台 ━━━${NC}"
-    echo ""
-    echo -e "  ${GREEN}[a]${NC} 飞书 Feishu      — 企业首选"
-    echo -e "  ${GREEN}[b]${NC} Telegram         — 海外推荐"
-    echo -e "  ${GREEN}[c]${NC} 微信（社区插件） — iPad协议（暂不可用）"
-    echo -e "  ${GREEN}[d]${NC} Discord"
-    echo ""
-    read -p "  选择 (a-d): " -n 1 CH
-    echo ""
-    echo ""
-
-    case $CH in
-        a) echo "  飞书: 访问 open.feishu.cn/app 创建应用" ;;
-        b) echo "  Telegram: 找 @BotFather 创建机器人" ;;
-        c)
-            echo -e "  ${YELLOW}微信插件暂不可用：上游模块加载兼容问题（见 config-server 的 WECHAT_ENABLED）。${NC}"
-            echo -e "  等上游修复后再安装，避免白装。"
-            ;;
-        d) echo "  Discord: 访问 discord.com/developers/applications" ;;
-        *) echo "  无效选择" ;;
-    esac
-    echo ""
-    echo "  配置完成后运行配置向导 [1] 绑定平台"
+    bash "$UCLAW_DIR/Mac-Start.command"
 }
 
 # [5] Doctor
@@ -289,26 +199,23 @@ do_cli() {
 # Main loop
 while true; do
     show_menu
-    read -p "  请选择 [0-16]: " CHOICE
+    read -p "  请选择 [0-13]: " CHOICE
     echo ""
 
     case $CHOICE in
         1) do_config ;;
         2) do_dashboard ;;
-        3) do_qq ;;
-        4) do_platforms ;;
-        5) do_doctor ;;
-        6) do_backup ;;
-        7) do_restore ;;
-        8) do_sysinfo ;;
-        9) do_kill_gateway ;;
-        10) do_logs ;;
-        11) do_factory_reset ;;
-        12) do_uninstall ;;
-        13) do_update ;;
-        14) do_cleanup ;;
-        15) do_plugins ;;
-        16) do_cli ;;
+        3) do_doctor ;;
+        4) do_backup ;;
+        5) do_restore ;;
+        6) do_sysinfo ;;
+        7) do_kill_gateway ;;
+        8) do_logs ;;
+        9) do_factory_reset ;;
+        10) do_uninstall ;;
+        11) do_update ;;
+        12) do_cleanup ;;
+        13) do_cli ;;
         0) echo -e "  ${CYAN}再见!${NC}"; exit 0 ;;
         *) echo -e "  ${RED}无效选择${NC}" ;;
     esac

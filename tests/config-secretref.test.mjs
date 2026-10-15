@@ -24,7 +24,7 @@ test('config save stores API keys as SecretRef through OpenClaw secret store std
 test('incoming API key is replaced before merged config is written', () => {
   assert.match(server, /provider\.apiKey\s*=\s*await storeSecretRef\(/, 'provider apiKey must be replaced with a SecretRef');
   const executable = server.split('\n').filter((line) => !line.trimStart().startsWith('//')).join('\n');
-  assert.match(executable, /await moveIncomingSecretsToStore\(incoming\)[\s\S]*mergeConfig\(readConfigSafe\(CONFIG_PATH\), incoming\)[\s\S]*guardOfficialProvidersInMemory\(merged,[\s\S]*writeConfigAtomic\(CONFIG_PATH, merged\)/,
+  assert.match(executable, /await moveIncomingSecretsToStore\(incoming\)[\s\S]*mergeConfig\(readConfigSafe\(CONFIG_PATH\), incoming\)[\s\S]*guardOfficialProvidersInMemory\(merged,[\s\S]*writeConfigAtomic\(CONFIG_PATH, simplifyPortableConfig\(merged\)\)/,
     'secret storage, merge, guard and atomic write must form one executable save chain');
   assert.doesNotMatch(server, /saveConfigMerged\(CONFIG_PATH,\s*JSON\.parse\(body\)\)/,
     'parsed incoming values must not be merged directly without secret handling');
@@ -34,14 +34,12 @@ test('incoming API key is replaced before merged config is written', () => {
 
 test('config page keeps saved secrets out of the API key input and reports reload state', () => {
   assert.match(configPage, /SECRET_REF_INPUT_VALUE = '（已加密保存，无需重填）'/);
-  assert.match(configPage, /input\.value = SECRET_REF_INPUT_VALUE/);
+  assert.match(configPage, /input\.value = isSecretRefValue\(value\) \? SECRET_REF_INPUT_VALUE/);
   assert.match(portableConfigPage, /SECRET_REF_INPUT_VALUE = '（已加密保存，无需重填）'/);
   assert.match(portableConfigPage, /input\.value = isSecretRefValue\(value\) \? SECRET_REF_INPUT_VALUE/);
   assert.match(configPage, /已保存的密钥已脱敏；输入新值可更换/);
   assert.match(configPage, /pendingRestart/);
   for (const page of [configPage, portableConfigPage]) {
-    assert.match(page, /apiKeyInput\.value === SECRET_REF_INPUT_VALUE\) apiKeyInput\.value = ''/,
-      'changing providers must clear a displayed SecretRef placeholder');
     assert.match(page, /inputApiKey === SECRET_REF_INPUT_VALUE && !isSecretRefValue\(savedProviderApiKey\)/,
       'saving an unbacked placeholder must be rejected');
   }

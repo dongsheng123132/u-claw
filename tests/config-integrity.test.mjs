@@ -180,14 +180,11 @@ test('official provider guard: catalog 与快照都不可用时 fail-open，不�
   });
 });
 
-test('config pages restore saved baseUrl and primary model after selecting a card', () => {
-  const pages = [
-    readFileSync(join(repoRoot, 'portable', 'config-server', 'public', 'index.html'), 'utf8'),
-    readFileSync(join(repoRoot, 'portable', 'Config.html'), 'utf8'),
-  ];
-  for (const page of pages) {
+test('配置页只恢复虾盘云密钥与地址，模型仍遵循唯一目录', () => {
+  for (const file of ['portable/config-server/public/index.html', 'portable/Config.html']) {
+    const page = readFileSync(join(repoRoot, file), 'utf8');
     assert.match(page, /selectedBase = p\.baseUrl \|\| selectedBase/);
-    assert.match(page, /primary.*cfg\.agents|cfg\.agents.*primary/s);
-    assert.match(page, /if \(modelId\) selectedModel = modelId/);
+    assert.match(page, /providers\['uclaw-cloud'\]/);
+    assert.doesNotMatch(page, /customModel|modelSelect|discoverLocalModels/);
   }
 });

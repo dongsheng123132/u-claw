@@ -68,23 +68,9 @@ export function renderCatalogJson(catalog) {
       link: p.link,
       linkLabel: p.linkText ? p.linkText.replace(/^→\s*/, '') : '获取 API Key',
       verified: p.verified,
-    })).concat([CUSTOM_CARD]),
+    })),
   }, null, 2) + '\n';
 }
-
-// 自定义卡不进 models.json（它没有模型/端点可维护），由生成器固定追加，保证前端必有此卡。
-export const CUSTOM_CARD = {
-  id: 'custom',
-  name: '自定义',
-  tags: [],
-  desc: '填写任意 OpenAI 兼容 API 地址（OpenRouter、API2D、New API、One API 等）',
-  base: '',
-  models: [],
-  recommended: '',
-  link: '',
-  linkLabel: '',
-  verified: 'unverified',
-};
 
 export function applyToText(text, catalog, file) {
   const b = text.indexOf(BEGIN);

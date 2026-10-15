@@ -431,10 +431,6 @@ do_plugins() {
             run_oc plugins list 2>&1 || echo -e "  ${YELLOW}无法获取插件列表${NC}"
             ;;
         b)
-            echo "  常用插件:"
-            echo "    @icesword760/openclaw-wechat  — 微信"
-            echo "    @nicepkg/openclaw-plugin-qq    — QQ（社区版）"
-            echo ""
             read -p "  输入插件名称（留空取消）: " PLG_NAME
             if [ -z "$PLG_NAME" ]; then
                 echo -e "  ${YELLOW}已取消${NC}"

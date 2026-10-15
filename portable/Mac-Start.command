@@ -67,16 +67,19 @@ echo "U-Claw start $(date) | $(uname -s) $(uname -m) | OPENCLAW $(cat "$UCLAW_DI
 # 清理旧日志：只留最近 10 个 startup/bug 报告
 ls -t "$DATA_DIR"/logs/startup-*.log "$DATA_DIR"/logs/bug-report-*.log 2>/dev/null | tail -n +11 | xargs rm -f 2>/dev/null || true
 
-# ---- 3. Check runtime ----
-if [ ! -f "$NODE_BIN" ]; then
-    echo -e "  ${YELLOW}首次在这台 Mac 使用 / 运行时缺失，自动补齐（约 1-2 分钟）...${NC}"
+# ---- 3. Bootstrap a missing runtime ----
+# Existing runtimes are upgraded only after the single-instance gate below.
+# setup.sh holds its own setup lock for first-run duplicate clicks.
+if [ ! -x "$NODE_BIN" ]; then
+    echo -e "  ${YELLOW}首次在这台 Mac 使用，自动补齐运行环境...${NC}"
     echo ""
     if bash "$UCLAW_DIR/setup.sh"; then
         echo ""
-        if [ -f "$NODE_BIN" ]; then
+        REQUIREMENTS="$("$NODE_BIN" "$UCLAW_DIR/lib/runtime-requirements.mjs" "$UCLAW_DIR" 2>/dev/null)"
+        if [ -x "$NODE_BIN" ] && [ "$REQUIREMENTS" = "UCLAW_SETUP_NEEDED=0" ]; then
             echo -e "  ${GREEN}✓ 环境就绪，继续启动${NC}"
         else
-            echo -e "  ${RED}setup 完成但仍找不到 $NODE_BIN${NC}"
+            echo -e "  ${RED}setup 完成但 Node.js 或 OpenClaw 版本仍不符合要求${NC}"
             echo "  可手动重试: bash setup.sh   或查看 data/logs/startup-*.log"
             read -p "  Press Enter to exit..."
             exit 1
@@ -121,6 +124,9 @@ if [ ! -f "$CONFIG_FILE" ]; then
         echo -e "  ${GREEN}Config migrated${NC}"
     else
         echo -e "  ${YELLOW}First run - creating default config...${NC}"
+        if [ -f "$UCLAW_DIR/default-config.json" ]; then
+            cp "$UCLAW_DIR/default-config.json" "$CONFIG_FILE"
+        else
         cat > "$CONFIG_FILE" << 'CFGEOF'
 {
   "gateway": {
@@ -133,6 +139,7 @@ if [ ! -f "$CONFIG_FILE" ]; then
   }
 }
 CFGEOF
+        fi
         echo -e "  ${GREEN}Config created${NC}"
     fi
     echo ""
@@ -172,6 +179,36 @@ if [ "$INSTANCE_STATUS" = "existing" ] || [ "$INSTANCE_STATUS" = "busy" ]; then
     exit 0
 fi
 
+# Release the launcher lock on setup/init failures as well as normal shutdown.
+release_startup_lock() {
+    "$NODE_BIN" "$UCLAW_DIR/lib/portable-instance-lock.mjs" release "$INSTANCE_ROOT" "$STATE_DIR" "$$" 2>/dev/null || true
+}
+trap release_startup_lock EXIT
+
+# An old drive may have Node 22 or an outdated core. A live instance must be
+# reused above before we replace the runtime or alter its configuration.
+REQUIREMENTS="$("$NODE_BIN" "$UCLAW_DIR/lib/runtime-requirements.mjs" "$UCLAW_DIR" 2>/dev/null)"
+if [ "$REQUIREMENTS" != "UCLAW_SETUP_NEEDED=0" ]; then
+    echo -e "  ${YELLOW}更新 Node.js 和 OpenClaw 到本盘指定版本...${NC}"
+    if ! bash "$UCLAW_DIR/setup.sh"; then
+        echo -e "  ${RED}运行环境更新失败。完整日志: $START_LOG${NC}"
+        exit 1
+    fi
+    REQUIREMENTS="$("$NODE_BIN" "$UCLAW_DIR/lib/runtime-requirements.mjs" "$UCLAW_DIR" 2>/dev/null)"
+    if [ "$REQUIREMENTS" != "UCLAW_SETUP_NEEDED=0" ]; then
+        echo -e "  ${RED}更新后运行环境仍不符合要求。完整日志: $START_LOG${NC}"
+        exit 1
+    fi
+    echo -e "  Node.js: ${GREEN}$("$NODE_BIN" --version)${NC}"
+fi
+
+# Prepare the built-in wallet feature and converge legacy model/channel config.
+# This helper saves the original config before writing a portable plugin path.
+if ! "$NODE_BIN" "$UCLAW_DIR/lib/prepare-wallet.mjs" "$UCLAW_DIR" "$STATE_DIR"; then
+    echo -e "  ${RED}无法准备内置模型配置，启动中止。请查看 $START_LOG${NC}"
+    exit 1
+fi
+
 # ---- 6. Set environment (portable mode) ----
 export OPENCLAW_HOME="$DATA_DIR"
 export OPENCLAW_STATE_DIR="$STATE_DIR"
@@ -184,6 +221,7 @@ export OPENCLAW_DISABLE_BONJOUR=1
 # USB installs can't self-update (not a git checkout) and USB I/O makes an
 # in-place update risky anyway; upgrades ship as a new USB image instead.
 export OPENCLAW_NO_AUTO_UPDATE=1
+unset OPENCLAW_PORTABLE_RENAME_IDENTITY
 
 # ---- 7. Check dependencies ----
 if [ ! -d "$CORE_DIR/node_modules" ]; then
@@ -197,26 +235,6 @@ if [ ! -d "$CORE_DIR/node_modules" ]; then
     "$NODE_BIN" "$NODE_DIR/bin/npm" install --registry=https://registry.npmmirror.com --ignore-scripts --no-audit --no-fund --omit=dev 2>&1
     echo -e "  ${GREEN}Dependencies installed${NC}"
     echo ""
-fi
-
-# ---- 7a. Pre-stage WeChat plugin (parity with Windows) ----
-# OpenClaw 从 OPENCLAW_STATE_DIR/extensions 单一目录加载扩展（无 ~/.openclaw 兜底），
-# 而我们把 STATE_DIR 指向 U 盘，所以插件必须放到 $STATE_DIR/extensions 才会被加载。
-WECHAT_PLUGIN_SRC="$APP_DIR/extensions/openclaw-weixin"
-WECHAT_PLUGIN_DST="$STATE_DIR/extensions/openclaw-weixin"
-if [ -f "$WECHAT_PLUGIN_SRC/openclaw.plugin.json" ] && [ ! -f "$WECHAT_PLUGIN_DST/openclaw.plugin.json" ]; then
-    echo -e "  ${CYAN}Installing WeChat plugin...${NC}"
-    mkdir -p "$STATE_DIR/extensions"
-    cp -R "$WECHAT_PLUGIN_SRC" "$WECHAT_PLUGIN_DST" 2>/dev/null \
-        && echo -e "  ${GREEN}WeChat plugin installed${NC}"
-fi
-# 确保插件能解析到 'zod'：npm 包不带 zod，且宿主 node_modules 不在插件的解析路径上，
-# 否则插件以 "Cannot find module 'zod'" 加载失败。从内置 OpenClaw core 复制 zod 过去。
-# 每次启动都跑，已经装好但缺 zod 的旧盘会自愈。
-if [ -f "$WECHAT_PLUGIN_DST/openclaw.plugin.json" ] && [ ! -d "$WECHAT_PLUGIN_DST/node_modules/zod" ] && [ -d "$CORE_DIR/node_modules/zod" ]; then
-    echo -e "  ${CYAN}Repairing WeChat plugin dependency (zod)...${NC}"
-    mkdir -p "$WECHAT_PLUGIN_DST/node_modules"
-    cp -R "$CORE_DIR/node_modules/zod" "$WECHAT_PLUGIN_DST/node_modules/zod" 2>/dev/null
 fi
 
 # ---- 7b. Async update check (non-blocking, 5s timeout, silent failure) ----
@@ -311,19 +329,6 @@ GW_PID=$!
 echo -e "  ${YELLOW}首次启动需准备运行环境，约 30-90 秒，请稍候...${NC}"
 # 用 file:// URL 确保 query string（?port=）能传给浏览器；裸路径 open 会把整串当文件名。
 open "file://$UCLAW_DIR/lib/loading.html?port=$PORT&token=uclaw&configPort=$CONFIG_PORT" 2>/dev/null || true
-
-# ---- 11a. 只在"未配置模型"时才自动弹 Config Center（issue #24）----
-# 以前这里无条件每次都 open Config Center，导致已经配置好模型的老用户每次双击启动
-# 都被强弹一次配置页。真正的设计（见仓库 CLAUDE.md）：首次运行（未配置模型）才自动打开
-# Config Center；已配置则只开 Dashboard。Config Center 端口以 $CONFIG_PORT 为准
-# （18788 起顺延，见上方轮询），Mac-Menu.command 的配置向导也还在，手动打开的能力没有被拿掉。
-# 助手静默失败：读不到/解析不了配置就当"未配置"，宁可多弹一次也不能少弹。
-MODEL_CONFIGURED="$("$NODE_BIN" "$UCLAW_DIR/lib/check-model-configured.mjs" "$CONFIG_FILE" 2>/dev/null)"
-if [ "$MODEL_CONFIGURED" = "UCLAW_MODEL_CONFIGURED=1" ]; then
-    echo -e "  ${GREEN}已配置模型，仅打开 Dashboard，不再弹出 Config Center。${NC}"
-else
-    open "http://127.0.0.1:$CONFIG_PORT/?gatewayPort=$PORT" 2>/dev/null || true
-fi
 
 # ---- 11b. gateway 首轮预热（后台、静默、非阻塞）----
 # 就绪后先唤醒 config/model 子系统，用户首次点发送时不再等。移植自 4.0 first-turn-prewarm。

@@ -39,7 +39,7 @@ jobs:
           # Absolute paths so `cd "$core_dir"` later doesn't break `du`/`find`
           stage_dir="$(pwd)/dist/u-claw-portable-windows-${tag_name}"
           openclaw_version=$(tr -d '[:space:]' < OPENCLAW_VERSION)
-          node_version="v22.22.3"
+          node_version="v24.16.0"
           mirror_node="https://npmmirror.com/mirrors/node"
           mirror_npm="https://registry.npmmirror.com"
 
@@ -54,14 +54,15 @@ jobs:
           #    Stanley pattern: ship one platform per zip, keep size reasonable.
           win_node="$runtime_dir/node-win-x64"
           mkdir -p "$win_node"
-          curl -fSL "$mirror_node/$node_version/node-$node_version-win-x64.zip" -o /tmp/node-win.zip
+          curl -fSL --connect-timeout 20 --max-time 300 --retry 2 "$mirror_node/$node_version/node-$node_version-win-x64.zip" -o /tmp/node-win.zip
           unzip -q /tmp/node-win.zip -d /tmp/node-win-extract
           cp -r /tmp/node-win-extract/node-$node_version-win-x64/* "$win_node/"
+          printf '%s\n' "$node_version" > "$win_node/UCLAW_NODE_VERSION"
           rm -rf /tmp/node-win.zip /tmp/node-win-extract
 
           # 2) Use linux Node to npm-install OpenClaw + bundled runtime deps
           #    into core/node_modules — these are platform-agnostic JS, work on any OS
-          curl -fSL "$mirror_node/$node_version/node-$node_version-linux-x64.tar.xz" \
+          curl -fSL --connect-timeout 20 --max-time 300 --retry 2 "$mirror_node/$node_version/node-$node_version-linux-x64.tar.xz" \
             | tar xJ -C /tmp
           export PATH="/tmp/node-$node_version-linux-x64/bin:$PATH"
           node --version
@@ -83,18 +84,25 @@ jobs:
           cd "$core_dir"
           npm install \
             --registry="$mirror_npm" \
+            --os=win32 --cpu=x64 \
+            --fetch-retries=2 --fetch-timeout=60000 \
             --ignore-scripts \
             --no-audit \
             --no-fund \
             --omit=dev
 
-          # OpenClaw 2026.7.1-2 hard-codes managed Chromium below STATE_DIR.
+          # Keep only the managed browser cache on the host disk.
           # U-Claw keeps state (SQLite sessions/device identity) portable on USB,
           # so apply a fail-closed vendor patch that adds a browser-only local root.
           node "$GITHUB_WORKSPACE/portable/lib/patch-managed-browser-root.mjs" "$core_dir"
           node "$GITHUB_WORKSPACE/portable/lib/patch-device-pairing-retry.mjs" "$core_dir"
-          node --check "$core_dir/node_modules/openclaw/dist/chrome-CtUCaDWQ.js"
+          node "$GITHUB_WORKSPACE/portable/lib/patch-control-ui-channels.mjs" "$core_dir"
+          node "$GITHUB_WORKSPACE/portable/lib/patch-portable-filesystem.mjs" "$core_dir"
+          node --check "$core_dir/node_modules/openclaw/dist/chrome-D7PwFEoa.mjs"
           node --check "$core_dir/node_modules/@openclaw/fs-safe/dist/replace-file.js"
+          node --check "$core_dir/node_modules/openclaw/dist/openclaw-cli-shim-I4WwJOH3.mjs"
+          node --check "$core_dir/node_modules/openclaw/dist/diagnostic-stability-bundle-vmtXgIWw.mjs"
+          printf '%s\n' 'win32-x64' > "$core_dir/.uclaw-runtime-platform"
           # 回到 repo 根：后续步骤（test suite / normalize / zip）都用相对路径，
           # 这个 step 把 cwd 留在 core/ 的话，"cd dist" 会报 No such file or directory
           # （v2.1.19 首跑实录：engines gate 和测试都过了，zip 步骤挂在 cd dist）。
@@ -107,45 +115,6 @@ jobs:
           # main package (153MB total) and lets OpenClaw lazy-stage the
           # subset of bundled deps it actually needs at runtime.
 
-          # 5) Install QQ plugin
-          # 注意：上一步已 cd "$GITHUB_WORKSPACE"，这里必须 --prefix 指回 core_dir，
-          # 否则插件会装进仓库根的 node_modules 而不是产物（v2.1.27/28 实测丢包根因）。
-          npm install --prefix "$core_dir" @sliverp/qqbot@latest \
-            --registry="$mirror_npm" \
-            --ignore-scripts \
-            --no-audit \
-            --no-fund || true
-
-          # 5a) Pre-install official deepseek provider plugin (2026.8.1+)
-          # OpenClaw 2026.8.1 起把「provider id=deepseek」映射到官方 @openclaw/deepseek-provider 插件，
-          # 用户首次选 DeepSeek 保存后会触发 gateway 现场自装：NTFS 上会卡 capability consent
-          # （需交互确认才 ready），exFAT 上直接因无法建 symlink 而永不 ready。
-          # 预装进 app/core 后 gateway 直接识别（无需用户 consent，信任官方源），双平台开箱即用。
-          npm install --prefix "$core_dir" "@openclaw/deepseek-provider@2026.8.1" \
-            --registry="$mirror_npm" \
-            --ignore-scripts \
-            --no-audit \
-            --no-fund || echo "WARN: deepseek-provider pre-install failed (便携版仍可手选其他 provider)"
-
-          # 5b) Pre-install China channel plugins (钉钉/飞书中国版/企业微信)
-          # 借鉴自 BytePioneer-AI/openclaw-china 生态：这些是非官方主仓库插件，
-          # 官方镜像默认不带 → U-Claw 离线预置 = 最大差异化价值。国内客户开箱即用，
-          # 不用自己 npm install（很多客户机没法翻墙装非镜像包）。
-          # 钉钉走 WebSocket 出站免公网 IP，是国内最易接入的渠道。
-          # 全部 || true：装不上不阻断发版（个别包偶发 404 时便携版仍可用 QQ；微信入口已降级待上游）。
-          for cn_pkg in \
-            "@openclaw-china/dingtalk" \
-            "@openclaw-china/feishu-china" \
-            "@openclaw-china/wecom" \
-            "@openclaw-china/qqbot"; do
-            echo "Installing China channel plugin: $cn_pkg"
-            npm install --prefix "$core_dir" "${cn_pkg}@latest" \
-              --registry="$mirror_npm" \
-              --ignore-scripts \
-              --no-audit \
-              --no-fund || echo "WARN: $cn_pkg install failed, skipping (便携版仍可用其它渠道)"
-          done
-
           # 6) Copy China-optimized skills if present
           skills_cn="$stage_dir/skills-cn"
           skills_target="$core_dir/node_modules/openclaw/skills"
@@ -155,32 +124,6 @@ jobs:
               [ ! -d "$skills_target/$skill_name" ] && cp -R "$skill_dir" "$skills_target/$skill_name"
             done
           fi
-
-          # 6b) Install WeChat (Weixin) plugin into app/extensions/openclaw-weixin
-          # 官方 npm 包 @tencent-weixin/openclaw-weixin 自带 dist/index.js(发布时已编译,无需 build)。
-          # config-server/server.js 把 app/extensions/openclaw-weixin 当作插件源,扫码登录后整目录
-          # copy 到 ~/.openclaw/extensions/。它硬要求插件目录内 node_modules/qrcode-terminal 存在
-          # (server.js:52),而 npm 会把该依赖提升到顶层,故下面显式 copy 进插件的 node_modules。
-          wx_tmp="$(mktemp -d)"
-          (
-            cd "$wx_tmp"
-            echo '{"name":"wx-tmp","version":"1.0.0","private":true}' > package.json
-            npm install @tencent-weixin/openclaw-weixin@latest \
-              --registry="$mirror_npm" --no-audit --no-fund
-          )
-          wx_pkg="$wx_tmp/node_modules/@tencent-weixin/openclaw-weixin"
-          if [ -f "$wx_pkg/dist/index.js" ] && [ -f "$wx_pkg/openclaw.plugin.json" ]; then
-            wx_dest="$app_dir/extensions/openclaw-weixin"
-            mkdir -p "$wx_dest"
-            cp -R "$wx_pkg/." "$wx_dest/"
-            # 把 qrcode-terminal(被 npm 提升到顶层)放进插件自己的 node_modules
-            mkdir -p "$wx_dest/node_modules"
-            cp -R "$wx_tmp/node_modules/qrcode-terminal" "$wx_dest/node_modules/qrcode-terminal"
-            echo "WeChat plugin installed: $(du -sm "$wx_dest" | cut -f1) MB"
-          else
-            echo "WARN: WeChat plugin install failed, skipping (dist/index.js or openclaw.plugin.json missing)"
-          fi
-          rm -rf "$wx_tmp"
 
           # 7) Belt-and-suspenders: even though we don't pre-install bundled
           # deps, openclaw's own dependencies might still pull large native
@@ -219,7 +162,7 @@ jobs:
             echo "::error::产物里找不到内置 Node：$bundled_node"
             exit 1
           fi
-          node_version="v22.22.3"   # 与 Pre-install 步骤保持一致
+          node_version="v24.16.0"   # 与 Pre-install 步骤保持一致
 
           engines=$(node -p "JSON.parse(require('fs').readFileSync('$pkg','utf8')).engines.node")
           openclaw_version=$(node -p "JSON.parse(require('fs').readFileSync('$pkg','utf8')).version")
@@ -250,7 +193,9 @@ jobs:
           ' "$node_version" "$engines"
 
       - name: Run test suite (含 Node/engines 一致性守卫)
-        run: node --test "tests/*.test.mjs"
+        run: |
+          tag_name="${GITHUB_REF_NAME:-${{ github.event.inputs.tag }}}"
+          UCLAW_TEST_CORE_DIR="$(pwd)/dist/u-claw-portable-windows-${tag_name}/app/core" node --test "tests/*.test.mjs"
 
       - name: Normalize line endings (CRLF for Windows scripts, LF for shell)
         run: |
@@ -331,15 +276,14 @@ jobs:
           body: |
             ## U-Claw ${{ steps.tag.outputs.tag }}
 
-            - 打开 Config 选模型、填入自己的 API Key 即可使用，支持 DeepSeek / 通义 / Claude / GPT 等国内外大模型
+            - 启动后使用虾盘云，填写自己的 API Key 即可开始聊天
             - 想用「虾盘云」中转站（一个 Key 调用国内外全部模型、免翻墙）：先到 https://cloud.u-claw.org 注册并创建 Key
-            - **聊天渠道开箱即用**：便携版已离线预装 QQ / 钉钉 / 飞书 / 企业微信 插件，无需自己 npm 安装；**「个人微信」入口暂不可用**（上游插件兼容问题，等待官方修复，修复后随版本更新自动恢复）
             - OpenClaw runtime: `${{ steps.openclaw_version.outputs.version }}`
 
             ### 下载
 
-            - **Windows 便携完整版（U 盘版）**：`u-claw-portable-windows-*.zip`（约 150-200 MB，已预装 Node.js + OpenClaw，**解压即用，零网络依赖**）。解压到 U 盘后双击 `Windows-Start.bat` 启动。
-            - **macOS 便携版**：源码在 `portable/` 目录，`bash setup.sh` 自动下载 Node + OpenClaw（国内镜像约 1 分钟），双击 `Mac-Start.command` 启动。
+            - **Windows 便携完整版（U 盘版）**：`u-claw-portable-windows-*.zip`，已预装 Node.js + OpenClaw。解压到 U 盘后双击 `Windows-Start.bat` 启动。
+            - **macOS 便携版**：源码在 `portable/` 目录，`bash setup.sh` 自动下载 Node.js + OpenClaw，双击 `Mac-Start.command` 启动。
 
             > **U 盘格式建议**：请用 **NTFS** 格式化 U 盘（NOT exFAT/FAT32）。Node.js 在 exFAT 上 IO 极慢且不支持符号链接，可能导致启动失败。
             > Windows 下右键 U 盘 → 格式化 → 文件系统选择 NTFS。

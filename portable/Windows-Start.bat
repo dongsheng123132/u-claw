@@ -31,22 +31,11 @@ REM USB installs can't self-update (not a git checkout) and USB I/O makes an
 REM in-place update risky anyway; upgrades ship as a new USB image instead.
 set "OPENCLAW_NO_AUTO_UPDATE=1"
 
-REM Check runtime - missing? Auto-run setup (first run on a new PC / incomplete copy).
-REM setup.bat is fully non-interactive on the happy path; only failure branches pause.
+REM Bootstrap only when Node is missing; existing instances are checked before upgrades.
 if not exist "%NODE_BIN%" (
-    echo   [WARN] Node.js runtime not found. Auto-running setup ^(1-3 min, needs network^)...
-    echo.
     call "%UCLAW_DIR%setup.bat"
-    if not exist "%NODE_BIN%" (
-        echo   [ERROR] Setup finished but runtime still missing: %NODE_BIN%
-        echo   Retry manually: setup.bat   Logs: data\logs\
-        pause
-        exit /b 1
-    )
-    echo   [OK] Environment ready, continuing startup.
-    echo.
+    if errorlevel 1 exit /b 1
 )
-
 for /f "tokens=*" %%v in ('"%NODE_BIN%" --version') do set NODE_VER=%%v
 echo   Node.js: %NODE_VER%
 echo.
@@ -85,7 +74,7 @@ if not exist "%STATE_DIR%\openclaw.json" (
         echo   Config migrated
     ) else (
         echo   First run - creating default config...
-        (echo {"gateway":{"mode":"local","auth":{"token":"uclaw"}},"update":{"checkOnStart":false,"auto":{"enabled":false}}})>"%STATE_DIR%\openclaw.json"
+        copy "%UCLAW_DIR%default-config.json" "%STATE_DIR%\openclaw.json" >nul
         echo   Config created
     )
     echo.
@@ -113,7 +102,7 @@ for /f "usebackq tokens=*" %%p in (`powershell -NoProfile -Command "$p=Get-CimIn
 set "INSTANCE_STATUS=unavailable"
 set "INSTANCE_PORT="
 if defined UCLAW_LAUNCHER_PID (
-    for /f "usebackq tokens=1,* delims==" %%a in (`"%NODE_BIN%" "%UCLAW_DIR%lib\portable-instance-lock.mjs" acquire "%INSTANCE_ROOT%" "%STATE_DIR%" "%UCLAW_LAUNCHER_PID%" 2^>nul`) do (
+    for /f "usebackq tokens=1,* delims==" %%a in (`""%NODE_BIN%" "%UCLAW_DIR%lib\portable-instance-lock.mjs" acquire "%INSTANCE_ROOT%" "%STATE_DIR%" "%UCLAW_LAUNCHER_PID%" 2^>nul"`) do (
         if "%%a"=="UCLAW_INSTANCE_STATUS" set "INSTANCE_STATUS=%%b"
         if "%%a"=="UCLAW_INSTANCE_PORT" set "INSTANCE_PORT=%%b"
     )
@@ -123,12 +112,47 @@ if "%INSTANCE_STATUS%"=="busy" goto :reuse_existing_instance
 goto :instance_check_done
 :reuse_existing_instance
 echo   U-Claw is already running; reusing the existing instance.
-if defined INSTANCE_PORT start "" http://127.0.0.1:%INSTANCE_PORT%/#token=uclaw
+if not "%UCLAW_HEADLESS%"=="1" if defined INSTANCE_PORT start "" http://127.0.0.1:%INSTANCE_PORT%/#token=uclaw
 if not defined INSTANCE_PORT echo   The existing instance is still starting. Please wait a moment.
 exit /b 0
 :instance_check_done
 
+REM Upgrade missing or incompatible runtime and stale OpenClaw before startup.
+set "UCLAW_SETUP_NEEDED=1"
+if exist "%NODE_BIN%" (
+    for /f "usebackq tokens=1,* delims==" %%a in (`""%NODE_BIN%" "%UCLAW_DIR%lib\runtime-requirements.mjs" "%UCLAW_DIR%." 2^>nul"`) do (
+        if "%%a"=="UCLAW_SETUP_NEEDED" set "UCLAW_SETUP_NEEDED=%%b"
+    )
+)
+if "%UCLAW_SETUP_NEEDED%"=="1" (
+    echo   Updating portable runtime to the bundled OpenClaw version...
+    call "%UCLAW_DIR%setup.bat"
+    if errorlevel 1 goto :startup_failed
+    if not exist "%NODE_BIN%" (
+        echo   [ERROR] Node runtime missing after setup.
+        pause
+        goto :startup_failed
+    )
+)
+
+REM Validate the actual runtime after setup before loading any user state.
+set "UCLAW_SETUP_NEEDED=1"
+for /f "usebackq tokens=1,* delims==" %%a in (`""%NODE_BIN%" "%UCLAW_DIR%lib\runtime-requirements.mjs" "%UCLAW_DIR%." 2^>nul"`) do (
+    if "%%a"=="UCLAW_SETUP_NEEDED" set "UCLAW_SETUP_NEEDED=%%b"
+)
+if "%UCLAW_SETUP_NEEDED%"=="1" (
+    echo   [ERROR] Portable runtime validation failed after setup.
+    goto :startup_failed
+)
+
 REM Check dependencies
+REM Select an explicit SDK strategy only after a generated-file probe proves
+REM this filesystem changes identity on rename. Clear inherited overrides.
+set "OPENCLAW_PORTABLE_RENAME_IDENTITY="
+for /f "usebackq tokens=1,* delims==" %%a in (`""%NODE_BIN%" "%UCLAW_DIR%lib\portable-filesystem.mjs" "%STATE_DIR%" 2^>nul"`) do (
+    if "%%a"=="UCLAW_RENAME_IDENTITY" if "%%b"=="verify-content-with-lock" set "OPENCLAW_PORTABLE_RENAME_IDENTITY=verify-content-with-lock"
+)
+
 REM Note: avoid unescaped parens inside this block -- cmd.exe treats ) as block-end.
 if not exist "%CORE_DIR%\node_modules" (
     echo   ========================================
@@ -176,31 +200,8 @@ if exist "%VERSION_FILE%" (
 )
 
 
-REM Auto-install WeChat plugin if available.
-REM IMPORTANT: OpenClaw loads extensions from OPENCLAW_STATE_DIR\extensions (a single
-REM override, no ~/.openclaw fallback). Since we point STATE_DIR at the USB, the plugin
-REM MUST be staged under %STATE_DIR%\extensions or the gateway never sees it.
-REM We also copy 'zod' from the bundled OpenClaw core into the staged plugin: the npm
-REM tarball ships WITHOUT zod in node_modules and the host node_modules is off the
-REM plugin's resolution path, so otherwise the plugin dies with "Cannot find module
-REM 'zod'" and WeChat never loads. The zod copy runs every launch so drives that were
-REM already staged without it self-heal on next start.
-set "WECHAT_PLUGIN_SRC=%APP_DIR%\extensions\openclaw-weixin"
-set "WECHAT_PLUGIN_DST=%STATE_DIR%\extensions\openclaw-weixin"
-if exist "%WECHAT_PLUGIN_SRC%\openclaw.plugin.json" (
-    if not exist "%WECHAT_PLUGIN_DST%\openclaw.plugin.json" (
-        echo   Installing WeChat plugin...
-        mkdir "%STATE_DIR%\extensions" 2>nul
-        xcopy /s /e /q /y "%WECHAT_PLUGIN_SRC%" "%WECHAT_PLUGIN_DST%\" >nul
-        echo   WeChat plugin installed!
-        echo.
-    )
-    if not exist "%WECHAT_PLUGIN_DST%\node_modules\zod" if exist "%CORE_DIR%\node_modules\zod" (
-        echo   Repairing WeChat plugin dependency zod...
-        mkdir "%WECHAT_PLUGIN_DST%\node_modules" 2>nul
-        xcopy /s /e /q /y "%CORE_DIR%\node_modules\zod" "%WECHAT_PLUGIN_DST%\node_modules\zod\" >nul
-    )
-)
+"%NODE_BIN%" "%UCLAW_DIR%lib\prepare-wallet.mjs" "%UCLAW_DIR%." "%STATE_DIR%"
+if errorlevel 1 goto :startup_failed
 
 REM Start Config Server in background
 echo   Starting Config Center on port 18788...
@@ -241,8 +242,8 @@ if %PORT% gtr 18799 goto :no_gateway_port
 goto :check_port
 :no_gateway_port
 echo   No available port 18789-18799
-pause
-exit /b 1
+if not "%UCLAW_HEADLESS%"=="1" pause
+goto :startup_failed
 :port_selected
 
 REM Publish the chosen port before launching child processes so a second click
@@ -258,40 +259,21 @@ REM on machines where 18789 was already taken by something else.
 echo   Starting OpenClaw on port %PORT%...
 echo.
 
-REM Detect whether a model is already configured (issue #24 fix).
-REM Old behavior force-opened Config Center on every single launch, even for
-REM returning users who had already picked a model -- that's the "every time
-REM I start it a config page pops up" complaint. Real intended design (see
-REM repo CLAUDE.md): first run (no model configured) opens Config Center;
-REM configured runs only open the Dashboard. Config Center is still reachable
-REM any time via Windows-Menu.bat -- this only changes what auto-opens here.
-REM Silent-fail helper: any read/parse error is treated as "not configured",
-REM so at worst users see one extra Config Center tab, never zero.
-set "MODEL_CONFIGURED=0"
-for /f "usebackq tokens=1,* delims==" %%a in (`""%NODE_BIN%" "%UCLAW_DIR%lib\check-model-configured.mjs" "%STATE_DIR%\openclaw.json" 2^>nul"`) do (
-    if "%%a"=="UCLAW_MODEL_CONFIGURED" set "MODEL_CONFIGURED=%%b"
-)
-
 REM Do not open Dashboard before the gateway is ready.
 REM Slow USB drives may need tens of seconds to stage bundled deps.
-REM Open the local startup page now; Config Center only auto-opens on first run.
+REM Open the local startup page now; it redirects directly to the dashboard.
 
 REM Open startup page with the gateway port and token in the query string.
 echo   Opening startup screen...
 set "LOADING_PATH=%UCLAW_DIR%lib\loading.html"
 set "LOADING_URL=file:///%LOADING_PATH:\=/%?port=%PORT%&token=uclaw&configPort=%CONFIG_PORT%"
-start "" "%LOADING_URL%"
+if not "%UCLAW_HEADLESS%"=="1" start "" "%LOADING_URL%"
 
-if "%MODEL_CONFIGURED%"=="1" (
-    echo   Model already configured - Dashboard only, no Config Center popup.
-) else (
-    echo   Opening Config Center...
-    start "" "http://127.0.0.1:%CONFIG_PORT%/?gatewayPort=%PORT%"
-)
+echo   Xiapan Cloud wallet and recharge are available inside the WebUI.
 
 REM Fallback watcher: if the startup page cannot poll from file URLs,
-REM keep polling and reopen Config Center after the gateway is ready.
-start /B "" cmd /c ""%UCLAW_DIR%lib\wait-gateway.bat" %PORT% %CONFIG_PORT%"
+REM keep polling and reopen the dashboard after the gateway is ready.
+if not "%UCLAW_HEADLESS%"=="1" start /B "" cmd /c ""%UCLAW_DIR%lib\wait-gateway.bat" %PORT% %CONFIG_PORT%"
 
 REM Prewarm gateway in the background after it becomes ready.
 start /B "" "%NODE_BIN%" "%UCLAW_DIR%lib\prewarm.mjs" %PORT% uclaw >nul 2>&1
@@ -301,7 +283,7 @@ echo   ========================================
 echo   Starting OpenClaw Gateway on port %PORT%...
 echo   First run on a USB drive may take 30-90 seconds
 echo   (unpacking bundled components). Please wait;
-echo   Config Center is open for model, key, recharge, and channel setup.
+echo   Open the WebUI device wallet for Xiapan Cloud balance and recharge.
 echo   DO NOT close this window while using U-Claw!
 echo   ========================================
 echo.
@@ -324,4 +306,9 @@ if not "%GW_EXIT%"=="0" if not "%GW_EXIT%"=="-1073741510" (
     echo   OpenClaw exited unexpectedly ^(code %GW_EXIT%^)
 )
 echo   OpenClaw stopped.
-pause
+if not "%UCLAW_HEADLESS%"=="1" pause
+
+exit /b %GW_EXIT%
+:startup_failed
+if defined UCLAW_LAUNCHER_PID "%NODE_BIN%" "%UCLAW_DIR%lib\portable-instance-lock.mjs" release "%INSTANCE_ROOT%" "%STATE_DIR%" "%UCLAW_LAUNCHER_PID%" >nul 2>&1
+exit /b 1

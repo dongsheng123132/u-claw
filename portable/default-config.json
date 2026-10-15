@@ -1,8 +1,11 @@
 {
   "gateway": {
     "mode": "local",
-    "auth": { "token": "uclaw" }
+    "auth": { "mode": "token", "token": "uclaw" },
+    "controlUi": { "experimental": { "customPlugins": true } }
   },
+  "plugins": { "allow": ["uclaw-wallet"] },
+  "agents": { "defaults": { "model": { "primary": "uclaw-cloud/deepseek-v4-flash" }, "models": { "uclaw-cloud/deepseek-v4-flash": {} } } },
   "update": {
     "checkOnStart": false,
     "auto": { "enabled": false }

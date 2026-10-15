@@ -1,132 +1,57 @@
-# U-Claw 一键安装 / One-Line Install
+# U-Claw 一键在线安装
 
-> 一行命令安装 OpenClaw + 技能包 + 模型配置
-> One command to install OpenClaw + skills + model config
+在线安装复用 `portable/` 的运行时、安装动作和启动脚本。安装完成后直接打开 OpenClaw WebUI，在「设备钱包」内领取额度、恢复已有密钥和充值。唯一默认模型是虾盘云 `deepseek-v4-flash`。
 
-## 安装 / Install
+## 安装
 
-### Mac / Linux
+Mac / Linux：
 
 ```bash
 curl -fsSL https://u-claw.org/install.sh | bash
 ```
 
-### Windows (PowerShell 管理员)
+Windows PowerShell：
 
 ```powershell
 irm https://u-claw.org/install.ps1 | iex
 ```
 
-### 本地运行
+本地运行脚本也可：
 
 ```bash
-# Mac/Linux
 bash install/install.sh
-
-# Windows
-powershell -ExecutionPolicy Bypass -File install\install.ps1
 ```
 
-## 安装流程
-
-### Mac / Linux（7 步）
-
-| 步骤 | 内容 | 说明 |
-|------|------|------|
-| 1 | Node.js v22 | 安装到 `~/.uclaw/runtime/`，系统有 v20+ 则复用 |
-| 2 | OpenClaw | npm 安装到 `~/.uclaw/core/` |
-| 3 | QQ 插件 | 非致命，失败不影响主功能 |
-| 4 | 10 个中国技能 | 小红书、B站、微博等内容创作技能 |
-| 5 | 模型配置 | 中文交互菜单，默认 DeepSeek |
-| 6 | 启动脚本 | 生成 start.command (Mac) / start.sh (Linux) |
-| 7 | 验证 | 检查各组件安装状态 |
-
-### Windows（6 步）
-
-| 步骤 | 内容 | 说明 |
-|------|------|------|
-| 1 | Node.js v22 | 下载到 `%USERPROFILE%\.uclaw\runtime\`，系统有 v20+ 则复用 |
-| 2 | OpenClaw + QQ 插件 | 下载预打包 bundle，走国内镜像 |
-| 3 | 10 个中国技能 | 小红书、B站、微博等内容创作技能 |
-| 4 | 模型配置 | 交互菜单，默认 DeepSeek |
-| 5 | 启动脚本 | 生成 start.bat |
-| 6 | 验证 | 检查各组件安装状态 |
-
-## 支持的 AI 模型
-
-### 国内（无需翻墙）
-
-| 编号 | 模型 | 说明 |
-|------|------|------|
-| 1 | DeepSeek | ⭐ 推荐，性价比最高 |
-| 2 | Kimi/月之暗面 | 长文档 |
-| 3 | 通义千问 | 有免费额度 |
-| 4 | 智谱GLM | 学术场景 |
-| 5 | MiniMax | 多模态 |
-| 6 | 豆包 | 火山引擎 |
-| 7 | 硅基流动 | 聚合多模型 |
-
-### 海外
-
-| 编号 | 模型 |
-|------|------|
-| 8 | Claude |
-| 9 | GPT |
-
-### 本地
-
-| 编号 | 模型 |
-|------|------|
-| 10 | Ollama |
-
-## 安装目录结构
-
-```
-~/.uclaw/
-├── runtime/node-{platform}/     # Node.js v22
-├── core/                        # OpenClaw + QQ 插件
-│   ├── package.json
-│   └── node_modules/
-│       └── openclaw/skills/     ← 技能在这里
-├── data/
-│   ├── .openclaw/openclaw.json  ← 模型配置
-│   ├── memory/                  ← AI 记忆
-│   └── backups/                 ← 备份
-├── start.command (Mac)          ← 启动脚本
-└── start.bat (Windows)          ← 启动脚本
+```powershell
+powershell -ExecutionPolicy Bypass -File install/install.ps1
 ```
 
-## 技术细节
+## 安装与启动
 
-- **Node.js**: 只装到 `~/.uclaw/runtime/`，不动系统 Node；系统已有 v20+ 则复用
-- **镜像**: Mac/Linux 全走 `npmmirror.com`（Node 二进制 + npm 包）；Windows bundle 下载依次尝试 ghfast.top → ghproxy.net → gh.idayer.com → 直连，国内无需翻墙
-- **Windows 编码**: `chcp 65001` + UTF8 输出确保中文显示
-- **管道模式**: `curl | bash` 时自动跳过交互，使用默认配置
-- **卸载**: `rm -rf ~/.uclaw` (Mac/Linux) 或删除 `%USERPROFILE%\.uclaw` (Windows)
+安装器下载并校验仓库源码路径，再复制完整便携版目录到 `~/.uclaw/` 或 `%USERPROFILE%/.uclaw/`。Windows 调用 `portable/lib/install-portable.ps1`；Mac 调用 `portable/Mac-Install.command`；Linux复用便携版 setup 和配置助手。已有程序先备份，已有 `data/` 保留。运行时版本以 `OPENCLAW_VERSION` 和 `portable/lib/runtime-requirements.mjs` 为准，下载动作由便携版 setup 脚本统一实现。
 
-## 包含技能
+Windows 启动 `Windows-Start.bat`；Mac 启动 `Mac-Start.command`；Linux 启动安装目录的 `start.sh`。端口以启动窗口输出为准。
 
-| 技能 | 用途 |
-|------|------|
-| xiaohongshu-writer | 小红书笔记写作 |
-| bilibili-helper | B站视频优化 |
-| weibo-poster | 微博内容创作 |
-| wechat-article | 微信公众号文章 |
-| zhihu-writer | 知乎回答/文章 |
-| douyin-script | 抖音短视频脚本 |
-| china-search | 国内搜索引擎 |
-| china-translate | 中英互译 |
-| china-weather | 天气查询 |
-| deepseek-helper | DeepSeek API 助手 |
+## 设备钱包
 
-## 与其他分发形式的关系
+1. 在 WebUI 侧栏打开「设备钱包」，或点击对话顶部「设备钱包 · 充值」。
+2. 点击「一键领取额度」，或输入已有虾盘云密钥并点击「启用这把密钥」。已有本地钱包会恢复模型配置，不会在启动时领取新钱包。
+3. 点击「一键充值」打开充值页面，完成后点击「查询余额」，再回到对话。
+4. 点击「复制密钥」备份。密钥就是钱包，换电脑后使用同一密钥可恢复余额。
 
-```
-install/     ← 一键在线安装（本模块）
-portable/    ← U 盘便携版
-u-claw-app/  ← Electron 桌面版
-bootable/    ← Linux 可启动 U 盘
+启动前无需选择模型或填写其他提供商配置。微信、飞书、Telegram、QQ 等渠道接入和本地模型配置入口已移除。中文内容生成技能与技能市场仍保留。
+
+## 目录
+
+```text
+.uclaw/
+├── app/core/                 OpenClaw 和内置钱包插件
+├── app/runtime/              对应平台的 Node.js
+├── extensions/uclaw-wallet/  钱包插件源码及 dist/control-ui 资源
+├── data/.openclaw/           模型配置与本地钱包
+├── config-server/           后备配置中心
+├── lib/                     共用安装、启动和配置动作
+└── skills-cn/               中文内容生成技能
 ```
 
-install/ 安装的结果与 portable/ 的 Mac-Install.command 相同，
-区别是不需要 U 盘，直接从网络下载所有组件。
+配置迁移采用备份与原子写入；无效 JSON 会中止启动并保留原文件。钱包状态查询和启动配置恢复不调用开户或扣费接口。

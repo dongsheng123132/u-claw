@@ -32,19 +32,9 @@ test('quickstart: docs/快速上手.md 与 portable/快速上手.html 步骤标�
 test('quickstart: 关键提示两边同步（钱包备份/Dashboard token/步数说明）', () => {
   const md = readFileSync(join(repoRoot, 'docs', '快速上手.md'), 'utf8');
   const html = readFileSync(join(repoRoot, 'portable', '快速上手.html'), 'utf8');
-  for (const keyword of ['你的密钥就是你的钱包', '#token=uclaw', '都发生在配置中心的第 3 步']) {
+  for (const keyword of ['你的密钥就是你的钱包', '#token=uclaw', '都发生在 WebUI 内部']) {
     assert.ok(md.includes(keyword), `docs/快速上手.md 缺关键字: ${keyword}`);
     assert.ok(html.includes(keyword), `portable/快速上手.html 缺关键字: ${keyword}`);
-  }
-});
-
-test('quickstart: 离线版引用的截图在 portable/img/ 都存在', () => {
-  const html = readFileSync(join(repoRoot, 'portable', '快速上手.html'), 'utf8');
-  const imgs = [...html.matchAll(/src="(img\/[^"]+)"/g)].map((m) => m[1]);
-  assert.ok(imgs.length >= 3, '离线教程应至少引用 3 张截图');
-  for (const rel of imgs) {
-    const p = join(repoRoot, 'portable', rel);
-    assert.ok(readFileSync(p), `截图缺失: ${rel}`);
   }
 });
 

@@ -75,35 +75,22 @@ test('Windows launcher gates duplicate clicks behind the portable single-instanc
   const winStart = readRepoFile('portable', 'Windows-Start.bat');
   assert.match(winStart, /portable-instance-lock\.mjs" acquire/, 'Windows launcher must acquire the launcher lock before choosing a port');
   assert.match(winStart, /\$q\.ParentProcessId/, 'Windows launcher must keep the batch-host cmd PID, not FOR /F\'s temporary cmd PID');
+  assert.match(winStart, /in \(`""%NODE_BIN%" "%UCLAW_DIR%lib\\portable-instance-lock\.mjs" acquire [^\r\n]+2\^>nul"`\)/, 'FOR /F needs outer command quotes to execute a Node path with spaces');
   assert.match(winStart, /U-Claw is already running; reusing the existing instance\./, 'second click should reuse instead of starting another gateway');
   assert.match(winStart, /portable-instance-lock\.mjs" publish/, 'selected port must be published for a second click');
   assert.match(winStart, /portable-instance-lock\.mjs" release/, 'launcher must release its lock after the gateway exits');
   assert.doesNotMatch(winStart, /gateway run --allow-unconfigured --force --port/, 'launcher must not force-kill a process on a selected port');
+  assert.match(winStart, /set "OPENCLAW_PORTABLE_RENAME_IDENTITY="/);
+  assert.match(winStart, /portable-filesystem\.mjs/);
 });
 
-test('Windows startup only auto-opens Config Center when no model is configured (issue #24)', () => {
-  // Previously Windows-Start.bat force-opened Config Center on every launch,
-  // even for returning users who already picked a model -- that's the "config
-  // page pops up every single time I start it" complaint in issue #24. This
-  // replaced the old "always open Config Center" behavior below with the
-  // design documented in the repo CLAUDE.md: first run (no model configured)
-  // opens Config Center; configured runs land on the Dashboard only. The
-  // config-server itself still always starts, and Windows-Menu.bat still
-  // offers the setup wizard, so Config Center remains reachable manually.
+test('Windows startup goes directly to the WebUI with the internal wallet', () => {
   const script = readRepoFile('portable', 'Windows-Start.bat');
-
-  assert.match(
-    script,
-    /lib\\check-model-configured\.mjs/,
-    'should consult the model-configured helper before deciding whether to auto-open Config Center',
-  );
-  assert.match(
-    script,
-    /if "%MODEL_CONFIGURED%"=="1" \([\s\S]*\) else \([\s\S]*start "" "?http:\/\/127\.0\.0\.1:%CONFIG_PORT%\/[\s\S]*\)/,
-    'Config Center should only auto-open in the "not configured" branch',
-  );
+  assert.match(script, /lib\\prepare-wallet\.mjs/);
+  assert.doesNotMatch(script, /start "" "http:\/\/127\.0\.0\.1:%CONFIG_PORT%/);
+  assert.match(script, /LOADING_URL/);
+  assert.match(script, /Xiapan Cloud wallet and recharge are available inside the WebUI/);
 });
-
 test('Windows launcher publishes the actually-selected gateway port to runtime.json (v2.2.1)', () => {
   // v2.2.0 bug: config-server guessed the gateway port as configServerPort + 1.
   // That guess broke whenever 18789 was already taken and the gateway fell back
@@ -181,7 +168,6 @@ test('customer-facing .bat launchers are pure ASCII (cmd.exe mis-parses UTF-8 Ch
   for (const name of [
     'Windows-Start.bat',
     'Windows-IntranetFix.bat',
-    'Windows-LocalModel.bat',
     'OpenClaw-Doctor.bat',
   ]) {
     const bytes = readFileSync(join(repoRoot, 'portable', name));
@@ -195,7 +181,6 @@ test('macOS .command launchers are LF-only (CRLF breaks #!/bin/bash on macOS)', 
   for (const name of [
     'Mac-Start.command',
     'Mac-IntranetFix.command',
-    'Mac-LocalModel.command',
     'Mac-OpenClaw-Doctor.command',
   ]) {
     const bytes = readFileSync(join(repoRoot, 'portable', name));
@@ -205,15 +190,9 @@ test('macOS .command launchers are LF-only (CRLF breaks #!/bin/bash on macOS)', 
   }
 });
 
-test('macOS local-model / intranet launchers call the shared cross-platform scripts', () => {
+test('macOS diagnostic launchers call the shared cross-platform scripts', () => {
   assert.match(readRepoFile('portable', 'Mac-IntranetFix.command'), /lib\/intranet-check\.mjs/);
-  assert.match(readRepoFile('portable', 'Mac-LocalModel.command'), /lib\/setup-local-model\.mjs/);
   assert.match(readRepoFile('portable', 'Mac-OpenClaw-Doctor.command'), /doctor --non-interactive/);
-});
-
-test('local-model setup launcher calls setup-local-model.mjs', () => {
-  const bat = readRepoFile('portable', 'Windows-LocalModel.bat');
-  assert.match(bat, /lib\\setup-local-model\.mjs/);
 });
 
 test('portable menus expose a CLI terminal entry point (issue #53)', () => {
@@ -270,7 +249,6 @@ test('Windows launchers have no unescaped parens in echoes inside IF/FOR blocks 
   for (const name of [
     'Windows-Start.bat',
     'Windows-IntranetFix.bat',
-    'Windows-LocalModel.bat',
     'OpenClaw-Doctor.bat',
     'Windows-Diagnose.bat',
     'Windows-Menu.bat',
@@ -282,14 +260,16 @@ test('Windows launchers have no unescaped parens in echoes inside IF/FOR blocks 
   }
 });
 
-test('PowerShell installer generated start.bat disables OpenClaw bonjour discovery', () => {
+test('PowerShell online installer delegates to the shared portable installer and launcher', () => {
   const script = readRepoFile('install', 'install.ps1');
-
-  assert.match(script, /\$startBat = @'/);
+  const installer = readRepoFile('portable', 'lib', 'install-portable.ps1');
+  assert.match(script, /lib\/install-portable\.ps1/);
+  assert.match(installer, /Windows-Start\.bat/);
+  assert.doesNotMatch(script, /\$startBat = @'/);
   assert.match(
-    script,
+    readRepoFile('portable', 'Windows-Start.bat'),
     /set "OPENCLAW_DISABLE_BONJOUR=1"/,
-    'generated start.bat should disable bonjour discovery',
+    'the shared launcher should disable bonjour discovery',
   );
 });
 

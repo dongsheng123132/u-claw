@@ -46,6 +46,62 @@ const DEFAULT_GATEWAY = Object.freeze({
   auth: Object.freeze({ mode: 'token', token: 'uclaw' }),
 });
 
+// 便携版只提供本地 Web 对话。保留非渠道插件，但旧版聊天平台配置不能随保存复活。
+const CHANNEL_PLUGIN_ID = /(?:^|[/@._-])(?:telegram|wechat|weixin|feishu(?:-china)?|lark|qq(?:bot)?|dingtalk|wecom|whatsapp|discord|slack|signal|imessage|bluebubbles|matrix|msteams|mattermost|line|irc|nostr|twitch|tlon|zalo|nextcloud-talk)(?:$|[/@._-])/i;
+
+export function removeChannelConfig(config) {
+  delete config.channels;
+  if (Array.isArray(config.bindings)) {
+    config.bindings = config.bindings.filter((binding) => !binding?.match?.channel);
+    if (!config.bindings.length) delete config.bindings;
+  }
+  if (isPlainObject(config.plugins)) {
+    const plugins = structuredClone(config.plugins);
+    for (const name of ['entries', 'installs']) {
+      if (!isPlainObject(plugins[name])) continue;
+      for (const id of Object.keys(plugins[name])) {
+        if (CHANNEL_PLUGIN_ID.test(id)) delete plugins[name][id];
+      }
+      if (!Object.keys(plugins[name]).length) delete plugins[name];
+    }
+    for (const name of ['allow', 'deny']) {
+      if (Array.isArray(plugins[name])) plugins[name] = plugins[name].filter((id) => !CHANNEL_PLUGIN_ID.test(id));
+    }
+    if (Array.isArray(plugins.load?.paths)) {
+      plugins.load.paths = plugins.load.paths.filter((p) => !CHANNEL_PLUGIN_ID.test(String(p).replace(/\\/g, '/')));
+    }
+    config.plugins = plugins;
+    if (!Object.keys(plugins).length) delete config.plugins;
+  }
+  return config;
+}
+
+/** 单模型便携版策略，模型保存、设备钱包和启动迁移共同调用。 */
+export function simplifyPortableConfig(config) {
+  const next = removeChannelConfig(structuredClone(isPlainObject(config) ? config : {}));
+  let catalog;
+  try { catalog = JSON.parse(fs.readFileSync(new URL('../models.json', import.meta.url), 'utf8')); } catch {}
+  const cloud = catalog?.providers?.find((p) => p.id === 'uclaw-cloud');
+  const model = cloud?.model || 'deepseek-v4-flash';
+  const provider = next.models?.providers?.['uclaw-cloud'];
+  const primary = 'uclaw-cloud/' + model;
+  next.models = { mode: 'replace', providers: provider ? { 'uclaw-cloud': {
+    ...provider,
+    baseUrl: provider.baseUrl || cloud?.baseUrl || 'https://api.u-claw.org/v1',
+    api: 'openai-completions',
+    models: [{ id: model, name: model, reasoning: false, input: ['text'],
+      cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: 128000, maxTokens: 8192 }],
+  } } : {} };
+  next.agents = isPlainObject(next.agents) ? next.agents : {};
+  next.agents.defaults = isPlainObject(next.agents.defaults) ? next.agents.defaults : {};
+  next.agents.defaults.model = { primary };
+  next.agents.defaults.models = { [primary]: {} };
+  if (Array.isArray(next.agents.list)) {
+    for (const agent of next.agents.list) if (isPlainObject(agent) && agent.model) agent.model = primary;
+  }
+  return next;
+}
+
 function isPlainObject(v) {
   return !!v && typeof v === 'object' && !Array.isArray(v);
 }
@@ -105,7 +161,7 @@ export function mergeConfig(existingConfig, incomingConfig) {
   // 旧版废弃键，留着会让 OpenClaw 报 "agent.* was moved"（挪自原 server.js 逻辑，保持行为不变）。
   delete merged.agent;
 
-  return merged;
+  return removeChannelConfig(merged);
 }
 
 /**

@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>U-Claw Pro — 模型配置</title>
+<title>U-Claw 配置中心</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background: #0a0a0a; color: #e0e0e0; min-height: 100vh; }
-.container { max-width: 680px; margin: 0 auto; padding: 30px 20px 60px; }
+.container { max-width: 720px; margin: 0 auto; padding: 28px 20px 60px; }
 h1 { text-align: center; font-size: 1.8em; margin-bottom: 4px; }
 h1 .lobster { color: #ff6b35; }
 .subtitle { text-align: center; color: #888; margin-bottom: 24px; font-size: 0.92em; }
@@ -76,13 +76,13 @@ input[type="password"] {
 }
 input:focus { border-color: #ff6b35; }
 .input-wrap { position: relative; display: block; width: 100%; min-width: 0; }
-.input-wrap input { padding-right: 64px; }
+.input-wrap input { padding-right: 70px; }
 .toggle-pw {
     position: absolute;
     right: 10px;
     top: 50%;
     transform: translateY(-50%);
-    min-width: 38px;
+    min-width: 44px;
     height: 30px;
     background: #2d2d2d;
     border: 1px solid #444;
@@ -104,7 +104,6 @@ input:focus { border-color: #ff6b35; }
 .api-info .provider-links { display: flex; flex-direction: column; gap: 6px; }
 .api-info a { color: #82aaff; text-decoration: none; font-size: 0.85em; display: flex; align-items: center; gap: 6px; }
 .api-info a:hover { color: #ff6b35; }
-.api-info a .price { color: #888; font-size: 0.85em; }
 
 /* Buttons */
 .btn { display: inline-block; padding: 12px 28px; border: none; border-radius: 8px; font-size: 0.95em; cursor: pointer; transition: all 0.15s; font-weight: 500; }
@@ -127,18 +126,35 @@ input:focus { border-color: #ff6b35; }
 .toast.show { opacity: 1; transform: translateY(0); }
 .toast.error { background: #f44336; }
 
-/* Channel form */
-.channel-card { transition: all 0.2s; }
-.channel-card.selected { border-color: #ff6b35; background: rgba(255,107,53,0.06); }
-.channel-form { padding-top: 12px; margin-top: 10px; border-top: 1px solid #333; max-height: 0; overflow: hidden; transition: max-height 0.3s ease, padding 0.3s ease; padding-top: 0; }
-.channel-form.open { max-height: 300px; padding-top: 12px; }
-.channel-form .form-group { margin-bottom: 10px; }
-.channel-form label { font-size: 0.82em; color: #aaa; margin-bottom: 4px; }
-.channel-form input { font-size: 0.88em; padding: 9px 12px; }
-.channel-form .hint { font-size: 0.75em; margin-top: 4px; }
+/* Status bar */
+.status-bar {
+    background: #1a1a1a; border: 1px solid #333; border-radius: 8px;
+    padding: 10px 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 10px;
+}
+.dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.dot.on { background: #4caf50; animation: pulse 2s infinite; }
+.dot.off { background: #f44336; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+.status-text { flex: 1; font-size: 0.9em; }
+.status-text a { color: #ff6b35; text-decoration: none; }
+
+/* Wallet card (虾盘云设备钱包) */
+.wallet-card { background: linear-gradient(160deg, rgba(255,107,53,0.12), #1a1a1a 55%); border: 2px solid #ff6b35; border-radius: 12px; padding: 18px; margin-bottom: 18px; }
+.wallet-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 6px; }
+.wallet-head h3 { color: #fff; font-size: 1.05em; }
+.wallet-key { color: #ffb38a; font-size: 0.85em; font-family: monospace; }
+.wallet-balance { display: flex; align-items: center; gap: 10px; margin: 8px 0; font-size: 0.92em; color: #e0e0e0; }
+.btn-mini { background: #2d2d2d; border: 1px solid #444; color: #ccc; border-radius: 6px; padding: 4px 10px; font-size: 0.8em; cursor: pointer; }
+.btn-mini:hover { background: #3a3a3a; }
+.wallet-danger { margin-top: 16px; padding-top: 12px; border-top: 1px dashed #444; }
+.wallet-danger .btn { margin-bottom: 6px; }
+details#advancedModelsBox { background: #161616; border: 1px solid #333; border-radius: 10px; padding: 4px 16px; margin-bottom: 16px; }
+details#advancedModelsBox summary { cursor: pointer; padding: 12px 0; color: #ccc; font-size: 0.92em; user-select: none; }
+details#advancedModelsBox summary:hover { color: #ff6b35; }
+details#advancedModelsBox[open] summary { border-bottom: 1px solid #333; margin-bottom: 12px; }
 
 /* Skills section */
-.skills-section { margin-top: 20px; }
+.skills-section { margin-top: 8px; }
 .skill-list { display: flex; flex-direction: column; gap: 8px; }
 .skill-item { background: #222; border: 1px solid #333; border-radius: 8px; padding: 12px; display: flex; align-items: center; justify-content: space-between; }
 .skill-item .info h4 { color: #fff; font-size: 0.9em; }
@@ -148,106 +164,82 @@ input:focus { border-color: #ff6b35; }
 </head>
 <body>
 <div class="container">
-    <h1><span class="lobster">🦞</span> U-Claw Pro</h1>
-    <p class="subtitle">便携版 — 选择模型，填入 API Key，一键启动</p>
+    <h1><span class="lobster">🦞</span> U-Claw 配置中心</h1>
+    <p class="subtitle">虾盘云 · 设备钱包 · 一键启动</p>
+
+    <!-- Connection status -->
+    <div class="status-bar">
+        <div class="dot" id="statusDot"></div>
+        <div class="status-text" id="statusText">检测中...</div>
+    </div>
 
     <!-- Steps -->
     <div class="steps">
-        <div class="step active" data-step="1"><span class="num">1</span>选模型</div>
-        <div class="step" data-step="2"><span class="num">2</span>填 Key</div>
-        <div class="step" data-step="3"><span class="num">3</span>启动</div>
+        <div class="step active" data-step="1" onclick="goStep(1)"><span class="num">1</span>选模型</div>
+        <div class="step" data-step="2" onclick="goStep(2)"><span class="num">2</span>填 Key</div>
+        <div class="step" data-step="3" onclick="goStep(3)"><span class="num">3</span>启动</div>
     </div>
 
     <!-- Step 1: Select Model -->
     <div class="section active" id="step1">
-        <h2>选择 AI 模型</h2>
-        <p class="desc">最省心：用「虾盘云」一个 Key 调用国内外全部大模型（中转站）。也可用下面各家自己的官方 Key。</p>
+        <h2>使用虾盘云模型</h2>
+        <p class="desc">一键领取设备钱包，或填入已有虾盘云 API Key，即可使用默认模型。</p>
 
-        <div class="model-grid">
+        <!-- 虾盘云 · 设备钱包 —— 只在用户点击按钮之后才会联网，绝不在打开这个页面时自动请求。 -->
+        <div class="wallet-card" id="walletCard">
+            <div class="wallet-head">
+                <h3>🦞 虾盘云 · 设备钱包</h3>
+                <span class="wallet-key" id="walletKeyDisplay">联网后可一键领取</span>
+            </div>
+            <div class="wallet-balance" id="walletBalanceRow" style="display:none;">
+                <span id="walletBalanceText">余额 —</span>
+                <button class="btn-mini" id="walletRefreshBtn" onclick="walletRefreshBalance()">刷新余额</button>
+            </div>
+            <p class="hint" id="walletHint">你的密钥就是你的钱包，请自行截图/复制备份——重装、换电脑都要靠它找回余额。也可以直接填入已有虾盘云 API Key。</p>
+
+            <div class="btn-row" id="walletClaimRow" style="justify-content:flex-start;">
+                <button class="btn btn-primary" id="walletClaimBtn" onclick="walletClaim()">🚀 一键领取额度</button>
+            </div>
+
+            <div id="walletManageBox" style="display:none;">
+                <div class="btn-row" style="justify-content:flex-start; flex-wrap:wrap;">
+                    <button class="btn btn-primary" onclick="walletRecharge()">💰 一键充值</button>
+                    <button class="btn btn-secondary" onclick="walletCopyKey()">📋 复制密钥</button>
+                    <button class="btn btn-secondary" onclick="walletRotateConfirm()">🔄 换一把</button>
+                </div>
+
+                <div class="form-group" style="margin-top:14px;">
+                    <label>填入已有密钥（换电脑 / 这台机器上的另一份安装 / 官网自己生成的那把）</label>
+                    <div class="input-wrap">
+                        <input type="text" id="walletAdoptInput" placeholder="sk-...">
+                        <button class="toggle-pw" id="walletPasteBtn" onclick="walletPasteKey()">粘贴</button>
+                    </div>
+                    <div class="btn-row" style="justify-content:flex-start; margin-top:8px;">
+                        <button class="btn btn-secondary" onclick="walletAdopt()">启用这把密钥</button>
+                    </div>
+                </div>
+
+                <div class="wallet-danger">
+                    <p class="hint" style="color:#f44336;">危险区</p>
+                    <button class="btn btn-secondary" style="border:1px solid #f44336;color:#f44336;" onclick="walletResetLocal()">移除本机钱包</button>
+                    <p class="hint">只清本机记录，旧钱包余额不受影响，凭密钥可在任意机器重新启用；执行前请先确认已复制备份密钥——重新领取的新钱包从 0 开始，旧余额不会自动进新钱包。</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="model-grid" id="cloudModelGrid">
             <!-- MODELS:BEGIN 由 models.json 生成，勿手改；改 models.json 后跑 node lib/sync-models.mjs -->
             <div class="model-card" data-provider="uclaw-cloud" data-base="https://api.u-claw.org/v1" data-model="deepseek-v4-flash">
                 <span class="check">✓</span>
                 <h4>虾盘云 <span class="tag hot">首选</span><span class="tag">中转站</span></h4>
-                <p>一个 Key 用 DeepSeek / Claude / GPT / 通义 等国内外全部大模型，无需翻墙</p>
+                <p>设备钱包与自有密钥都使用同一个默认模型</p>
                 <a class="buy-link" href="https://u-claw.org/cloud.html" target="_blank" data-action-label="注册 / 充值 / 获取 API Key">→ 注册 / 充值 / 获取 API Key</a>
             </div>
-            <div class="model-card" data-provider="deepseek" data-base="https://api.deepseek.com/v1" data-model="deepseek-v4-flash">
-                <span class="check">✓</span>
-                <h4>DeepSeek <span class="tag cn">国内</span><span class="tag cheap">便宜</span></h4>
-                <p>deepseek-v4-flash / deepseek-v4-pro，超低价格</p>
-                <a class="buy-link" href="https://platform.deepseek.com/" target="_blank">→ 获取 API Key</a>
-            </div>
-            <div class="model-card" data-provider="minimax" data-base="https://api.minimaxi.com/v1" data-model="MiniMax-M3">
-                <span class="check">✓</span>
-                <h4>MiniMax <span class="tag cn">国内</span></h4>
-                <p>MiniMax-M3，百万级上下文，支持图片/视频输入</p>
-                <a class="buy-link" href="https://platform.minimaxi.com/" target="_blank">→ 获取 API Key</a>
-            </div>
-            <div class="model-card" data-provider="kimi" data-base="https://api.moonshot.cn/v1" data-model="kimi-k2.6">
-                <span class="check">✓</span>
-                <h4>Kimi (月之暗面) <span class="tag cn">国内</span><span class="tag fast">快</span></h4>
-                <p>kimi-k2.6，长上下文强</p>
-                <a class="buy-link" href="https://platform.moonshot.cn/" target="_blank">→ 获取 API Key</a>
-            </div>
-            <div class="model-card" data-provider="zai" data-base="https://open.bigmodel.cn/api/paas/v4" data-model="glm-5">
-                <span class="check">✓</span>
-                <h4>智谱 GLM <span class="tag cn">国内</span><span class="tag free">有免费</span></h4>
-                <p>glm-5（zai provider），免费额度可用</p>
-                <a class="buy-link" href="https://open.bigmodel.cn/" target="_blank">→ 获取 API Key</a>
-            </div>
-            <div class="model-card" data-provider="qwen" data-base="https://dashscope.aliyuncs.com/compatible-mode/v1" data-model="qwen-plus">
-                <span class="check">✓</span>
-                <h4>通义千问 <span class="tag cn">国内</span><span class="tag free">有免费</span></h4>
-                <p>qwen-plus，阿里云出品</p>
-                <a class="buy-link" href="https://dashscope.console.aliyun.com/" target="_blank">→ 获取 API Key</a>
-            </div>
-            <div class="model-card" data-provider="doubao" data-base="https://ark.cn-beijing.volces.com/api/v3" data-model="doubao-seed-1-6-250615">
-                <span class="check">✓</span>
-                <h4>豆包 (字节) <span class="tag cn">国内</span><span class="tag fast">快</span></h4>
-                <p>doubao-seed-1.6，字节跳动</p>
-                <a class="buy-link" href="https://console.volcengine.com/ark" target="_blank">→ 获取 API Key</a>
-            </div>
-            <div class="model-card" data-provider="openai" data-base="https://api.openai.com/v1" data-model="gpt-5.4">
-                <span class="check">✓</span>
-                <h4>OpenAI <span class="tag hot">强</span></h4>
-                <p>GPT-5.4，需翻墙或中转</p>
-                <a class="buy-link" href="https://platform.openai.com/" target="_blank">→ 获取 API Key</a>
-            </div>
-            <div class="model-card" data-provider="anthropic" data-base="https://api.anthropic.com/v1" data-model="claude-sonnet-5">
-                <span class="check">✓</span>
-                <h4>Claude <span class="tag hot">强</span></h4>
-                <p>Claude Sonnet 5，需翻墙或中转</p>
-                <a class="buy-link" href="https://console.anthropic.com/" target="_blank">→ 获取 API Key</a>
-            </div>
-            <div class="model-card" data-provider="groq" data-base="https://api.groq.com/openai/v1" data-model="llama-3.3-70b-versatile">
-                <span class="check">✓</span>
-                <h4>Groq <span class="tag fast">极快</span><span class="tag free">有免费</span></h4>
-                <p>Llama 3.3 70B，超高速推理</p>
-                <a class="buy-link" href="https://console.groq.com/" target="_blank">→ 获取 API Key</a>
-            </div>
-            <div class="model-card" data-provider="siliconflow" data-base="https://api.siliconflow.cn/v1" data-model="deepseek-ai/DeepSeek-V3">
-                <span class="check">✓</span>
-                <h4>硅基流动 <span class="tag cn">国内</span><span class="tag cheap">便宜</span></h4>
-                <p>多模型聚合，价格低</p>
-                <a class="buy-link" href="https://cloud.siliconflow.cn/" target="_blank">→ 获取 API Key</a>
-            </div>
             <!-- MODELS:END -->
-            <div class="model-card" data-provider="custom" data-base="" data-model="">
-                <span class="check">✓</span>
-                <h4>自定义 <span class="tag">OpenAI 兼容</span></h4>
-                <p>填写任意 OpenAI 兼容 API 地址</p>
-            </div>
         </div>
-
-        <!-- 本地模型自动发现（Ollama / LM Studio）-->
-        <div id="localModelsBox" style="display:none; margin-top:6px;">
-            <h3 style="color:#4caf50; font-size:0.95em; margin:12px 0 4px;">💻 检测到本机本地模型 <span class="tag free">离线·免费</span></h3>
-            <p class="desc" style="margin-bottom:10px;">无需 API Key，纯本地推理。点选即用：</p>
-            <div class="model-grid" id="localModelGrid"></div>
-        </div>
-
         <div class="btn-row">
-            <button class="btn btn-primary" id="nextStep1" disabled>下一步 →</button>
+            <button class="btn btn-primary" id="nextStep1" disabled>填写已有 Key →</button>
+            <button class="btn btn-secondary" onclick="openDashboard()">打开对话</button>
         </div>
     </div>
 
@@ -261,30 +253,23 @@ input:focus { border-color: #ff6b35; }
             <div class="provider-links" id="providerLinks"></div>
         </div>
 
-        <!-- Custom fields (hidden by default) -->
-        <div id="customFields" style="display:none;">
-            <div class="form-group">
-                <label>API 地址 (Base URL)</label>
-                <input type="text" id="customBase" placeholder="https://api.example.com/v1">
-            </div>
-            <div class="form-group">
-                <label>模型名称</label>
-                <input type="text" id="customModel" placeholder="gpt-4o">
-            </div>
+        <div class="form-group">
+            <label>默认模型</label>
+            <p id="modelName">deepseek-v4-flash</p>
         </div>
 
         <div class="form-group">
             <label>API Key</label>
             <div class="input-wrap">
                 <input type="password" id="apiKey" placeholder="sk-...">
-                <button class="toggle-pw" onclick="togglePw()">👁</button>
+                <button class="toggle-pw" onclick="togglePw('apiKey')">显示</button>
             </div>
             <p class="hint">你的 Key 仅保存在本地 U 盘，不会上传到任何服务器</p>
         </div>
 
         <div class="btn-row">
             <button class="btn btn-secondary" onclick="goStep(1)">← 返回</button>
-            <button class="btn btn-primary" id="saveBtn" onclick="saveConfig()">保存并启动 🚀</button>
+            <button class="btn btn-primary" onclick="saveConfig()">保存并继续 →</button>
         </div>
     </div>
 
@@ -293,124 +278,54 @@ input:focus { border-color: #ff6b35; }
         <div class="result">
             <div class="icon">🦞</div>
             <h2>配置完成！</h2>
-            <p>模型和 API Key 已保存，准备好后点击下方按钮启动</p>
+            <p>模型和 API Key 已保存到本地</p>
             <div class="url" id="gatewayUrl">http://127.0.0.1:18789</div>
 
-            <div style="margin-top: 24px; text-align: left;">
-                <h3 style="color: #ff6b35; font-size: 0.95em; margin-bottom: 12px;">📱 接入更多渠道（可选）</h3>
-                <p style="color: #888; font-size: 0.82em; margin-bottom: 12px;">点击展开卡片填写配置，启动时自动写入。不填也可以直接启动：</p>
-                <div class="model-grid">
-                    <div class="model-card channel-card" onclick="toggleChannel(this, 'telegram')">
-                        <h4>✈️ Telegram</h4>
-                        <p>接入 Telegram Bot</p>
-                        <div class="channel-form" id="form-telegram" onclick="event.stopPropagation()">
-                            <div class="form-group">
-                                <label>Bot Token</label>
-                                <input type="text" id="ch-telegram-token" placeholder="123456:ABC-DEF...">
-                                <p class="hint"><a href="https://t.me/BotFather" target="_blank">→ 从 @BotFather 获取</a></p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="model-card channel-card" onclick="toggleChannel(this, 'qqbot')">
-                        <h4>🐧 QQ Bot</h4>
-                        <p>接入 QQ 群/私聊机器人</p>
-                        <div class="channel-form" id="form-qqbot" onclick="event.stopPropagation()">
-                            <div class="form-group">
-                                <label>App ID</label>
-                                <input type="text" id="ch-qqbot-appid" placeholder="应用 ID">
-                            </div>
-                            <div class="form-group">
-                                <label>Client Secret</label>
-                                <input type="text" id="ch-qqbot-secret" placeholder="应用密钥">
-                                <p class="hint"><a href="https://q.qq.com" target="_blank">→ 从 QQ 开放平台获取</a></p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="model-card channel-card" onclick="toggleChannel(this, 'feishu')">
-                        <h4>📘 飞书</h4>
-                        <p>接入飞书机器人</p>
-                        <div class="channel-form" id="form-feishu" onclick="event.stopPropagation()">
-                            <div class="form-group">
-                                <label>App ID</label>
-                                <input type="text" id="ch-feishu-appid" placeholder="cli_xxx...">
-                            </div>
-                            <div class="form-group">
-                                <label>App Secret</label>
-                                <input type="text" id="ch-feishu-secret" placeholder="应用密钥">
-                                <p class="hint"><a href="https://open.feishu.cn/app" target="_blank">→ 从飞书开放平台获取</a></p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="model-card channel-card" onclick="toggleChannel(this, 'dingtalk')">
-                        <h4>📲 钉钉 <span class="tag cn">国内·最易</span></h4>
-                        <p>WebSocket 接入，免公网 IP</p>
-                        <div class="channel-form" id="form-dingtalk" onclick="event.stopPropagation()">
-                            <div class="form-group">
-                                <label>Client ID (AppKey)</label>
-                                <input type="text" id="ch-dingtalk-clientid" placeholder="dingxxx...">
-                            </div>
-                            <div class="form-group">
-                                <label>Client Secret (AppSecret)</label>
-                                <input type="text" id="ch-dingtalk-secret" placeholder="应用密钥">
-                                <p class="hint"><a href="https://open-dev.dingtalk.com" target="_blank">→ 从钉钉开放平台创建机器人应用</a></p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="model-card channel-card" onclick="toggleChannel(this, 'wecom')">
-                        <h4>🏢 企业微信</h4>
-                        <p>接入企业微信机器人</p>
-                        <div class="channel-form" id="form-wecom" onclick="event.stopPropagation()">
-                            <div class="form-group">
-                                <label>Bot ID</label>
-                                <input type="text" id="ch-wecom-botid" placeholder="aib...">
-                            </div>
-                            <div class="form-group">
-                                <label>Secret</label>
-                                <input type="text" id="ch-wecom-secret" placeholder="密钥">
-                                <p class="hint"><a href="https://work.weixin.qq.com" target="_blank">→ 从企业微信管理后台获取</a></p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <div style="margin-top: 28px; text-align: center;">
-                <button class="btn btn-primary" onclick="launchOpenClaw()" style="font-size: 1.15em; padding: 16px 48px;">🚀 启动 OpenClaw</button>
-                <p style="color: #888; font-size: 0.8em; margin-top: 10px;">启动后会自动打开控制台，渠道配置会自动写入 openclaw.json</p>
+                <button class="btn btn-primary" onclick="openDashboard()" style="font-size: 1.15em; padding: 16px 48px;">🚀 打开对话</button>
             </div>
 
             <div class="btn-row" style="justify-content: center; margin-top: 16px;">
                 <button class="btn btn-secondary" onclick="goStep(1)">重新配置模型</button>
+                <button class="btn btn-secondary" onclick="viewConfig()">查看配置文件</button>
             </div>
         </div>
     </div>
 
-    <!-- Skills info -->
-    <div class="section active skills-section" style="display:block; margin-top: 24px;">
-        <h2>📦 技能 & 文档</h2>
-        <p class="desc">技能存放在 skills/ 目录，文档存放在 docs/ 目录，随 U 盘携带</p>
-        <div class="skill-list" id="skillList">
+    <!-- Skills & info (always visible) -->
+    <div class="section active skills-section" style="display:block; margin-top: 8px;">
+        <h2>📦 目录说明</h2>
+        <p class="desc">U 盘内的文件结构</p>
+        <div class="skill-list">
             <div class="skill-item">
                 <div class="info">
-                    <h4>skills/ — 技能目录</h4>
-                    <p>放入 .md 技能文件，OpenClaw 会自动加载</p>
+                    <h4>skills-cn/ — 中文技能</h4>
+                    <p>放入 .md 技能文件，OpenClaw 自动加载</p>
                 </div>
                 <span class="status">📁</span>
             </div>
             <div class="skill-item">
                 <div class="info">
-                    <h4>docs/ — 文档目录</h4>
-                    <p>存放使用说明、帮助文档等</p>
+                    <h4>app/ — 运行时 + 核心</h4>
+                    <p>Node.js 运行时、OpenClaw 核心代码</p>
                 </div>
-                <span class="status">📁</span>
+                <span class="status">⚙️</span>
             </div>
             <div class="skill-item">
                 <div class="info">
-                    <h4>data/ — 配置和聊天记录</h4>
-                    <p>API Key、聊天历史等保存在此</p>
+                    <h4>data/ — 配置和数据</h4>
+                    <p>API Key、聊天历史等保存在此（仅本地）</p>
                 </div>
                 <span class="status">🔒</span>
             </div>
+        </div>
+    </div>
+
+    <div class="section active skills-section" style="display:block; margin-top: 8px;">
+        <h2>🐛 反馈 / 报 Bug</h2>
+        <p class="desc">U-Claw 是开源项目。遇到问题欢迎到 GitHub 提 Issue —— 我们不会自动收集或上传你的任何数据。</p>
+        <div class="btn-row">
+            <a class="btn btn-primary" href="https://github.com/dongsheng123132/u-claw/issues/new" target="_blank">→ 在 GitHub 提交 Issue</a>
         </div>
     </div>
 </div>
@@ -418,410 +333,449 @@ input:focus { border-color: #ff6b35; }
 <div class="toast" id="toast"></div>
 
 <script>
-// --- State ---
-let selectedProvider = null;
-let selectedBase = '';
-let selectedModel = '';
-let savedProviderApiKey = null;
-let savedProviderId = null;
-const SECRET_REF_INPUT_VALUE = '（已加密保存，无需重填）';
+// 双击兼容页时，通过本机配置服务调用相同动作。
+var configOrigin = location.protocol === 'file:' ? 'http://127.0.0.1:' + (new URLSearchParams(location.search).get('configPort') || '18788') : '';
+var nativeFetch = window.fetch.bind(window);
+function fetch(resource, options) { return nativeFetch(typeof resource === 'string' && resource.startsWith('/') ? configOrigin + resource : resource, options); }
+// 默认模型由 models-catalog.json 提供，目录中只有一个入口。
+let selectedProvider = 'uclaw-cloud';
+let selectedBase = 'https://api.u-claw.org/v1';
+let selectedModel = 'deepseek-v4-flash';
+var savedProviderApiKey = null;
+var savedProviderId = null;
+var SECRET_REF_INPUT_VALUE = '（已加密保存，无需重填）';
+let CATALOG_PROVIDERS = [];
 
-// --- Model cards ---
-document.querySelectorAll('#step1 .model-card').forEach(card => {
-    card.addEventListener('click', (e) => {
-        if (e.target.closest('.buy-link')) return; // don't select when clicking buy link
-        document.querySelectorAll('#step1 .model-card').forEach(c => c.classList.remove('selected'));
-        card.classList.add('selected');
-        selectedProvider = card.dataset.provider;
-        savedProviderApiKey = null;
-        savedProviderId = null;
-        selectedBase = card.dataset.base;
-        selectedModel = card.dataset.model;
-        const apiKeyInput = document.getElementById('apiKey');
-        if (apiKeyInput.value === SECRET_REF_INPUT_VALUE) apiKeyInput.value = '';
-        document.getElementById('nextStep1').disabled = false;
+function renderCloudCards() {
+    var grid = document.getElementById('cloudModelGrid');
+    grid.innerHTML = '';
+    CATALOG_PROVIDERS.forEach(function(p) {
+        var card = document.createElement('div');
+        card.className = 'model-card selected';
+        card.dataset.provider = p.id;
+        card.dataset.base = p.base;
+        card.dataset.model = p.recommended;
+        var title = document.createElement('h4');
+        title.textContent = p.name + ' · ' + p.recommended;
+        var desc = document.createElement('p');
+        desc.textContent = p.desc;
+        card.appendChild(title);
+        card.appendChild(desc);
+        grid.appendChild(card);
+        selectedProvider = p.id;
+        selectedBase = p.base;
+        selectedModel = p.recommended;
     });
-});
+    document.getElementById('nextStep1').disabled = false;
+}
 
-document.getElementById('nextStep1').addEventListener('click', () => {
-    goStep(2);
-});
+async function loadCatalog() {
+    try {
+        var res = await fetch('/models-catalog.json', { cache: 'no-store' });
+        if (!res.ok) throw new Error('目录加载失败');
+        var data = await res.json();
+        CATALOG_PROVIDERS = data.providers.filter(function(p) { return p.id === 'uclaw-cloud'; }).slice(0, 1);
+        if (!CATALOG_PROVIDERS.length) throw new Error('目录为空');
+    } catch (e) {
+        CATALOG_PROVIDERS = [{ id: 'uclaw-cloud', name: '虾盘云', base: selectedBase, recommended: selectedModel, models: [selectedModel], desc: '设备钱包与自有密钥使用同一个默认模型', link: 'https://u-claw.org/cloud.html' }];
+    }
+    renderCloudCards();
+}
 
-// --- Steps ---
 function goStep(n) {
-    document.querySelectorAll('.section:not(.skills-section)').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.section:not(.skills-section)').forEach(function(s) { s.classList.remove('active'); });
     document.getElementById('step' + n).classList.add('active');
-    // Keep skills section visible
-    document.querySelectorAll('.steps .step').forEach((s, i) => {
-        s.classList.remove('active', 'done');
-        if (i + 1 < n) s.classList.add('done');
-        if (i + 1 === n) s.classList.add('active');
+    document.querySelectorAll('.steps .step').forEach(function(s, i) {
+        s.classList.toggle('done', i + 1 < n);
+        s.classList.toggle('active', i + 1 === n);
     });
-
     if (n === 2) setupStep2();
 }
 
 function setupStep2() {
-    const isCustom = selectedProvider === 'custom';
-    document.getElementById('customFields').style.display = isCustom ? 'block' : 'none';
-
-    const providerNames = {
-        'uclaw-cloud': '虾盘云', minimax: 'MiniMax', kimi: 'Kimi (月之暗面)', deepseek: 'DeepSeek',
-        zai: '智谱 GLM', qwen: '通义千问', doubao: '豆包',
-        openai: 'OpenAI', anthropic: 'Anthropic Claude', groq: 'Groq',
-        siliconflow: '硅基流动', custom: '自定义',
-        ollama: 'Ollama（本地）', lmstudio: 'LM Studio（本地）'
-    };
-    const name = providerNames[selectedProvider] || selectedProvider;
-    document.getElementById('step2desc').textContent = selectedLocal
-        ? `${name} 是本地模型，无需 API Key，直接点「保存并启动」即可`
-        : `请填写 ${name} 的 API Key`;
-    // 本地模型隐藏 Key 获取信息框
-    document.getElementById('buyInfo').style.display = selectedLocal ? 'none' : 'block';
-
-    // Buy links（选中态取当前点亮的卡片，避免同一 provider 多张卡时选错）
-    const card = document.querySelector('#step1 .model-card.selected');
-    const buyLink = card ? card.querySelector('.buy-link') : null;
-    const linksDiv = document.getElementById('providerLinks');
-    linksDiv.innerHTML = '';
-    if (buyLink) {
-        linksDiv.innerHTML = `
-            <a href="${buyLink.href}" target="_blank">🔑 ${name} — ${buyLink.dataset.actionLabel || '获取 API Key'}</a>
-        `;
-    }
-    // Add common alternatives
-    linksDiv.innerHTML += `
-        <a href="https://platform.minimaxi.com/" target="_blank">🔑 MiniMax — 国内推荐，注册送额度</a>
-        <a href="https://open.bigmodel.cn/" target="_blank">🔑 智谱 GLM — 有免费额度</a>
-        <a href="https://cloud.siliconflow.cn/" target="_blank">🔑 硅基流动 — 多模型聚合，便宜</a>
-    `;
+    document.getElementById('step2desc').textContent = '填写虾盘云 API Key，或返回领取设备钱包';
+    document.getElementById('modelName').textContent = selectedModel;
+    var links = document.getElementById('providerLinks');
+    links.innerHTML = '';
+    var link = document.createElement('a');
+    link.href = 'https://u-claw.org/cloud.html';
+    link.target = '_blank';
+    link.textContent = '注册 / 充值 / 获取 API Key';
+    link.dataset.actionLabel = link.textContent;
+    links.appendChild(link);
 }
 
-// --- Toggle password ---
-function togglePw() {
-    const inp = document.getElementById('apiKey');
-    inp.type = inp.type === 'password' ? 'text' : 'password';
+function togglePw(id) {
+    var input = document.getElementById(id);
+    input.type = input.type === 'password' ? 'text' : 'password';
 }
 
-// --- 按模型能力生成正确的模型定义（reasoning / 多模态 / 上下文窗口）---
-// 旧代码不管什么模型一律写 reasoning:false, contextWindow:128000，明显不对。
-// 定价字段核不准就不填，宁可留 0 也不能瞎填（计费显示错比没有更糟）。
-function buildModelDefinition(provider, model) {
-    const definition = {
-        id: model,
-        name: model,
-        reasoning: false,
-        input: ['text'],
-        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-        contextWindow: 128000,
-        maxTokens: 8192
+function buildConfig(provider, base, model, apiKey) {
+    var providers = {};
+    providers[provider] = {
+        baseUrl: base, apiKey: apiKey, api: 'openai-completions',
+        models: [{ id: model, name: model, reasoning: false, input: ['text'], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: 128000, maxTokens: 8192 }]
     };
-
-    if (provider !== 'minimax') return definition;
-
-    const miniMaxProfiles = {
-        'MiniMax-M3': {
-            reasoning: true,
-            input: ['text', 'image', 'video'],
-            contextWindow: 1000000
-        }
-    };
-    return Object.assign(definition, miniMaxProfiles[model] || {});
-}
-
-// --- Generate correct OpenClaw config ---
-function buildOpenClawConfig(provider, base, model, apiKey) {
-    // Base config that OpenClaw expects
-    const baseConfig = {
-        gateway: { mode: 'local', auth: { mode: 'token', token: 'uclaw' }, remote: { token: 'uclaw' } },
-        commands: { native: 'auto', nativeSkills: 'auto', restart: true }
-    };
-
-    // zai 与其他 provider 同路径：id 用 zai-api（不命中 OpenClaw 官方外部插件目录，
-    // 避免 exFAT 触发自动安装插件导致 gateway 拒启）。zai 目录卡 baseUrl 可为空，
-    // 此时回退智谱官方地址。
-    const providerName = provider === 'zai' ? 'zai-api' : (provider || 'myProvider');
-    const providerBase = base || (provider === 'zai' ? 'https://open.bigmodel.cn/api/paas/v4' : '');
+    var allowedModels = {};
+    allowedModels[provider + '/' + model] = {};
     return {
-        ...baseConfig,
-        models: {
-            mode: 'merge',
-            providers: {
-                [providerName]: {
-                    baseUrl: providerBase,
-                    apiKey: apiKey,
-                    api: 'openai-completions',
-                    models: [buildModelDefinition(provider, model)]
-                }
-            }
-        },
-        agents: { defaults: { model: { primary: providerName + '/' + model } } }
+        gateway: { mode: 'local', auth: { mode: 'token', token: 'uclaw' } },
+        commands: { native: 'auto', nativeSkills: 'auto', restart: true },
+        models: { mode: 'replace', providers: providers },
+        agents: { defaults: { model: { primary: provider + '/' + model }, models: allowedModels } }
     };
 }
 
-// --- Save config ---
 async function saveConfig() {
-    const inputApiKey = document.getElementById('apiKey').value.trim();
-    let apiKey = inputApiKey;
+    var inputApiKey = document.getElementById('apiKey').value.trim();
+    var apiKey = inputApiKey;
     if ((inputApiKey === SECRET_REF_INPUT_VALUE || !inputApiKey) &&
         savedProviderId === selectedProvider && isSecretRefValue(savedProviderApiKey)) apiKey = savedProviderApiKey;
     if (inputApiKey === SECRET_REF_INPUT_VALUE && !isSecretRefValue(savedProviderApiKey)) {
         showToast('请重新输入 API Key', true); return;
     }
-    // 本地模型（Ollama/LM Studio）不需要真实 Key，OpenClaw 配置结构里仍要有 apiKey 字段
-    if (selectedLocal) {
-        if (!apiKey) apiKey = 'local';
-    } else if (!apiKey) {
-        showToast('请填写 API Key', true); return;
-    }
-
-    let base = selectedBase;
-    let model = selectedModel;
-
-    if (selectedProvider === 'custom') {
-        base = document.getElementById('customBase').value.trim();
-        model = document.getElementById('customModel').value.trim();
-        if (!base || !model) { showToast('请填写 API 地址和模型名称', true); return; }
-    }
-
-    const openclawConfig = buildOpenClawConfig(selectedProvider, base, model, apiKey);
-
-    // 双保险（issue #58）：服务端 /api/config 已经会合并写入、保留 plugins 等 UI 不认识的字段，
-    // 这里前端也顺手把现有配置里的"非模型字段"带上再提交——万一将来换了别的后端实现，或者
-    // 有调试脚本直接糊了一个整体覆盖的服务端，也不会一撞就把用户的微信插件配置冲没。
-    // MANAGED_CONFIG_KEYS 必须和 portable/lib/merge-config.mjs 里的 MANAGED_TOP_LEVEL_KEYS 保持一致。
-    const MANAGED_CONFIG_KEYS = ['gateway', 'commands', 'meta', 'models', 'agents', 'env'];
+    if (!apiKey) { showToast('请填写 API Key，或返回领取设备钱包', true); return; }
+    var config = buildConfig(selectedProvider, selectedBase, selectedModel, apiKey);
     try {
-        const existingRes = await fetch('/api/config');
-        if (existingRes.ok) {
-            const existing = await existingRes.json();
-            if (existing && typeof existing === 'object') {
-                for (const key of Object.keys(existing)) {
-                    if (!MANAGED_CONFIG_KEYS.includes(key) && !(key in openclawConfig)) {
-                        openclawConfig[key] = existing[key];
-                    }
-                }
-            }
-        }
-    } catch (e) { /* 拿不到现有配置就跳过双保险，服务端合并仍会兜底 */ }
-
-    try {
-        const res = await fetch('/api/config', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(openclawConfig)
-        });
-        const result = await res.json().catch(() => ({}));
-        if (!res.ok || result.ok === false) throw new Error((result && result.error) || '保存失败');
-
-        if (result.reloadError) showToast('已保存，但网关热加载失败（' + result.reloadError + '）：重启 U-Claw 后生效', true);
+        var res = await fetch('/api/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(config) });
+        var result = await res.json();
+        if (!res.ok || !result.ok) throw new Error(result.error || '保存失败');
+        if (result.reloadError) showToast('已保存，重启 U-Claw 后生效', true);
         else if (result.pendingRestart) showToast('已保存，启动 Gateway 后生效');
-        else showToast('配置已保存！');
+        else showToast('配置已保存并生效');
+        await loadConfig();
         goStep(3);
-        const port = getPort();
-        document.getElementById('gatewayUrl').textContent = 'http://127.0.0.1:' + port;
-    } catch (e) {
-        showToast('保存失败: ' + e.message, true);
-    }
+    } catch (e) { showToast('保存失败: ' + e.message, true); }
 }
 
-// --- Toast ---
+function openDashboard() { window.open(gatewayUrl(), '_blank'); }
+
+async function viewConfig() {
+    try {
+        var res = await fetch('/api/config');
+        var config = await res.json();
+        var w = window.open('', '_blank');
+        if (!w) return;
+        var pre = w.document.createElement('pre');
+        pre.textContent = JSON.stringify(config, null, 2);
+        w.document.body.appendChild(pre);
+    } catch (e) { showToast('读取配置失败: ' + e.message, true); }
+}
+
 function showToast(msg, isError) {
-    const t = document.getElementById('toast');
+    var t = document.getElementById('toast');
     t.textContent = msg;
     t.className = 'toast show' + (isError ? ' error' : '');
-    setTimeout(() => t.className = 'toast', 3000);
+    setTimeout(function() { t.className = 'toast'; }, 3000);
 }
 
-// --- Load existing config ---
 function isSecretRefValue(value) {
-    return value && typeof value === 'object' && value.source === 'store';
+    return value && typeof value === 'object' && (value.source === 'store' || value.source === 'saved');
 }
 
 function fillApiKeyFromSaved(value) {
-    const input = document.getElementById('apiKey');
-    input.value = isSecretRefValue(value) ? SECRET_REF_INPUT_VALUE : (value || '');
+    var input = document.getElementById('apiKey');
+    input.value = isSecretRefValue(value) ? SECRET_REF_INPUT_VALUE : '';
+    input.placeholder = value ? '已保存的密钥已脱敏；输入新值可更换' : 'sk-...';
 }
 
 async function loadConfig() {
     try {
-        const res = await fetch('/api/config');
-        const cfg = await res.json();
-
-        // Detect zai provider (智谱 GLM)
-        if (cfg.env && cfg.env.ZAI_API_KEY) {
-            const card = document.querySelector('.model-card[data-provider="zai"]');
-            if (card) card.click();
-            savedProviderId = 'zai';
-            savedProviderApiKey = cfg.env.ZAI_API_KEY;
-            fillApiKeyFromSaved(cfg.env.ZAI_API_KEY);
-            return;
-        }
-
-        // Detect models.providers format
-        if (cfg.models && cfg.models.providers) {
-            const providerName = Object.keys(cfg.models.providers)[0];
-            if (providerName) {
-                const p = cfg.models.providers[providerName];
-                const catalogProviderId = providerName.endsWith('-api') ? providerName.slice(0, -4) : providerName;
-                // 同一 provider 可能有多张卡（如不同端点/模型），按 base+model 三元组精确匹配，
-                // 避免只按 provider 匹配时回填选错卡。
-                const primary = cfg.agents?.defaults?.model?.primary;
-                const modelId = typeof primary === 'string' && primary.includes('/') ? primary.slice(primary.indexOf('/') + 1) : '';
-                const card = Array.from(document.querySelectorAll('.model-card')).find(candidate =>
-                    candidate.dataset.provider === catalogProviderId &&
-                    candidate.dataset.base === (p.baseUrl || '') &&
-                    candidate.dataset.model === modelId
-                ) || document.querySelector(`.model-card[data-provider="${catalogProviderId}"]`);
-                if (card) card.click();
-                // Selecting a catalog card resets its defaults; restore the
-                // endpoint/model persisted by the user instead.
-                selectedBase = p.baseUrl || selectedBase;
-                savedProviderId = catalogProviderId;
-                savedProviderApiKey = p.apiKey;
-                if (p.apiKey) fillApiKeyFromSaved(p.apiKey);
-                if (modelId) selectedModel = modelId;
-            }
-        }
-    } catch(e) {}
-}
-loadConfig();
-
-// --- 本地模型自动发现（Ollama / LM Studio）---
-// 探测 /api/local-models，发现本机已运行的本地模型就动态生成卡片，点选即用、无需 Key。
-async function discoverLocalModels() {
-    try {
-        const res = await fetch('/api/local-models');
+        var res = await fetch('/api/config', { cache: 'no-store' });
         if (!res.ok) return;
-        const { providers } = await res.json();
-        if (!providers || !providers.length) return;
+        var cfg = await res.json();
+        var p = cfg.models && cfg.models.providers && cfg.models.providers['uclaw-cloud'];
+        savedProviderId = p ? 'uclaw-cloud' : null;
+        savedProviderApiKey = p && p.apiKey || null;
+        fillApiKeyFromSaved(savedProviderApiKey);
+        if (p) selectedBase = p.baseUrl || selectedBase;
+    } catch (e) { /* 配置尚不存在时等待用户领取或输入 Key */ }
+}
 
-        const grid = document.getElementById('localModelGrid');
-        grid.innerHTML = '';
-        providers.forEach(p => {
-            // 每个本地 provider 最多展示前 6 个模型，避免列表过长
-            p.models.slice(0, 6).forEach(modelId => {
-                const card = document.createElement('div');
-                card.className = 'model-card';
-                card.dataset.provider = p.provider;     // ollama / lmstudio
-                card.dataset.base = p.base;
-                card.dataset.model = modelId;
-                card.dataset.local = '1';               // 标记：本地模型免 Key
-                card.innerHTML = `
-                    <span class="check">✓</span>
-                    <h4>${p.label} <span class="tag free">本地</span></h4>
-                    <p>${modelId}</p>`;
-                card.addEventListener('click', () => {
-                    document.querySelectorAll('.model-card').forEach(c => c.classList.remove('selected'));
-                    card.classList.add('selected');
-                    selectedProvider = p.provider;
-                    selectedBase = p.base;
-                    selectedModel = modelId;
-                    selectedLocal = true;
-                    const apiKeyInput = document.getElementById('apiKey');
-                    if (apiKeyInput.value === SECRET_REF_INPUT_VALUE) apiKeyInput.value = '';
-                    document.getElementById('nextStep1').disabled = false;
-                });
-                grid.appendChild(card);
-            });
+document.getElementById('nextStep1').addEventListener('click', function() { goStep(2); });
+loadCatalog().then(loadConfig);
+// --- Find active gateway port ---
+// v2.2.1: no longer "whoever answers on 18789-18799 must be our gateway". That blind
+// no-cors scan happily latched onto ANY process listening in the range -- on a
+// customer's machine that could be someone else's service, and secrets reload/dashboard
+// links would then silently point at the wrong process. Ask the authoritative source
+// first (config-server's own /api/runtime, backed by runtime.json -- see server.js
+// gatewayPortFromRuntime()), then confirm candidates actually look like OpenClaw's /ready
+// before trusting them (server.js checks the response *body shape*, not a token -- /ready
+// turned out to be an unauthenticated health check, confirmed 2026-09-02 against a live
+// gateway, so a token header there proves nothing).
+//
+// The confirm step goes through config-server's /api/gateway-check instead of fetching
+// the gateway port directly from the browser: that would be a cross-origin request, and
+// whether OpenClaw's bundled gateway actually answers with CORS headers on /ready is not
+// something this page can safely assume (no-cors was used originally specifically to dodge
+// that unknown). config-server does the probe in Node -- no CORS involved -- and this page
+// just asks it same-origin.
+var _gatewayPort = null;
+async function isOurGateway(port) {
+    try {
+        var res = await fetch('/api/gateway-check?port=' + encodeURIComponent(port), {
+            cache: 'no-store',
         });
-        document.getElementById('localModelsBox').style.display = 'block';
-    } catch { /* 无本地模型或探测失败：静默 */ }
-}
-let selectedLocal = false;
-// 选云端卡片时重置本地标记
-document.querySelectorAll('#step1 > .model-grid .model-card').forEach(c => {
-    c.addEventListener('click', () => { selectedLocal = false; });
-});
-discoverLocalModels();
-
-// Allow direct step preview via URL param, e.g. ?step=3
-const stepParam = new URLSearchParams(window.location.search).get('step');
-if (stepParam) goStep(parseInt(stepParam));
-
-// --- Step 3: Quick entry buttons ---
-// 注意：本页通过 file:// 直接打开，没有 config-server 同源服务可问，
-// gateway 端口只能从启动脚本拼进来的 ?port= 参数拿。拿不到就 18789 是
-// 启动脚本的默认值（Windows-Start.bat :check_port 起始端口），两者保持一致。
-function getPort() {
-    const params = new URLSearchParams(window.location.search);
-    return params.get('port') || '18789';
+        var data = await res.json();
+        return !!data.ok;
+    } catch (e) {
+        return false;
+    }
 }
 
-function openDashboard() {
-    const port = getPort();
-    window.open('http://127.0.0.1:' + port + '/#token=uclaw', '_blank');
+async function findGatewayPort() {
+    var hinted = parseInt(new URLSearchParams(window.location.search).get('gatewayPort'), 10);
+    var candidates = [];
+    try {
+        var res = await fetch('/api/runtime', { cache: 'no-store' });
+        var runtime = await res.json();
+        if (Number.isInteger(runtime.gatewayPort)) candidates.push(runtime.gatewayPort);
+    } catch (e) { /* config-server 一时打不通，退回下面的候选 */ }
+    if (Number.isInteger(hinted)) candidates.push(hinted);
+    for (var p = 18789; p <= 18799; p++) candidates.push(p);
+
+    var tried = {};
+    for (var i = 0; i < candidates.length; i++) {
+        var port = candidates[i];
+        if (tried[port]) continue;
+        tried[port] = true;
+        if (await isOurGateway(port)) {
+            _gatewayPort = port;
+            return port;
+        }
+    }
+    _gatewayPort = null;
+    return null;
 }
 
-function openOnboard() {
-    const port = getPort();
-    window.open('http://127.0.0.1:' + port + '/onboarding', '_blank');
+function gatewayUrl() {
+    var p = _gatewayPort || 18789;
+    return 'http://127.0.0.1:' + p + '/#token=uclaw';
 }
 
-function openChannel(type) {
-    const port = getPort();
-    window.open('http://127.0.0.1:' + port + '/#/channels', '_blank');
-}
-
-function toggleChannel(card, type) {
-    const form = document.getElementById('form-' + type);
-    const isOpen = form.classList.contains('open');
-    if (isOpen) {
-        form.classList.remove('open');
-        card.classList.remove('selected');
+// --- Check gateway status ---
+async function checkGateway() {
+    var dot = document.getElementById('statusDot');
+    var text = document.getElementById('statusText');
+    var port = await findGatewayPort();
+    if (port) {
+        dot.className = 'dot on';
+        text.innerHTML = 'Gateway 运行中 (端口 ' + port + ') · <a href="' + gatewayUrl() + '" target="_blank">打开 Dashboard →</a>';
+        document.getElementById('gatewayUrl').textContent = 'http://127.0.0.1:' + port;
     } else {
-        form.classList.add('open');
-        card.classList.add('selected');
-        // Focus first input
-        const firstInput = form.querySelector('input');
-        if (firstInput) setTimeout(() => firstInput.focus(), 100);
+        dot.className = 'dot off';
+        text.innerHTML = 'Gateway 未启动 · 请先运行 Windows-Start.bat 或 Mac-Start.command';
     }
 }
 
-async function launchOpenClaw() {
-    // 1. Collect channel configs
-    const channels = {};
 
-    const tgToken = document.getElementById('ch-telegram-token')?.value.trim();
-    // OpenClaw 顶层 telegram 渠道只认 botToken（写 token 会被静默忽略 → 接不上）。
-    if (tgToken) channels.telegram = { enabled: true, botToken: tgToken, dmPolicy: 'pairing' };
+checkGateway();
+setInterval(checkGateway, 10000);
+// --- 虾盘云 · 设备钱包 -------------------------------------------------------
+// 六个按钮各自对应 config-server 的 /api/wallet/* 路由，路由内部才会真正联网
+// （claim / rotate / adopt）。这里只是渲染状态和转发点击，页面加载时只调用一次
+// 本地状态查询（/api/wallet/status 不联网，纯读本地文件），绝不在加载时自动
+// 领取额度——一键领取必须来自用户点按钮。
+var _walletFullKey = ''; // 页面只显示掩码，完整密钥仅供用户点击复制备份
 
-    const qqId = document.getElementById('ch-qqbot-appid')?.value.trim();
-    const qqSecret = document.getElementById('ch-qqbot-secret')?.value.trim();
-    if (qqId && qqSecret) channels.qqbot = { enabled: true, appId: qqId, clientSecret: qqSecret };
-
-    const fsId = document.getElementById('ch-feishu-appid')?.value.trim();
-    const fsSecret = document.getElementById('ch-feishu-secret')?.value.trim();
-    if (fsId && fsSecret) channels.feishu = { enabled: true, appId: fsId, appSecret: fsSecret };
-
-    const wcBotId = document.getElementById('ch-wecom-botid')?.value.trim();
-    const wcSecret = document.getElementById('ch-wecom-secret')?.value.trim();
-    if (wcBotId && wcSecret) channels.wecom = { enabled: true, botId: wcBotId, secret: wcSecret };
-
-    const ddId = document.getElementById('ch-dingtalk-clientid')?.value.trim();
-    const ddSecret = document.getElementById('ch-dingtalk-secret')?.value.trim();
-    if (ddId && ddSecret) channels.dingtalk = { enabled: true, clientId: ddId, clientSecret: ddSecret };
-
-    // 2. Save channel config if any (merge into existing config)
-    if (Object.keys(channels).length > 0) {
-        try {
-            const res = await fetch('/api/config');
-            const existing = res.ok ? await res.json() : {};
-            // 清除旧版废弃键，防止 OpenClaw 报 "agent.* was moved" 错误
-            delete existing.agent;
-            existing.channels = Object.assign(existing.channels || {}, channels);
-            await fetch('/api/config', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(existing)
-            });
-        } catch(e) {}
-    }
-
-    // 3. Launch
-    showToast('配置已保存！请关闭此页面，回到启动窗口使用 U-Claw');
-    try { await fetch('/api/done', { method: 'POST' }); } catch(e) {}
+function walletMask(key) {
+    if (!key) return '';
+    if (key.length <= 10) return key[0] + '***';
+    return key.slice(0, 6) + '...' + key.slice(-4);
 }
+
+function walletRenderStatus(status) {
+    _walletFullKey = (status && status.apiKey) || '';
+    var keyDisplay = document.getElementById('walletKeyDisplay');
+    var claimRow = document.getElementById('walletClaimRow');
+    var manageBox = document.getElementById('walletManageBox');
+    var balanceRow = document.getElementById('walletBalanceRow');
+
+    if (status && status.hasWallet) {
+        keyDisplay.textContent = walletMask(status.apiKey);
+        claimRow.style.display = 'none';
+        manageBox.style.display = 'block';
+        window._walletRechargeUrl = status.rechargeUrl || '';
+    } else {
+        window._walletRechargeUrl = '';
+        keyDisplay.textContent = '联网后可一键领取';
+        claimRow.style.display = 'flex';
+        manageBox.style.display = 'none';
+        balanceRow.style.display = 'none';
+    }
+}
+
+async function walletLoadStatus() {
+    try {
+        var res = await fetch('/api/wallet/status');
+        var data = await res.json();
+        walletRenderStatus(data);
+    } catch (e) { /* 静默失败：钱包卡片保持"未领取"初始态，不影响其余配置流程 */ }
+}
+
+async function walletClaim() {
+    var btn = document.getElementById('walletClaimBtn');
+    btn.disabled = true;
+    btn.textContent = '领取中…';
+    try {
+        var res = await fetch('/api/wallet/claim', { method: 'POST' });
+        var data = await res.json();
+        if (!data.ok) { showToast(data.error || '领取失败', true); return; }
+        showToast(data.alreadyClaimed ? '本机已有钱包' : '领取成功！已自动配置模型');
+        await walletLoadStatus();
+        await loadConfig();
+        goStep(3);
+    } catch (e) {
+        showToast('领取失败: ' + e.message, true);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '🚀 一键领取额度';
+    }
+}
+
+async function walletRefreshBalance() {
+    var row = document.getElementById('walletBalanceRow');
+    var text = document.getElementById('walletBalanceText');
+    row.style.display = 'flex';
+    text.textContent = '查询中…';
+    try {
+        var res = await fetch('/api/wallet/balance');
+        var data = await res.json();
+        if (!data.ok) { text.textContent = '余额查询失败'; return; }
+        var avail = data.remainingUsd != null ? data.remainingUsd : '—';
+        text.textContent = '可用 $' + avail + '（已用 $' + (data.usedUsd != null ? data.usedUsd : '—') + '）';
+    } catch (e) {
+        text.textContent = '余额查询失败';
+    }
+}
+
+function walletRecharge() {
+    var url = window._walletRechargeUrl;
+    if (url) { window.open(url, '_blank'); return; }
+    // 没有缓存到充值链接（比如刚刷新页面还没查过状态）：先取一次状态再打开。
+    fetch('/api/wallet/status').then(function(r) { return r.json(); }).then(function(data) {
+        walletRenderStatus(data);
+        if (data.rechargeUrl) window.open(data.rechargeUrl, '_blank');
+        else showToast('还没有钱包，请先领取', true);
+    });
+}
+
+function walletCopyKey() {
+    if (!_walletFullKey) { showToast('还没有可复制的密钥', true); return; }
+    walletCopyText(_walletFullKey, '密钥已复制，请妥善保存——它就是你的钱包');
+}
+
+function walletCopyText(text, okMsg) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function() {
+            showToast(okMsg);
+        }).catch(function() {
+            walletCopyFallback(text, okMsg);
+        });
+    } else {
+        walletCopyFallback(text, okMsg);
+    }
+}
+
+function walletCopyFallback(text, okMsg) {
+    try {
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        showToast(okMsg);
+    } catch (e) {
+        showToast('复制失败，请手动选中密钥复制', true);
+    }
+}
+
+async function walletRotateConfirm() {
+    var ok = window.confirm(
+        '换一把新密钥？\n\n' +
+        '· 旧密钥会立刻失效，别处（其它电脑/脚本）在用旧密钥的地方都要跟着改\n' +
+        '· 余额不受影响，会带到新密钥上\n\n' +
+        '确认要换吗？'
+    );
+    if (!ok) return;
+    try {
+        var res = await fetch('/api/wallet/rotate', { method: 'POST' });
+        var data = await res.json();
+        if (!data.ok) { showToast(data.error || '换密钥失败', true); return; }
+        showToast('已更新密钥，余额已保留');
+        await walletLoadStatus();
+    } catch (e) {
+        showToast('换密钥失败: ' + e.message, true);
+    }
+}
+
+async function walletPasteKey() {
+    var input = document.getElementById('walletAdoptInput');
+    try {
+        if (navigator.clipboard && navigator.clipboard.readText) {
+            var text = await navigator.clipboard.readText();
+            if (text) { input.value = text.trim(); input.focus(); return; }
+        }
+        throw new Error('clipboard API 不可用');
+    } catch (e) {
+        // 剪贴板 API 被浏览器拒绝（权限/非安全上下文）：兜底提示手动粘贴，别让按钮看起来"坏了"。
+        input.focus();
+        showToast('自动粘贴不可用，请在输入框内按 Ctrl+V 手动粘贴', true);
+    }
+}
+
+async function walletAdopt() {
+    var input = document.getElementById('walletAdoptInput');
+    var key = input.value.trim();
+    if (!key) { showToast('请先填入密钥', true); return; }
+    try {
+        var res = await fetch('/api/wallet/adopt', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key: key }),
+        });
+        var data = await res.json();
+        if (!data.ok) { showToast(data.error || '启用失败', true); return; }
+        showToast('已启用这把密钥');
+        input.value = '';
+        await walletLoadStatus();
+        await loadConfig();
+        goStep(3);
+    } catch (e) {
+        showToast('启用失败: ' + e.message, true);
+    }
+}
+
+async function walletResetLocal() {
+    var step1 = window.confirm(
+        '移除本机钱包前，请确认你已经用「复制密钥」备份过当前密钥——\n' +
+        '旧密钥之后仍可在任意机器上用「填入已有密钥」找回，但本机这份记录一旦清除就没有了。\n\n' +
+        '确认已经备份了吗？'
+    );
+    if (!step1) return;
+    var step2 = window.confirm(
+        '再确认一次：移除后本机会回到"未领取"状态，重新领取会拿到一个全新的 ¥0 钱包，\n' +
+        '旧余额不会自动转入新钱包（旧密钥本身没有被作废，仍可正常使用/充值）。\n\n' +
+        '确定要移除本机钱包吗？'
+    );
+    if (!step2) return;
+    try {
+        var res = await fetch('/api/wallet/reset-local', { method: 'POST' });
+        var data = await res.json();
+        if (!data.ok) { showToast(data.error || '移除失败', true); return; }
+        showToast('已移除本机钱包');
+        await walletLoadStatus();
+    } catch (e) {
+        showToast('移除失败: ' + e.message, true);
+    }
+}
+
+walletLoadStatus();
 </script>
 </body>
 </html>

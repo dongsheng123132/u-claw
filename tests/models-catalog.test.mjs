@@ -6,7 +6,8 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+import { Script } from 'node:vm';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -65,7 +66,7 @@ test('配置中心的 models-catalog.json 与 models.json 一致（生成物不�
   const generated = JSON.parse(readFileSync(
     join(PORTABLE, 'config-server', 'public', 'models-catalog.json'), 'utf8'));
   // 目录 = models.json 全部提供商 + 生成器固定追加的 custom 卡
-  assert.equal(generated.providers.length, catalog.providers.length + 1,
+  assert.equal(generated.providers.length, catalog.providers.length,
     'models-catalog.json 的提供商数与 models.json 不符——跑 node lib/sync-models.mjs');
   catalog.providers.forEach((p, i) => {
     const g = generated.providers[i];
@@ -75,17 +76,13 @@ test('配置中心的 models-catalog.json 与 models.json 一致（生成物不�
     assert.equal(g.verified, p.verified, `${p.id}: verified 证据字段丢失`);
     assert.ok(g.models.includes(p.model), `${p.id}: models 列表必须包含主模型 ${p.model}`);
   });
-  // custom 卡：有且仅有一张，且在末尾（前端依赖它提供「自定义 API」入口）
-  const customs = generated.providers.filter((g) => g.id === 'custom');
-  assert.equal(customs.length, 1, 'models-catalog.json 必须恰好包含一张 custom 卡');
-  assert.equal(generated.providers[generated.providers.length - 1].id, 'custom',
-    'custom 卡必须在目录末尾');
+  assert.equal(generated.providers.length, 1, '便携版只提供虾盘云一个入口');
+  assert.equal(generated.providers[0].id, 'uclaw-cloud');
+  assert.deepEqual(generated.providers[0].models, ['deepseek-v4-flash']);
 });
 
 test('安装脚本里出现的模型名都在 models.json 里', () => {
   const known = new Set(catalog.providers.map((p) => p.model));
-  // 目录之外仍允许出现的：本地模型
-  const allowlist = new Set(['llama3.2']);
   for (const [file, re] of [
     [join(REPO, 'install', 'install.ps1'), /\bmodel="([^"]+)"/g],
     [join(REPO, 'install', 'install.sh'), /\bMODEL_NAME="([^"]+)"/g],
@@ -93,19 +90,48 @@ test('安装脚本里出现的模型名都在 models.json 里', () => {
     const text = readFileSync(file, 'utf8');
     for (const m of text.matchAll(re)) {
       const id = m[1];
-      assert.ok(known.has(id) || allowlist.has(id),
+      assert.ok(known.has(id),
         `${file}: 模型名 "${id}" 不在 models.json 里——要么是过期值，要么该加进目录`);
     }
   }
 });
 
-test('安装脚本把 API Key 写进 JSON 前做了转义', () => {
-  // key 里含 \ 或 " 会写出无法解析的 openclaw.json，OpenClaw 直接起不来。
-  const sh = readFileSync(join(REPO, 'install', 'install.sh'), 'utf8');
-  assert.match(sh, /API_KEY_JSON/, 'install.sh 缺少 API Key 的 JSON 转义');
-  const ps1 = readFileSync(join(REPO, 'install', 'install.ps1'), 'utf8');
-  assert.match(ps1, /apiKeyJson|\$apiKeyEscaped/,
-    'install.ps1 缺少 API Key 的 JSON 转义（install.sh 已修，PowerShell 侧不能漏）');
-  assert.doesNotMatch(ps1, /"apiKey":\s*"\$apiKey"/,
-    'install.ps1 仍在把未转义的 $apiKey 直接插进 JSON');
+test('在线安装不再前置选模型填 Key，钱包在 WebUI 内配置唯一模型', () => {
+  for (const file of ['install/install.sh', 'install/install.ps1']) {
+    const source = readFileSync(join(REPO, file), 'utf8');
+    assert.doesNotMatch(source, /MODEL_CHOICE|modelConfigs|Read-Host[^\n]*API Key/);
+    assert.match(source, /portable/);
+    if (file.endsWith('.ps1')) {
+      assert.match(source, /lib\/install-portable\.ps1/);
+      assert.match(source, /Windows-Start\.bat/);
+    } else {
+      assert.match(source, /Mac-Install\.command/);
+      assert.match(source, /lib\/prepare-wallet\.mjs/);
+    }
+  }
+});
+
+test('本地模型写配置入口已撤下，维护脚本不推荐渠道插件', () => {
+  for (const file of ['Windows-LocalModel.bat', 'Mac-LocalModel.command', 'lib/setup-local-model.mjs']) {
+    assert.equal(existsSync(join(PORTABLE, file)), false, file + ' 不能继续写入第二模型');
+  }
+  const maintenance = readFileSync(join(PORTABLE, 'lib/maintain.sh'), 'utf8');
+  assert.doesNotMatch(maintenance, /openclaw-wechat|openclaw-plugin-qq|channels\s+(?:login|add)/i);
+});
+
+test('两份首页引导 WebUI 钱包和唯一默认模型，保留技能市场和作者联系', () => {
+  for (const file of ['Welcome.html', 'U-Claw.html']) {
+    const html = readFileSync(join(PORTABLE, file), 'utf8');
+    assert.match(html, /WebUI/);
+    assert.match(html, /设备钱包/);
+    assert.match(html, /一键充值/);
+    assert.ok(html.includes(catalog.providers[0].model));
+    assert.match(html, /SkillHub\.html/);
+    assert.doesNotMatch(html, /QQ Bot 接入|接 QQ|选平台|选模型|选择一个AI模型|Kimi|通义千问|智谱|MiniMax|豆包|Claude/);
+    assert.doesNotMatch(html, /(?:href|window\.open)[^\n]*Config\.html/);
+    for (const [i, script] of [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)].entries()) {
+      new Script(script[1], { filename: file + '#script' + i });
+    }
+  }
+  assert.match(readFileSync(join(PORTABLE, 'U-Claw.html'), 'utf8'), /微信: hecare888/);
 });

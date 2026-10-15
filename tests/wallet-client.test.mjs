@@ -12,7 +12,7 @@
 
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, writeFileSync, readFileSync, chmodSync, mkdirSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync, readFileSync, chmodSync, mkdirSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import os from 'node:os';
@@ -81,6 +81,83 @@ function fakeServer(routes) {
 
 const alwaysValid = async () => true;
 const neverValid = async () => false;
+
+test('旧盘只有模型 Key 时本地恢复同一钱包，幂等且不领取、不联网、不改模型文件', async () => {
+  await withTempDir(async (dir) => {
+    const configPath = join(dir, 'openclaw.json'), storePath = join(dir, 'uclaw-device.json');
+    const raw = '\uFEFF' + JSON.stringify({ models: { providers: { 'uclaw-cloud': { apiKey: 'sk-test-only-existing' } } } });
+    writeFileSync(configPath, raw);
+    const store = createFileWalletStore(storePath);
+    const deps = { store, configPath, fetch: async () => { throw Error('recovery must not network'); } };
+    const status = await getStatus(deps);
+    assert.equal(status.ok, true);
+    assert.equal(status.hasWallet, true);
+    assert.equal(status.apiKey, 'sk-test-only-existing');
+    assert.equal(readFileSync(configPath, 'utf8'), raw, 'status recovery does not change consumer config');
+    assert.equal((await claimWallet(deps)).alreadyClaimed, true);
+    assert.equal((await getStatus(deps)).apiKey, status.apiKey);
+    assert.equal(JSON.parse(readFileSync(configPath, 'utf8')).models.providers['uclaw-cloud'].apiKey, status.apiKey);
+    assert.equal(existsSync(storePath + '.bak'), false, 'repeated status reads must not rewrite wallet');
+  });
+});
+
+test('已有钱包显式领取复用同一密钥恢复丢失的模型配置，不调用 bind', async () => {
+  await withTempDir(async (dir) => {
+    const configPath = join(dir, 'openclaw.json');
+    writeFileSync(configPath, '{}');
+    const key = 'sk-test-only-reuse-wallet';
+    const result = await claimWallet({ store: createMemoryWalletStore({ apiKey: key, walletId: 'existing' }), configPath,
+      fetch: async () => { throw Error('existing wallet must never bind'); } });
+    assert.equal(result.ok, true);
+    assert.equal(result.alreadyClaimed, true);
+    const config = JSON.parse(readFileSync(configPath, 'utf8'));
+    assert.equal(config.models.providers['uclaw-cloud'].apiKey, key);
+    assert.equal(config.agents.defaults.model.primary, 'uclaw-cloud/deepseek-v4-flash');
+    assert.equal(readFileSync(configPath + '.bak', 'utf8'), '{}');
+  });
+});
+
+test('旧 SecretRef 通过官方服务端解析器恢复，先备份空钱包，解析不到绝不自动开户', async () => {
+  await withTempDir(async (dir) => {
+    const configPath = join(dir, 'openclaw.json'), storePath = join(dir, 'uclaw-device.json');
+    const ref = { source: 'store', provider: 'default', id: 'UCLAW_PROVIDER_UCLAW_CLOUD_API_KEY' };
+    const configRaw = JSON.stringify({ models: { providers: { 'uclaw-cloud': { apiKey: ref } } } });
+    writeFileSync(configPath, configRaw);
+    writeFileSync(storePath, '{"apiKey":"","custom":"keep"}');
+    let resolutions = 0;
+    const secretRuntime = {
+      coerceSecretRef: (value) => value,
+      resolveConfiguredSecretInputString: async (params) => {
+        resolutions++;
+        assert.equal(params.env.OPENCLAW_STATE_DIR, dir);
+        assert.equal(params.env.OPENCLAW_CONFIG_PATH, configPath);
+        assert.deepEqual(params.value, ref);
+        return { value: 'sk-test-only-secret-ref-key' };
+      },
+    };
+    const deps = { store: createFileWalletStore(storePath), configPath, secretRuntime,
+      fetch: async () => { throw Error('must not mint a new account'); } };
+    const statuses = await Promise.all([getStatus(deps), getStatus(deps)]);
+    assert.ok(statuses.every((s) => s.apiKey === 'sk-test-only-secret-ref-key'));
+    assert.equal(resolutions, 1);
+    assert.equal(readFileSync(storePath + '.bak', 'utf8'), '{"apiKey":"","custom":"keep"}');
+    assert.equal((await deps.store.get()).custom, 'keep');
+    assert.equal(readFileSync(configPath, 'utf8'), configRaw);
+
+    rmSync(storePath);
+    secretRuntime.resolveConfiguredSecretInputString = async () => ({ unresolvedRefReason: 'internal private diagnostic' });
+    const missing = await getStatus(deps);
+    assert.equal(missing.ok, false);
+    assert.ok(!missing.error.includes('internal private'));
+    assert.equal((await claimWallet(deps)).ok, false);
+    assert.equal(existsSync(storePath), false);
+
+    writeFileSync(configPath, JSON.stringify({ models: { providers: { 'uclaw-cloud': { apiKey: { ...ref, source: 'exec' } } } } }));
+    secretRuntime.resolveConfiguredSecretInputString = async () => { throw Error('exec must never run'); };
+    assert.equal((await getStatus(deps)).ok, false);
+    assert.equal(existsSync(storePath), false);
+  });
+});
 
 // ── C1：存储打不开时绝不抛异常 ──────────────────────────────────────────────
 
@@ -357,7 +434,7 @@ test('adoptWallet 之后：applyKey 把新 key 写进 openclaw.json，且原有 
     writeFileSync(
       configPath,
       JSON.stringify({
-        plugins: { entries: { 'openclaw-weixin': { enabled: true } } },
+        plugins: { entries: { 'uclaw-wallet': { enabled: true } } },
         models: { mode: 'merge', providers: { someOtherProvider: { baseUrl: 'https://x' } } },
       })
     );
@@ -372,9 +449,9 @@ test('adoptWallet 之后：applyKey 把新 key 写进 openclaw.json，且原有 
     assert.equal(r.ok, true);
 
     const onDisk = JSON.parse(readFileSync(configPath, 'utf8'));
-    assert.deepEqual(onDisk.plugins, { entries: { 'openclaw-weixin': { enabled: true } } }, 'plugins 必须存活');
+    assert.deepEqual(onDisk.plugins, { entries: { 'uclaw-wallet': { enabled: true } } }, 'plugins 必须存活');
     assert.equal(onDisk.models.providers[CLOUD_PROVIDER_ID].apiKey, 'sk-adopted-key-0001');
-    assert.ok('someOtherProvider' in onDisk.models.providers, '既有 provider 不该被冲掉');
+    assert.ok(!('someOtherProvider' in onDisk.models.providers), '本版只保留虾盘云 provider');
     assert.equal(onDisk.agents.defaults.model.primary, `${CLOUD_PROVIDER_ID}/deepseek-v4-flash`);
   });
 });
@@ -401,7 +478,7 @@ test('applyKey 写入的模型集合必须等于 models.json 单一真相源（�
     const expected = Array.from(new Set([entry.model, ...(entry.models || [])]));
 
     assert.deepEqual(new Set(written), new Set(expected), '写入 openclaw.json 的模型集合必须与 models.json 完全一致');
-    assert.ok(written.length >= 6, `精选聊天模型至少 6 个（当前 ${written.length} 个）——别把清单改回去`);
+    assert.equal(written.length, 1, '本版仅保留一个默认模型');
     assert.equal(written[0], entry.model, '主模型（推荐项）必须排第一');
     // 防呆：清单里的每个 ID 都必须真实存在于云端，否则用户点了就是 404。
     // 这份白名单从 api.u-claw.org.cn/api/pricing 全量清单核出（2026-08-27）。
@@ -410,12 +487,12 @@ test('applyKey 写入的模型集合必须等于 models.json 单一真相源（�
   });
 });
 
-// ── 主模型归属：「空位才占」，不抢用户已配好的 provider ────────────────────────
+// ── 单模型便携版：旧模型可从原子写入前的 .bak 恢复 ────────────────────────
 //
 // 领取额度是给没配过模型的人用的，不该把付费用户设好的 MiniMax/DeepSeek 换掉。
 // 商业版 ClawX 的既定策略是「付费用户的默认模型必须活过重启」，这里遵循同一条。
 
-test('applyKey：用户已配了别家主模型时，领取额度不抢主模型', async () => {
+test('applyKey：旧版其他主模型收敛为唯一云模型，并保留旧配置备份', async () => {
   await withTempDir(async (dir) => {
     const configPath = join(dir, 'openclaw.json');
     writeFileSync(
@@ -430,8 +507,8 @@ test('applyKey：用户已配了别家主模型时，领取额度不抢主模型
 
     assert.equal(
       merged.agents.defaults.model.primary,
-      'minimax/MiniMax-M3',
-      '用户自己配的主模型必须原样存活'
+      `${CLOUD_PROVIDER_ID}/deepseek-v4-flash`,
+      '本版只有云默认模型'
     );
     assert.equal(
       merged.models.providers[CLOUD_PROVIDER_ID].apiKey,
@@ -476,15 +553,15 @@ test('applyKey：setPrimary:true 可强制夺取主模型（留给用户显式�
   });
 });
 
-test('applyKey：setPrimary:false 永不设置主模型', async () => {
+test('applyKey：旧版 setPrimary:false 参数不能恢复第二个模型', async () => {
   await withTempDir(async (dir) => {
     const configPath = join(dir, 'openclaw.json');
     const merged = applyKey(configPath, 'sk-no-primary', { setPrimary: false });
-    assert.equal(merged.agents?.defaults?.model?.primary, undefined);
+    assert.equal(merged.agents?.defaults?.model?.primary, `${CLOUD_PROVIDER_ID}/deepseek-v4-flash`);
   });
 });
 
-test('applyKey：不抢主模型时，agents.defaults 下的其它字段不被破坏', async () => {
+test('applyKey：单模型收敛保留 agents.defaults 的非模型设置，移除旧 fallback', async () => {
   await withTempDir(async (dir) => {
     const configPath = join(dir, 'openclaw.json');
     writeFileSync(
@@ -495,7 +572,7 @@ test('applyKey：不抢主模型时，agents.defaults 下的其它字段不被�
     );
     const merged = applyKey(configPath, 'sk-keep-siblings');
     assert.equal(merged.agents.defaults.somethingElse, 42);
-    assert.equal(merged.agents.defaults.model.fallback, 'minimax/abc');
+    assert.equal(merged.agents.defaults.model.fallback, undefined);
   });
 });
 

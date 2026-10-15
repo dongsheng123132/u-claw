@@ -1,4 +1,4 @@
-﻿@echo off
+@echo off
 setlocal EnableDelayedExpansion
 chcp 65001 >nul 2>&1
 title U-Claw Menu
@@ -50,12 +50,8 @@ if exist "%NODE_BIN%" (
 if exist "%STATE_DIR%\openclaw.json" (echo   Config: OK) else (echo   Config: NOT SET)
 echo.
 echo   -- Config --
-echo   [1] Setup wizard (model, API key)
+echo   [1] Xiapan Cloud wallet and model settings
 echo   [2] Open web dashboard
-echo.
-echo   -- Chat Platforms --
-echo   [3] QQ Bot (pre-installed, enter ID only)
-echo   [4] Other platforms (Feishu/Telegram/WeChat)
 echo.
 echo   -- Maintenance --
 echo   [5] Diagnostics
@@ -79,8 +75,6 @@ set /p choice="  Choose [0-16]: "
 
 if "%choice%"=="1" goto :onboard
 if "%choice%"=="2" goto :dashboard
-if "%choice%"=="3" goto :qqbot
-if "%choice%"=="4" goto :channels
 if "%choice%"=="5" goto :doctor
 if "%choice%"=="6" goto :backup
 if "%choice%"=="7" goto :restore
@@ -99,112 +93,8 @@ pause
 goto :menu
 
 :onboard
-echo.
-echo   === Setup Wizard ===
-echo.
-echo   DeepSeek  - Custom Provider, URL: https://api.deepseek.com/v1
-echo   Kimi      - Moonshot AI
-echo   Qwen      - Qwen
-echo   Doubao    - Volcano Engine
-echo.
-cd /d "%CORE_DIR%"
-"%NODE_BIN%" "%OPENCLAW_MJS%" onboard
-pause
-goto :menu
-
 :dashboard
-echo.
-echo   Starting gateway...
-set PORT=18789
-:find_port
-netstat -an | findstr ":%PORT% " | findstr "LISTENING" >nul 2>&1
-if !errorlevel!==0 (
-    set /a PORT+=1
-    if !PORT! gtr 18799 (echo   No available port & pause & goto :menu)
-    goto :find_port
-)
-cd /d "%CORE_DIR%"
-if not exist "%STATE_DIR%\openclaw.json" (
-    (echo {"gateway":{"mode":"local","auth":{"token":"uclaw"}},"update":{"checkOnStart":false,"auto":{"enabled":false}}})>"%STATE_DIR%\openclaw.json"
-)
-
-REM Read token from config
-set "TOKEN=uclaw"
-if exist "%STATE_DIR%\openclaw.json" (
-    for /f "tokens=*" %%t in ('"%NODE_BIN%" -e "try{const c=JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'));console.log((c.gateway&&c.gateway.auth&&c.gateway.auth.token)||'uclaw')}catch(e){console.log('uclaw')}" "%STATE_DIR%\openclaw.json"') do set "TOKEN=%%t"
-)
-
-start /B "" cmd /c "timeout /t 3 /nobreak >nul && start http://127.0.0.1:!PORT!/#token=!TOKEN!"
-"%NODE_BIN%" "%OPENCLAW_MJS%" gateway run --allow-unconfigured --force --port !PORT!
-pause
-goto :menu
-
-:qqbot
-echo.
-echo   === QQ Bot Setup ===
-echo.
-echo   QQ plugin is pre-installed!
-echo   You only need your AppID and AppSecret.
-echo.
-echo   Get them at: q.qq.com (create a bot)
-echo.
-set /p qqid="  AppID: "
-set /p qqsecret="  AppSecret: "
-if "%qqid%"=="" goto :qq_cancel
-if "%qqsecret%"=="" goto :qq_cancel
-cd /d "%CORE_DIR%"
-"%NODE_BIN%" "%OPENCLAW_MJS%" channels add --channel qqbot --token "%qqid%:%qqsecret%"
-echo.
-set /p qqallow="  Your QQ number (allowlist, empty to skip): "
-if not "%qqallow%"=="" "%NODE_BIN%" "%OPENCLAW_MJS%" config set channels.qqbot.allowFrom "%qqallow%"
-echo.
-echo   QQ Bot configured! Restart gateway to apply.
-pause
-goto :menu
-:qq_cancel
-echo   Cancelled.
-pause
-goto :menu
-
-:channels
-echo.
-echo   === Other Platforms ===
-echo.
-echo   [a] Feishu (Lark)    - Enterprise
-echo   [b] Telegram          - International
-echo   [c] WeChat (plugin)   - iPad protocol (unavailable)
-echo   [d] Discord
-echo.
-set /p ch_choice="  Choose (a-d, empty to cancel): "
-if "%ch_choice%"=="a" (
-    echo.
-    echo   Feishu setup:
-    echo     1. Visit open.feishu.cn/app to create an app
-    echo     2. Get App ID and App Secret
-    echo     3. Run Setup wizard [1] to bind
-)
-if "%ch_choice%"=="b" (
-    echo.
-    echo   Telegram setup:
-    echo     1. Message @BotFather on Telegram
-    echo     2. Create a bot and get the token
-    echo     3. Run Setup wizard [1] to bind
-)
-if "%ch_choice%"=="c" (
-    echo.
-    echo   WeChat plugin is temporarily unavailable:
-    echo   upstream module-loading compatibility issue - see config-server WECHAT_ENABLED.
-    echo   Skip setup until upstream publishes a fix.
-)
-if "%ch_choice%"=="d" (
-    echo.
-    echo   Discord setup:
-    echo     1. Visit discord.com/developers/applications
-    echo     2. Create a bot and get the token
-    echo     3. Run Setup wizard [1] to bind
-)
-echo.
-pause
+call "%UCLAW_DIR%Windows-Start.bat"
 goto :menu
 
 :doctor
@@ -596,10 +486,6 @@ if "%plgchoice%"=="a" (
     "%NODE_BIN%" "%OPENCLAW_MJS%" plugins list
 )
 if "%plgchoice%"=="b" (
-    echo.
-    echo   Common plugins:
-    echo     @icesword760/openclaw-wechat  - WeChat
-    echo     @nicepkg/openclaw-plugin-qq   - QQ ^(community^)
     echo.
     set /p plgname="  Plugin name (empty to cancel): "
     if not "!plgname!"=="" (

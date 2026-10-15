@@ -114,6 +114,11 @@ test('satisfies() 自身可信（这是本文件其余断言的地基）', () =>
   assert.equal(satisfies('v24.15.0', RANGE), true);
   assert.equal(satisfies('v24.14.9', RANGE), false);
   assert.equal(satisfies('v22.19.0', '>=22.19.0'), true, '老 openclaw 的宽松写法');
+  const latestRange = '>=24.16.0 <25 || >=26.1.0';
+  assert.equal(satisfies('v24.16.0', latestRange), true);
+  assert.equal(satisfies('v22.22.3', latestRange), false);
+  assert.equal(satisfies('v25.0.0', latestRange), false);
+  assert.equal(satisfies('v26.1.0', latestRange), true);
 });
 
 test('所有脚本 pin 的 Node 版本必须完全一致（防 8 份副本各漂各的）', () => {
@@ -146,7 +151,9 @@ test('内置 Node 必须满足所 pin 的 OpenClaw 的 engines 要求（v2.1.15~
 
   // engines 要求以「实际装进产物的那个 openclaw」为准。装过就直接读它的 package.json，
   // 没装过（干净检出）就跳过——不能因为没跑过 setup 就让测试假红。
-  const pkgPath = join(repoRoot, 'portable/app/core/node_modules/openclaw/package.json');
+  const pkgPath = process.env.UCLAW_TEST_CORE_DIR
+    ? join(process.env.UCLAW_TEST_CORE_DIR, 'node_modules/openclaw/package.json')
+    : join(repoRoot, 'portable/app/core/node_modules/openclaw/package.json');
   if (!existsSync(pkgPath)) {
     console.log(
       `  (跳过 engines 比对：portable/app/ 还没装。跑 setup 后本条才有实质意义。` +
@@ -155,7 +162,9 @@ test('内置 Node 必须满足所 pin 的 OpenClaw 的 engines 要求（v2.1.15~
     return;
   }
 
-  const engines = JSON.parse(readFileSync(pkgPath, 'utf8')).engines?.node;
+  const runtimePackage = JSON.parse(readFileSync(pkgPath, 'utf8'));
+  assert.equal(runtimePackage.version, openclawVersion, '校验的运行时必须与发布 pin 相同');
+  const engines = runtimePackage.engines?.node;
   assert.ok(engines, `openclaw ${openclawVersion} 没有声明 engines.node`);
 
   assert.ok(

@@ -37,8 +37,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { fileURLToPath } from 'node:url';
-import { readConfigSafe, saveConfigMerged } from './merge-config.mjs';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { readConfigSafe, saveConfigMerged, simplifyPortableConfig, writeConfigAtomic, mergeConfig } from './merge-config.mjs';
 import { fetchWithFailover } from './uclaw-cloud-endpoints.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -92,10 +92,11 @@ export function defaultConfigPath() {
 /** 基于文件的钱包存储。get()/set() 会自然抛出 IO / JSON 错误——调用方负责按 C1 兜住。 */
 export function createFileWalletStore(storePath) {
   return {
+    filePath: path.resolve(storePath),
     async get() {
       if (!fs.existsSync(storePath)) return { ...EMPTY_STATE };
       const raw = fs.readFileSync(storePath, 'utf8');
-      const parsed = JSON.parse(raw);
+      const parsed = JSON.parse(raw.replace(/^\uFEFF/, ''));
       return isPlainObject(parsed) ? { ...EMPTY_STATE, ...parsed } : { ...EMPTY_STATE };
     },
     async set(state) {
@@ -105,8 +106,13 @@ export function createFileWalletStore(storePath) {
         dir,
         `.${path.basename(storePath)}.tmp-${process.pid}-${crypto.randomBytes(4).toString('hex')}`
       );
-      fs.writeFileSync(tmp, JSON.stringify(state, null, 2));
-      fs.renameSync(tmp, storePath);
+      try {
+        fs.writeFileSync(tmp, JSON.stringify(state, null, 2), { mode: 0o600 });
+        if (fs.existsSync(storePath)) fs.copyFileSync(storePath, storePath + '.bak');
+        fs.renameSync(tmp, storePath);
+      } finally {
+        if (fs.existsSync(tmp)) fs.unlinkSync(tmp);
+      }
     },
   };
 }
@@ -254,8 +260,7 @@ function buildProviderEntry(apiKey, apiBase) {
  *
  * 领取 / rotate / adopt 三条路径都必须调用这一个函数，漏一条就是一个 bug（C5）。
  */
-export function applyKey(configPath, apiKey, opts = {}) {
-  const existing = readConfigSafe(configPath);
+export function configWithWalletKey(existing, apiKey, opts = {}) {
   const models = isPlainObject(existing.models) ? { ...existing.models } : {};
   const providers = isPlainObject(models.providers) ? { ...models.providers } : {};
   providers[CLOUD_PROVIDER_ID] = buildProviderEntry(apiKey, opts.apiBase);
@@ -264,33 +269,15 @@ export function applyKey(configPath, apiKey, opts = {}) {
 
   const incoming = { ...existing, models };
 
-  // 主模型归属：默认「空位才占」——不抢用户已经配好的 provider。
-  //
-  // 领取额度是为了让没配过模型的人立刻能用，不是为了把付费用户设好的 MiniMax/DeepSeek
-  // 换掉。商业版 ClawX 早有定论：「付费用户的默认模型必须活过重启」，这里遵循同一条。
-  //
-  //   setPrimary === false → 永不设置
-  //   setPrimary === true  → 强制设置（留给"设为主模型"这类用户显式动作）
-  //   未传（默认）          → 只在没有可用主模型、或主模型本来就指向本 provider 时才设置
-  const currentPrimary =
-    isPlainObject(existing.agents) &&
-    isPlainObject(existing.agents.defaults) &&
-    isPlainObject(existing.agents.defaults.model)
-      ? String(existing.agents.defaults.model.primary || '').trim()
-      : '';
-  const primaryIsVacant = !currentPrimary || currentPrimary.startsWith(`${CLOUD_PROVIDER_ID}/`);
-  const shouldSetPrimary =
-    opts.setPrimary === true || (opts.setPrimary !== false && primaryIsVacant);
+  // 本版仅保留虾盘云默认模型，使用与启动/配置保存相同的收敛策略。
+  return simplifyPortableConfig(mergeConfig(existing, incoming));
+}
 
-  if (shouldSetPrimary) {
-    const agents = isPlainObject(existing.agents) ? { ...existing.agents } : {};
-    const defaults = isPlainObject(agents.defaults) ? { ...agents.defaults } : {};
-    defaults.model = { ...(isPlainObject(defaults.model) ? defaults.model : {}), primary: `${CLOUD_PROVIDER_ID}/${DEFAULT_MODEL_ID}` };
-    agents.defaults = defaults;
-    incoming.agents = agents;
-  }
-
-  return saveConfigMerged(configPath, incoming);
+export function applyKey(configPath, apiKey, opts = {}) {
+  const existing = readConfigSafe(configPath);
+  const merged = configWithWalletKey(existing, apiKey, opts);
+  writeConfigAtomic(configPath, merged);
+  return merged;
 }
 
 /** 移除 uclaw-cloud provider（reset-local 用）。若主模型正指向它，一并清空，避免残留死指针。 */
@@ -331,11 +318,76 @@ function removeKeyFromConfig(deps) {
 // 本地状态（不联网）
 // ---------------------------------------------------------------------------
 
-/** 纯本地读取，供配置页首屏渲染用——绝不触网。 */
+const walletRecoveryInFlight = new Map();
+const WALLET_RECOVERY_ERROR = '无法从已有模型配置恢复钱包，请在设备钱包中填入现有密钥；不会自动领取新钱包';
+
+function usableExistingKey(value) {
+  return typeof value === 'string' && value.trim() && !/\s|\.\.\.|…|\*|__OPENCLAW_REDACTED__|已加密保存/.test(value);
+}
+
+async function resolveExistingProviderKey(config, value, configPath, deps) {
+  if (typeof value === 'string') {
+    if (!usableExistingKey(value)) throw new Error(WALLET_RECOVERY_ERROR);
+    return value.trim();
+  }
+  // 官方 store get 有意拒绝输出 secret；直接调用官方 SDK，在服务进程内解析。
+  // 状态查询只允许本地 store/file/env 引用，绝不能借此启动 exec provider。
+  try {
+    const portableRoot = deps.portableRoot || path.join(__dirname, '..');
+    const sdk = deps.secretRuntime || await import(pathToFileURL(path.join(portableRoot,
+      'app', 'core', 'node_modules', 'openclaw', 'dist', 'plugin-sdk', 'secret-input-runtime.js')).href);
+    const ref = sdk.coerceSecretRef(value, config.secrets?.defaults);
+    if (!ref || !['store', 'env', 'file'].includes(ref.source)) throw new Error(WALLET_RECOVERY_ERROR);
+    const stateDir = path.dirname(configPath);
+    const env = { ...process.env, ...deps.env, OPENCLAW_STATE_DIR: stateDir,
+      OPENCLAW_CONFIG_PATH: configPath, OPENCLAW_HOME: path.dirname(stateDir) };
+    let timer;
+    const resolved = await Promise.race([
+      sdk.resolveConfiguredSecretInputString({ config, env, value,
+        path: 'models.providers.uclaw-cloud.apiKey', unresolvedReasonStyle: 'generic' }),
+      new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(WALLET_RECOVERY_ERROR)), 5_000); }),
+    ]).finally(() => clearTimeout(timer));
+    if (!usableExistingKey(resolved?.value)) throw new Error(WALLET_RECOVERY_ERROR);
+    return resolved.value.trim();
+  } catch {
+    // SDK 诊断可能包含用户文件/引用内容；只把固定的恢复指引交给界面。
+    throw new Error(WALLET_RECOVERY_ERROR);
+  }
+}
+
+async function readWalletState(store, deps) {
+  const state = await store.get();
+  if (state.apiKey || state.pendingKey) return state;
+  // 自定义测试存储不会隐式读取真实 portable/data；文件存储按自己的目录恢复。
+  if (!store.filePath) return state;
+  const configPath = deps.configPath || path.join(path.dirname(store.filePath), 'openclaw.json');
+  if (!fs.existsSync(configPath)) return state;
+  const recoveryId = store.filePath;
+  if (walletRecoveryInFlight.has(recoveryId)) return walletRecoveryInFlight.get(recoveryId);
+  const recovery = (async () => {
+    let config;
+    try {
+      config = JSON.parse(fs.readFileSync(configPath, 'utf8').replace(/^\uFEFF/, ''));
+    } catch { throw new Error(WALLET_RECOVERY_ERROR); }
+    const value = config?.models?.providers?.[CLOUD_PROVIDER_ID]?.apiKey;
+    if (value == null || value === '') return state;
+    const apiKey = await resolveExistingProviderKey(config, value, configPath, deps);
+    const latest = await store.get();
+    if (latest.apiKey || latest.pendingKey) return latest;
+    const next = { ...EMPTY_STATE, ...latest, apiKey };
+    await store.set(next);
+    return next;
+  })();
+  walletRecoveryInFlight.set(recoveryId, recovery);
+  try { return await recovery; }
+  finally { walletRecoveryInFlight.delete(recoveryId); }
+}
+
+/** 本地读取并恢复旧盘已有密钥，供所有界面首屏使用——绝不触网或领取新钱包。 */
 export async function getStatus(deps = {}) {
   const store = deps.store || defaultStore();
   try {
-    const state = await store.get();
+    const state = await readWalletState(store, deps);
     return {
       ok: true,
       hasWallet: !!state.apiKey,
@@ -389,7 +441,7 @@ export async function settlePending(deps = {}) {
 
   let state;
   try {
-    state = await store.get();
+    state = await readWalletState(store, deps);
   } catch (error) {
     return { ok: false, error: describeError(error) };
   }
@@ -426,7 +478,7 @@ async function doClaim(deps) {
 
   let state;
   try {
-    state = await store.get();
+    state = await readWalletState(store, deps);
   } catch (error) {
     return { ok: false, error: describeError(error) };
   }
@@ -450,6 +502,7 @@ async function doClaim(deps) {
       state = await settlePendingState(state, store, fetchImpl, verify, deps);
     }
     if (state.apiKey) {
+      applyKeyToConfig(state.apiKey, deps);
       return { ok: true, apiKey: state.apiKey, walletId: state.walletId, alreadyClaimed: true };
     }
 
@@ -477,7 +530,7 @@ export async function getBalance(deps = {}) {
 
   let state;
   try {
-    state = await store.get();
+    state = await readWalletState(store, deps);
   } catch (error) {
     return { ok: false, error: describeError(error) };
   }
@@ -548,7 +601,7 @@ async function doRotate(deps) {
 
   let state;
   try {
-    state = await store.get();
+    state = await readWalletState(store, deps);
   } catch (error) {
     return { ok: false, error: describeError(error) };
   }
