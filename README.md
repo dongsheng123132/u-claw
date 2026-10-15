@@ -25,13 +25,12 @@
 
 ## 三步开始
 
-> 📺 图文教程：[docs/快速上手.md](docs/快速上手.md)（含真实界面截图，5 步从插 U 盘到开始对话）
+> 📺 图文教程：[docs/快速上手.md](docs/快速上手.md)（从插 U 盘、恢复钱包到开始对话）
 
-<p align="center"><img src="assets/readme/how-it-works.png" alt="下载 → 双击启动 → 选模型填 Key → 开始工作" width="100%" /></p>
 
 1. 从 [Releases](https://github.com/dongsheng123132/u-claw/releases) 下载 Windows 便携版，解压到 U 盘后双击 `Windows-Start.bat`。
 2. 或克隆仓库，在 `portable/` 运行 `bash setup.sh`，下载 Node.js 与 OpenClaw。
-3. 首次启动在本地配置模型 Key；配置只保存在 U 盘的 `data/.openclaw/openclaw.json`。
+3. 启动直接进入 OpenClaw WebUI，在侧栏「设备钱包」领取或恢复虾盘云钱包；默认模型自动配置，可一键充值。
 
 | 你得到什么 | 为什么重要 |
 | --- | --- |
@@ -43,26 +42,12 @@
 
 ## 真实界面
 
-首次启动自动打开本地配置页，三步配好（以下均为真实截图）：
-
-<table>
-<tr>
-<td width="33%"><img src="docs/img/config-step1.png" alt="选择模型" /></td>
-<td width="33%"><img src="docs/img/config-step2.png" alt="填写 API Key" /></td>
-<td width="33%"><img src="docs/img/config-step3.png" alt="接入聊天渠道" /></td>
-</tr>
-<tr>
-<td align="center">① 选模型</td>
-<td align="center">② 填 Key</td>
-<td align="center">③ 接渠道（可跳过）</td>
-</tr>
-</table>
+启动直接进入 OpenClaw WebUI。侧栏「设备钱包」与对话顶部的「设备钱包 · 充值」提供余额、充值、密钥备份和恢复；模型配置与钱包共用本地配置，不需要前置选择。
 
 **SkillHub 技能市场**：随盘附带的本地页面，浏览 ClawHub 上的技能，按分类找、看安装量。
 
 <p align="center"><img src="assets/readme/skillhub-ui.png" alt="U-Claw SkillHub 技能市场" width="100%" /></p>
 
-<p align="center"><img src="assets/readme/ecosystem.png" alt="运行平台、AI 模型与聊天渠道" width="100%" /></p>
 
 
 > [!TIP]
@@ -86,15 +71,13 @@ U-Claw（虾盘）是一个**制作教程 + 全套源代码**，教你把 [OpenC
 
 代码库本身就是 U 盘的文件骨架，运行 `setup.sh` 补齐大依赖后，整个 `portable/` 目录直接拷贝到 U 盘即可。
 
-> 📖 **[完整教程](https://u-claw.org/tutorial.html)** — 从零开始的手工安装指南、模型配置、聊天平台接入，小白也能看懂。
+> 📖 **[完整教程](https://u-claw.org/tutorial.html)** — 从零开始的手工安装指南、设备钱包、模型配置和充值，小白也能看懂。
 
-### 🧩 模型随便选：国内外大模型都能用
+### 虾盘云默认模型与设备钱包
 
-U-Claw 是纯开源工具，**不绑定设备、不打指纹、不上传任何数据**。首次启动会自动打开 Config 页面，选一个模型、填入自己的 API Key 即可一键启动：
+本版使用 OpenClaw 2026.10.2 和 Node.js 24.16.0，只保留虾盘云 `deepseek-v4-flash`。钱包接入原生 WebUI，领取或恢复密钥后自动配置默认模型。启动不会自动领钱包；已有钱包可以继续使用和一键充值。配置与钱包状态保存在 U 盘 `data/.openclaw/`。
 
-- **虾盘云（首选 · 中转站）**：一个 Key 调用 DeepSeek / Claude / GPT / 通义 等国内外全部大模型，无需翻墙。注册并充值：[u-claw.org/cloud.html](https://u-claw.org/cloud.html)
-- **各家官方 Key 也行**：DeepSeek、通义千问、Kimi、智谱 GLM、豆包、MiniMax（国内）/ OpenAI、Claude、Groq（国外）/ 硅基流动、任意 OpenAI 兼容地址（自定义）
-- **配置只存在本地** `data/.openclaw/openclaw.json`，拔盘不留痕
+首次在 Mac 运行或同盘更换操作系统时，setup 会联网准备当前平台依赖；Windows 完整包已准备好 Windows 依赖。
 
 ### 一键安装（推荐）
 
@@ -152,7 +135,7 @@ U-Claw/                          ← 整个拷到 U 盘
 ├── Config.html                   首次配置页面
 ├── setup.sh                      补齐依赖（开发者用）
 ├── app/                          ← 大依赖（setup.sh 下载，不进 git）
-│   ├── core/                        OpenClaw + QQ 插件
+│   ├── core/                        OpenClaw
 │   └── runtime/
 │       ├── node-mac-arm64/          Mac Apple Silicon
 │       ├── node-mac-x64/           Mac Intel
@@ -193,33 +176,9 @@ U-Claw/                          ← 整个拷到 U 盘
 >
 > 一句话：浏览器与 Node 的可重建高频 IO 会自动落在本机盘；`data/.openclaw` 中的 SQLite 会话、设备身份、授权与配置始终随 U 盘携带。换电脑后浏览器网站登录态需要在该电脑重新登录。仍建议使用 NTFS，以避免安装依赖或其它需要链接能力的操作在 exFAT/FAT32 上变慢或受限。
 
-### 支持的 AI 模型
+### 模型与使用入口
 
-**国产模型（无需翻墙）：**
-
-| 模型 | 推荐场景 |
-|------|----------|
-| DeepSeek | 编程首选，极便宜 |
-| Kimi K2.5 | 长文档，256K 上下文 |
-| 通义千问 Qwen | 免费额度大 |
-| 智谱 GLM | 学术场景 |
-| MiniMax | 语音多模态 |
-| 豆包 Doubao | 火山引擎 |
-
-**国际模型：** Claude · GPT · Gemini（需翻墙或中转）
-
-### 支持的聊天平台
-
-| 平台 | 状态 | 说明 |
-|------|------|------|
-| QQ | ✅ 已预装 | 输入 AppID + Secret 即可 |
-| 飞书 | ✅ 内置 | 企业首选 |
-| 钉钉 | ✅ 配置页可填 | WebSocket 接入，免公网 IP |
-| 企业微信 | ✅ 配置页可填 | 企业微信机器人 |
-| Telegram | ✅ 内置 | 海外推荐 |
-| WhatsApp | ✅ 内置 | Baileys 协议 |
-| Discord | ✅ 内置 | — |
-| 微信 | ⚠️ 暂不可用 | 上游插件兼容问题，修复后随更新恢复 |
+唯一默认模型：虾盘云 `deepseek-v4-flash`。使用 OpenClaw WebUI 对话；微信、飞书、Telegram、QQ 等接入入口及额外插件已移除。
 
 ### 国内镜像
 
@@ -299,31 +258,23 @@ bash setup.sh
 ```
 
 **Q: Mac 上提示 `.toSorted is not a function`？**
-系统旧版 Node.js 被检测到并跳过了内置版本下载，但旧版 Node 不支持 `.toSorted()`（需要 v20+）。删除 runtime 目录让脚本重新下载内置 Node v22：
+系统旧版 Node.js 被检测到并跳过了内置版本下载，但旧版 Node 不支持 `.toSorted()`（需要 v20+）。重新运行 setup 升级到内置 Node 24.16.0：
 ```bash
 rm -rf portable/app/runtime/node-mac-arm64
 bash setup.sh
 ```
 
-**Q: 如何同时配置多个 AI 模型并切换？**
-支持同时配置多个 provider！打开 `Config.html` → 在 Providers 区域点击「添加」，逐个填入各模型的 API Key 和地址（如 DeepSeek、Kimi、通义等）→ 保存后，在聊天界面左上角下拉菜单随时切换。配置持久保存在 U 盘上。
+**Q: 如何设置模型和充值？**
+打开 WebUI 的「设备钱包」，领取或导入已有虾盘云密钥，默认模型自动配置。点击「一键充值」即可打开充值页面。
 
 **Q: U 盘安装后无法创建文件 / 写入失败？**
-两种可能：① U 盘侧面有物理写保护开关，拨到解锁位置；② U 盘不是 **NTFS** 格式——本产品要求 NTFS（exFAT/FAT32 会导致启动缓慢、写入失败甚至启动失败）。备份数据后重新格式化为 NTFS 即可。
+先检查 U 盘写保护开关、剩余空间和写入权限，再查看启动窗口的具体错误及日志。
 
 **Q: 从 Ubuntu 向 U 盘复制时符号链接丢失？**
 `node_modules/.bin/` 下有大量符号链接，FAT32/exFAT 在直接 `cp -R` 时会跳过。用 `rsync -aL` 可将符号链接展开为真实文件：
 ```bash
 rsync -aL --progress portable/ /media/YOUR_USB/U-Claw/
 ```
-
-**Q: QQbot 报错 `Unknown channel: qqbot`？**
-Bundle 里的 `@sliverp/qqbot` 是未编译的 TypeScript 源码，需要先编译：
-```bash
-cd portable/app/core/node_modules/@sliverp/qqbot
-npm install && npm run build
-```
-正式 Release 包已修复此问题，建议从 [Releases](https://github.com/dongsheng123132/u-claw/releases) 下载最新版。
 
 <a id="企业服务"></a>
 
@@ -446,7 +397,7 @@ U-Claw/                          ← Copy entire folder to USB
 ├── Config.html                   First-time config page
 ├── setup.sh                      Download dependencies (dev use)
 ├── app/                          ← Large deps (downloaded by setup.sh, not in git)
-│   ├── core/                        OpenClaw + QQ plugin
+│   ├── core/                        OpenClaw
 │   └── runtime/
 │       ├── node-mac-arm64/          Mac Apple Silicon
 │       ├── node-mac-x64/           Mac Intel
@@ -468,31 +419,9 @@ Based on Ventoy + Ubuntu 24.04 LTS + persistence. 4-step PowerShell scripts on W
 
 > **About the Electron desktop app**: `u-claw-app/` (the `.exe` installer / portable / `.dmg` builds) was **deprecated and is no longer published as of 2026-06-19** — see [`u-claw-app/DEPRECATED.md`](u-claw-app/DEPRECATED.md). U-Claw now ships only the portable USB build, which is the product's essence: plug in the USB and run.
 
-### Supported AI Models
+### Model and interface
 
-**Chinese models (no VPN needed):**
-
-| Model | Best for |
-|-------|----------|
-| DeepSeek | Coding, extremely cheap |
-| Kimi K2.5 | Long documents, 256K context |
-| Qwen | Large free tier |
-| GLM (Zhipu) | Academic use |
-| MiniMax | Voice & multimodal |
-| Doubao | Volcengine ecosystem |
-
-**International models:** Claude · GPT · Gemini (VPN or relay required in China)
-
-### Supported Chat Platforms
-
-| Platform | Status | Notes |
-|----------|--------|-------|
-| QQ | ✅ Pre-installed | Enter AppID + Secret |
-| Feishu (Lark) | ✅ Built-in | Enterprise favorite |
-| Telegram | ✅ Built-in | International |
-| WhatsApp | ✅ Built-in | Baileys protocol |
-| Discord | ✅ Built-in | — |
-| WeChat | ✅ Community plugin | iPad protocol |
+This edition uses OpenClaw 2026.10.2 with Node.js 24.16.0 and one Xiapan Cloud model, `deepseek-v4-flash`. The native WebUI includes the device wallet and recharge action. Channel connection entries and extra messaging plugins have been removed. The first launch on another operating system prepares its native dependencies through setup.
 
 ### China Mirrors
 
@@ -608,21 +537,13 @@ bash setup.sh
 Multiple providers are supported! Open `Config.html` → click "Add" in the Providers section → enter API Key and endpoint for each model (DeepSeek, Kimi, Qwen, etc.) → save. Switch between models via the dropdown in the chat interface. Config is saved persistently on the USB drive.
 
 **Q: USB drive shows "cannot create file" / write errors?**
-Two possibilities: ① The USB drive has a physical write-protect switch on the side — slide it to unlock; ② The drive is not **NTFS** — this product requires NTFS (exFAT/FAT32 causes slow startup, write failures, or boot failure). Back up your data and reformat as NTFS.
+Check the drive's write-protect switch, free space and write permissions, then inspect the startup window and logs for the specific error.
 
 **Q: Symlinks missing when copying from Ubuntu to USB?**
 `node_modules/.bin/` contains many symlinks that get skipped during direct `cp -R`. Use `rsync -aL` to expand symlinks into real files:
 ```bash
 rsync -aL --progress portable/ /media/YOUR_USB/U-Claw/
 ```
-
-**Q: QQbot error: `Unknown channel: qqbot`?**
-The bundled `@sliverp/qqbot` is uncompiled TypeScript source. Compile it manually:
-```bash
-cd portable/app/core/node_modules/@sliverp/qqbot
-npm install && npm run build
-```
-This is fixed in the latest [Release](https://github.com/dongsheng123132/u-claw/releases) — downloading the pre-built release is recommended.
 
 <a id="enterprise-services"></a>
 
