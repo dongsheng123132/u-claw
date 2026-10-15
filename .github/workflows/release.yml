@@ -285,8 +285,7 @@ jobs:
             - **Windows 便携完整版（U 盘版）**：`u-claw-portable-windows-*.zip`，已预装 Node.js + OpenClaw。解压到 U 盘后双击 `Windows-Start.bat` 启动。
             - **macOS 便携版**：源码在 `portable/` 目录，`bash setup.sh` 自动下载 Node.js + OpenClaw，双击 `Mac-Start.command` 启动。
 
-            > **U 盘格式建议**：请用 **NTFS** 格式化 U 盘（NOT exFAT/FAT32）。Node.js 在 exFAT 上 IO 极慢且不支持符号链接，可能导致启动失败。
-            > Windows 下右键 U 盘 → 格式化 → 文件系统选择 NTFS。
+            > **U 盘格式**：**NTFS 或 exFAT 均可**。v2.3.0+ 已内置 exFAT 兼容（原子写入 rename 补丁 + Windows 零 inode 探测），exFAT 可在 Windows/Mac 双系统读写；仅 Windows 使用可选 NTFS。
           files: |
             artifacts/portable-windows-full/*
           fail_on_unmatched_files: false
