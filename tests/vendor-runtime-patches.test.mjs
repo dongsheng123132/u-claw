@@ -17,7 +17,7 @@ test('reviewed vendor patches preserve pairing files through transient rename er
   const fixture = join(scratch, 'core');
   fs.mkdirSync(join(fixture, 'node_modules/openclaw/dist'), { recursive: true });
   fs.copyFileSync(join(core, 'node_modules/openclaw/package.json'), join(fixture, 'node_modules/openclaw/package.json'));
-  copyFileSync(join(core, 'node_modules/openclaw/dist/chrome-D7PwFEoa.mjs'), join(fixture, 'node_modules/openclaw/dist/chrome-D7PwFEoa.mjs'));
+  fs.copyFileSync(join(core, 'node_modules/openclaw/dist/chrome-D7PwFEoa.mjs'), join(fixture, 'node_modules/openclaw/dist/chrome-D7PwFEoa.mjs'));
   copyDirSync(join(core, 'node_modules/@openclaw/fs-safe'), join(fixture, 'node_modules/@openclaw/fs-safe'));
   const runPatch = name => spawnSync(process.execPath, [join(root, 'portable/lib', name), fixture], { encoding: 'utf8', timeout: 10000 });
   for (const patch of ['patch-managed-browser-root.mjs', 'patch-device-pairing-retry.mjs']) {
