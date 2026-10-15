@@ -1,0 +1,17 @@
+{
+  "id": "uclaw-wallet",
+  "name": "虾盘云设备钱包",
+  "description": "在 OpenClaw 内领取设备钱包、充值、管理密钥并使用唯一默认模型。",
+  "uiCapabilities": ["page", "navigation", "accessory"],
+  "activation": { "onStartup": true },
+  "enabledByDefault": false,
+  "configSchema": {
+    "type": "object", "additionalProperties": false,
+    "required": ["portableRoot", "stateDir"],
+    "properties": {
+      "portableRoot": { "type": "string", "minLength": 1 },
+      "stateDir": { "type": "string", "minLength": 1 }
+    }
+  },
+  "controlUi": { "entry": "dist/control-ui/browser.js", "styles": ["dist/control-ui/browser.css"] }
+}

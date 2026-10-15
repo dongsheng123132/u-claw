@@ -1,0 +1,12 @@
+.uclaw-wallet-page { max-width: 760px; padding: 24px; color: var(--text-strong, #e4e4e7); }
+.uclaw-wallet-page h1 { font-size: 1.6rem; margin: 0 0 12px; }
+.uclaw-wallet-page h2 { font-size: 1.05rem; margin: 0 0 12px; }
+.uclaw-wallet-page p { line-height: 1.6; }
+.uclaw-wallet-card { padding: 20px; margin: 20px 0; border: 1px solid var(--border, #444); border-radius: 14px; background: var(--panel, #1b1c20); }
+.uclaw-wallet-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.uclaw-wallet-page button { padding: 10px 14px; margin: 6px 0; border: 1px solid var(--border, #666); border-radius: 8px; background: var(--bg, #292a2f); color: inherit; cursor: pointer; }
+.uclaw-wallet-page button:disabled { opacity: .5; cursor: default; }
+.uclaw-wallet-page label { display: block; margin: 16px 0 8px; }
+.uclaw-wallet-page input { display: block; width: 100%; box-sizing: border-box; margin-top: 8px; padding: 10px; background: var(--bg, #15161a); color: inherit; border: 1px solid var(--border, #555); border-radius: 8px; }
+.uclaw-wallet-hint { opacity: .75; font-size: .9rem; }
+.uclaw-wallet-header-link { color: var(--accent, #ff6b35); white-space: nowrap; }
