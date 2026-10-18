@@ -95,7 +95,17 @@ echo -e "  Node.js: ${GREEN}${NODE_VER}${NC}"
 echo ""
 
 # ---- 4. Init data directories ----
-mkdir -p "$STATE_DIR" "$DATA_DIR/memory" "$DATA_DIR/backups" "$DATA_DIR/logs"
+mkdir -p "$STATE_DIR" "$DATA_DIR/memory" "$DATA_DIR/backups" "$DATA_DIR/logs" "$DATA_DIR/tmp"
+
+# Keep temp files inside the per-USB slot (parity with Windows-Start.bat).
+# Fall back when the drive is gone or read-only: SQLite migrations die with
+# "unable to open database file" if TMPDIR is not writable.
+export TMPDIR="$DATA_DIR/tmp"
+if ! touch "$TMPDIR/.uclaw-write-test" 2>/dev/null; then
+    export TMPDIR="${TMPDIR_FALLBACK:-/tmp}"
+else
+    rm -f "$TMPDIR/.uclaw-write-test"
+fi
 
 # ---- 4b. 加速：把"重 IO、可重建"的缓存从 U 盘搬到本机硬盘 ----
 # portable-cache.mjs 算出本机缓存目录(~/Library/Caches/U-Claw/slot，UUID 隔离，
