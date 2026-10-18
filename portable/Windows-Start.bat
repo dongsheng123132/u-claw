@@ -70,6 +70,15 @@ set "UCLAW_GATEWAY_TMP=%UCLAW_RUNTIME_LOGS%\tmp"
 if not exist "%UCLAW_GATEWAY_TMP%" mkdir "%UCLAW_GATEWAY_TMP%" >nul 2>&1
 set "TEMP=%UCLAW_GATEWAY_TMP%"
 set "TMP=%UCLAW_GATEWAY_TMP%"
+REM U 盘拔掉/只读时 TEMP 不可写会炸依赖它的进程（MiMo SQLite 迁移实测报
+REM 「unable to open database file」）。写探针失败就回退系统 TEMP，别硬用坏路径。
+echo.>"%TEMP%\.uclaw-write-test" 2>nul
+if not exist "%TEMP%\.uclaw-write-test" (
+  set "TEMP=%LOCALAPPDATA%\Temp"
+  set "TMP=%TEMP%"
+) else (
+  del "%TEMP%\.uclaw-write-test" >nul 2>&1
+)
 
 if not exist "%STATE_DIR%\openclaw.json" (
     (echo {"gateway":{"mode":"local","auth":{"token":"uclaw"}}})>"%STATE_DIR%\openclaw.json"
