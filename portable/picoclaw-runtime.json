@@ -1,0 +1,22 @@
+{
+  "name": "picoclaw",
+  "description": "U-Claw Lite kernel: frozen third-party PicoClaw Go binary (MIT).",
+  "version": "v0.3.1",
+  "upstream_commit": "2cf030d2fd3b871d7ec17e3be34c24688aac76da",
+  "license": "MIT",
+  "license_notice": "Copyright (c) 2026 PicoClaw contributors",
+  "upstream": "https://github.com/sipeed/picoclaw",
+  "platform": "windows-x64",
+  "asset_url": "https://github.com/sipeed/picoclaw/releases/download/v0.3.1/picoclaw_Windows_x86_64.zip",
+  "asset_size": 22385616,
+  "sha256": "c76e4b9f3f95137b8cb58229e756538b12ed0fee0e4301a01b531626bf740af1",
+  "binary_sha256": "f939c001c729e6e326a99f154f376816ac12a79cb70968f882b3ee287f45119e",
+  "binary_size": 37733376,
+  "install_dir": "app/picoclaw",
+  "binary": "picoclaw.exe",
+  "notes": [
+    "sha256 covers the release zip; binary_sha256 covers the extracted picoclaw.exe. Both are verified by setup.ps1 without executing the binary.",
+    "Version freeze: bumping a version requires re-verifying both hashes from the upstream release; never edit hashes by hand.",
+    "Windows x64 only; see CONTRIBUTING.md scope for what is not supported now."
+  ]
+}

@@ -31,7 +31,7 @@ export function createServerSandbox() {
   const serverJs = join(serverDir, 'server.js');
   copyFileSync(join(portableRoot, 'config-server', 'server.js'), serverJs);
   for (const name of ['merge-config.mjs', 'wallet-client.mjs', 'uclaw-cloud-endpoints.mjs',
-    'official-provider-guard.mjs', 'strip-provider-env.mjs', 'portable-instance-lock.mjs', 'loading.html']) {
+    'official-provider-guard.mjs', 'strip-provider-env.mjs', 'portable-instance-lock.mjs', 'loading.html', 'picoclaw-config.mjs', 'core-mode.mjs']) {
     copyFileSync(join(portableRoot, 'lib', name), join(libDir, name));
   }
   writeFileSync(join(serverDir, 'public', 'index.html'), '<html>fixture config center</html>');

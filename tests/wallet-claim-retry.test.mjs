@@ -114,12 +114,50 @@ test('already-synced claim preserves custom cloud models, primary and config byt
   };
   config.agents.defaults.model.primary = `${CLOUD_PROVIDER_ID}/chosen-model`;
   saveConfig(f, config);
+  // 两核都已同步：Lite 侧也写入同一把 key（否则 claim 会正确地触发 Lite 修复重写）。
+  const picoHome = join(f.configDir, 'picoclaw');
+  const { writePicoclawWalletConfig } = await import('../portable/lib/picoclaw-config.mjs');
+  writePicoclawWalletConfig({ picoHome, apiKey });
+  const picoSecBefore = readFileSync(join(picoHome, '.security.yml'), 'utf8');
   const before = readFileSync(f.configPath, 'utf8');
   const result = await claimWallet(f.deps);
   assert.deepEqual(result, { ok: true, apiKey, walletId, alreadyClaimed: true });
   assert.equal(readFileSync(f.configPath, 'utf8'), before);
+  assert.equal(readFileSync(join(picoHome, '.security.yml'), 'utf8'), picoSecBefore, 'Lite 侧字节也不变');
   assert.equal(existsSync(f.configPath + '.bak'), false, 'no redundant write or backup');
   assert.deepEqual(f.calls, []);
+});
+
+test('already-synced claim with matching key but stale Lite copy repairs via re-apply (both cores)', async (t) => {
+  // 两核双写判定：OpenClaw provider key 一致但 PicoClaw .security.yml 缺失/旧 key 时，
+  // claim 修复按计划走「发现不一致 → 重新 applyKey（双写）」。用户主模型归属
+  // （deepseek/custom）不能被抢——「空位才占」语义在修复路径同样生效。
+  const f = fixture(t);
+  await f.deps.store.set(walletState);
+  const config = existingConfig();
+  config.models.providers[CLOUD_PROVIDER_ID] = { apiKey, baseUrl: 'https://custom.invalid/v1' };
+  config.agents.defaults.model.primary = 'deepseek/custom';
+  saveConfig(f, config);
+
+  const result = await claimWallet(f.deps);
+  assert.deepEqual(result, { ok: true, apiKey, walletId, alreadyClaimed: true });
+
+  const saved = JSON.parse(readFileSync(f.configPath, 'utf8'));
+  assert.equal(saved.models.providers[CLOUD_PROVIDER_ID]?.apiKey, apiKey);
+  assert.equal(saved.agents.defaults.model.primary, 'deepseek/custom', '修复不得抢用户主模型');
+  for (const key of ['gateway', 'agents', 'channels', 'plugins']) {
+    assert.deepEqual(saved[key], existingConfig()[key], `${key} must survive repair`);
+  }
+
+  const picoHome = join(f.configDir, 'picoclaw');
+  const sec = readFileSync(join(picoHome, '.security.yml'), 'utf8');
+  assert.match(sec, /^model_list:\n/m, 'Lite 侧应补写真实 schema');
+  assert.ok(sec.includes(apiKey), 'Lite 侧应有同一把 key');
+  const cfg = JSON.parse(readFileSync(join(picoHome, 'config.json'), 'utf8'));
+  assert.equal(cfg.model_list[0].model_name, 'xiapan-v4-flash');
+  assert.equal(cfg.model_list[0].provider, 'deepseek');
+  assert.ok(!JSON.stringify(cfg).includes(apiKey), 'config.json 不含明文 key');
+  assert.deepEqual(f.calls, [], '修复不需要网络');
 });
 
 for (const pendingKind of ['future-operation', 'rotate']) {
