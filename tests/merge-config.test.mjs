@@ -342,3 +342,280 @@ test('saveConfigMerged: 端到端——渠道页 GET→加 channels→POST，cha
     assert.deepEqual(afterModelSave.plugins, disk.plugins);
   });
 });
+
+// ── keepProviders：别的写入方（虾盘云钱包的 uclaw-cloud）活过配置中心保存 ─────────
+//
+// 配置中心 buildConfig() 一次只提交选中的那个 provider，而 models 是受管字段、整体替换：
+// 领取钱包后再存一次 DeepSeek，磁盘上的 uclaw-cloud 就被冲掉，已付费额度从配置里不可达。
+// server.js 的 POST /api/config 传 { keepProviders: ['uclaw-cloud'] } 把它补回来；
+// 不传该选项的调用方（钱包 removeKey()）行为不变，仍可删掉它。
+
+function walletProvider() {
+  return {
+    baseUrl: 'https://api.u-claw.org/v1',
+    apiKey: 'sk-wallet-original',
+    api: 'openai-completions',
+    models: [{ id: 'deepseek-v4-flash', name: 'deepseek-v4-flash', reasoning: false }],
+  };
+}
+
+function walletDisk() {
+  return {
+    models: {
+      mode: 'merge',
+      providers: { 'uclaw-cloud': walletProvider(), staleOne: { baseUrl: 'https://stale' } },
+    },
+    agents: { defaults: { model: { primary: 'uclaw-cloud/deepseek-v4-flash' } } },
+  };
+}
+
+// 配置中心 buildConfig('deepseek', ...) 的形状：只带选中的 provider + 它自己的主模型。
+function deepseekSave() {
+  return {
+    gateway: { mode: 'local', auth: { mode: 'token', token: 'uclaw' }, remote: { token: 'uclaw' } },
+    commands: { native: 'auto', nativeSkills: 'auto', restart: true },
+    models: {
+      mode: 'merge',
+      providers: {
+        deepseek: {
+          baseUrl: 'https://api.deepseek.com/v1',
+          apiKey: { source: 'store', provider: 'default', id: 'UCLAW_MODEL_DEEPSEEK' },
+          api: 'openai-completions',
+          models: [{ id: 'deepseek-v4-flash', name: 'deepseek-v4-flash' }],
+        },
+      },
+    },
+    agents: { defaults: { model: { primary: 'deepseek/deepseek-v4-flash' } } },
+  };
+}
+
+test('mergeConfig(keepProviders): 请求没点名 uclaw-cloud 时磁盘条目被补回，请求自己的 provider 与主模型照常生效', () => {
+  const existing = walletDisk();
+  const incoming = deepseekSave();
+
+  const merged = mergeConfig(existing, incoming, { keepProviders: ['uclaw-cloud'] });
+
+  assert.deepEqual(Object.keys(merged.models.providers).sort(), ['deepseek', 'uclaw-cloud']);
+  assert.deepEqual(merged.models.providers['uclaw-cloud'], walletProvider(), '磁盘上的钱包 provider 必须原样补回（含原 apiKey）');
+  assert.deepEqual(merged.models.providers.deepseek, incoming.models.providers.deepseek, '请求自己的 provider 以请求为准');
+  assert.ok(!('staleOne' in merged.models.providers), '没被 keep 的磁盘 provider 仍按整体替换被删掉（#58 语义）');
+  assert.equal(merged.models.mode, 'merge');
+  assert.deepEqual(merged.agents, incoming.agents, '主模型以请求为准，不被 keepProviders 改写');
+});
+
+test('mergeConfig(keepProviders): 请求点名了 uclaw-cloud 时以请求为准，不用磁盘版本覆盖', () => {
+  const existing = walletDisk();
+  const incoming = deepseekSave();
+  const ref = { source: 'store', provider: 'default', id: 'UCLAW_MODEL_UCLAW_CLOUD' };
+  incoming.models.providers['uclaw-cloud'] = { baseUrl: 'https://api.u-claw.org/v1', apiKey: ref, api: 'openai-completions', models: [] };
+
+  const merged = mergeConfig(existing, incoming, { keepProviders: ['uclaw-cloud'] });
+
+  assert.deepEqual(merged.models.providers['uclaw-cloud'], incoming.models.providers['uclaw-cloud']);
+  assert.deepEqual(merged.models.providers['uclaw-cloud'].apiKey, ref, '请求里的新 key 必须胜出');
+});
+
+test('mergeConfig: 不传 keepProviders 时行为不变——请求没带的 uclaw-cloud 照样被删（#58 删除语义守卫）', () => {
+  const incoming = deepseekSave();
+  for (const options of [undefined, {}, { keepProviders: [] }, { keepProviders: 'uclaw-cloud' }, null]) {
+    const merged = mergeConfig(walletDisk(), incoming, options);
+    assert.ok(!('uclaw-cloud' in merged.models.providers), `options=${JSON.stringify(options)} 时 uclaw-cloud 应被删除`);
+    assert.deepEqual(merged.models, incoming.models);
+  }
+});
+
+test('mergeConfig(keepProviders): 请求根本没带 models（或 models.providers 不是对象）时不复活任何东西', () => {
+  const existing = walletDisk();
+  const keep = { keepProviders: ['uclaw-cloud'] };
+
+  const noModels = mergeConfig(existing, { agents: { defaults: { model: { primary: 'x/y' } } } }, keep);
+  assert.ok(!('models' in noModels), '没带 models 仍按"未带视为清空"处理，不能借 keepProviders 救活整段 models');
+
+  const noProviders = mergeConfig(existing, { models: { mode: 'merge' } }, keep);
+  assert.deepEqual(noProviders.models, { mode: 'merge' });
+
+  for (const bad of [null, 'x', ['uclaw-cloud'], 42]) {
+    const merged = mergeConfig(existing, { models: { mode: 'merge', providers: bad } }, keep);
+    assert.deepEqual(merged.models, { mode: 'merge', providers: bad }, `providers=${JSON.stringify(bad)} 时原样交给请求，不补回`);
+  }
+
+  const badModels = mergeConfig(existing, { models: 'oops' }, keep);
+  assert.equal(badModels.models, 'oops');
+});
+
+test('mergeConfig(keepProviders): 磁盘上没有该条目 / 不是对象 / keepProviders 含脏值时，什么都不补', () => {
+  const incoming = deepseekSave();
+  const keep = { keepProviders: ['uclaw-cloud', 42, null, '__proto__', 'toString'] };
+
+  const noDisk = mergeConfig({}, incoming, keep);
+  assert.deepEqual(noDisk.models, incoming.models);
+
+  const brokenDisk = mergeConfig({ models: { providers: { 'uclaw-cloud': 'sk-oops' } } }, incoming, keep);
+  assert.deepEqual(brokenDisk.models, incoming.models, '磁盘条目不是对象不补回');
+
+  const arrayDisk = mergeConfig({ models: { providers: ['uclaw-cloud'] } }, incoming, keep);
+  assert.deepEqual(arrayDisk.models, incoming.models);
+});
+
+test('mergeConfig(keepProviders): 不改动入参，补回的条目是拷贝', () => {
+  const existing = walletDisk();
+  const incoming = deepseekSave();
+  const options = { keepProviders: ['uclaw-cloud'] };
+  const snapshots = [existing, incoming, options].map((v) => JSON.parse(JSON.stringify(v)));
+
+  const merged = mergeConfig(existing, incoming, options);
+
+  assert.deepEqual([existing, incoming, options], snapshots, 'existing / incoming / options 都不应被改动');
+  assert.notEqual(merged.models.providers, incoming.models.providers, '必须新建 providers 对象，不能往请求的对象里塞');
+  assert.ok(!('uclaw-cloud' in incoming.models.providers));
+  assert.notEqual(merged.models.providers['uclaw-cloud'], existing.models.providers['uclaw-cloud'], '补回的是拷贝，不与磁盘对象共享引用');
+
+  // 之后在 merged 上原地改（server.js 的 provider 守卫就会这么做）不能回写到 existing。
+  merged.models.providers['uclaw-cloud'].apiKey = 'mutated';
+  assert.equal(existing.models.providers['uclaw-cloud'].apiKey, 'sk-wallet-original');
+});
+
+test('saveConfigMerged: options.keepProviders 透传——uclaw-cloud 落盘保留；不传则被删（removeKey 仍可删）', () => {
+  withTempDir((dir) => {
+    const p = join(dir, 'openclaw.json');
+    writeFileSync(p, JSON.stringify(walletDisk()));
+
+    const kept = saveConfigMerged(p, deepseekSave(), { keepProviders: ['uclaw-cloud'] });
+    const onDisk = JSON.parse(readFileSync(p, 'utf8'));
+    assert.deepEqual(onDisk, kept);
+    assert.deepEqual(Object.keys(onDisk.models.providers).sort(), ['deepseek', 'uclaw-cloud']);
+    assert.equal(onDisk.models.providers['uclaw-cloud'].apiKey, 'sk-wallet-original');
+    assert.equal(onDisk.agents.defaults.model.primary, 'deepseek/deepseek-v4-flash');
+
+    // 不带选项（wallet-client.removeKey() 走的路径）：请求里没有 uclaw-cloud，就是要删掉它。
+    saveConfigMerged(p, deepseekSave());
+    const afterRemove = JSON.parse(readFileSync(p, 'utf8'));
+    assert.deepEqual(Object.keys(afterRemove.models.providers), ['deepseek']);
+  });
+});
+
+// ── preserveAdvanced：配置中心保存模型时不冲掉原生高级设置（本批新选项） ─────────
+//
+// 只在 POST /api/config 传；不改变默认"未带受管字段 = 清空"的删除语义（上面的用例已守卫）。
+// 已知层级的少量合并：agents.list/defaults.workspace/tools、gateway.auth/remote 未知子字段、
+// commands 未知项、未提交的 meta/env/models 保留；请求明确带的字段生效。
+
+function advancedDisk() {
+  return {
+    gateway: {
+      mode: 'local',
+      auth: { mode: 'token', token: 'uclaw', advancedAuthFlag: 'keep-me' },
+      remote: { token: 'uclaw', remoteKeep: 42 },
+      customGatewayKey: 'keep-me-too',
+    },
+    commands: { native: 'auto', nativeSkills: 'auto', restart: true, myCustomCommand: { id: 'x' } },
+    meta: { ui: { theme: 'dark' } },
+    env: { MY_ENV: 'keep' },
+    models: {
+      mode: 'merge',
+      providers: { 'uclaw-cloud': { baseUrl: 'https://api.u-claw.org/v1', apiKey: 'sk-wallet', api: 'openai-completions', models: [] } },
+    },
+    agents: {
+      list: [{ id: 'agent-a', name: 'A' }],
+      defaults: {
+        workspace: { cwd: '/keep/workspace' },
+        tools: { allow: ['read', 'write'] },
+        model: { primary: 'uclaw-cloud/deepseek-v4-flash', fallbacks: ['uclaw-cloud/other'] },
+      },
+    },
+    plugins: { entries: { 'openclaw-weixin': { enabled: true } } },
+    channels: { telegram: { enabled: true } },
+    cron: { jobs: [{ id: 'j1' }] },
+    browser: { profiles: { openclaw: { userDataDir: 'D:/keep' } } },
+  };
+}
+
+function configCenterSave() {
+  // 配置中心 buildConfig() 的形状：模型 + 主模型 + 受控 gateway/commands。
+  return {
+    gateway: {
+      mode: 'local',
+      auth: { mode: 'token', token: 'uclaw' },
+      remote: { token: 'uclaw' },
+    },
+    commands: { native: 'auto', nativeSkills: 'auto', restart: true },
+    models: {
+      mode: 'merge',
+      providers: {
+        deepseek: {
+          baseUrl: 'https://api.deepseek.com/v1',
+          apiKey: { source: 'store', provider: 'default', id: 'UCLAW_MODEL_DEEPSEEK' },
+          api: 'openai-completions',
+          models: [{ id: 'deepseek-v4-flash', name: 'deepseek-v4-flash' }],
+        },
+      },
+    },
+    agents: { defaults: { model: { primary: 'deepseek/deepseek-v4-flash' } } },
+  };
+}
+
+test('mergeConfig(preserveAdvanced): 高级 agents/gateway/commands/meta/env/plugins/channels/cron/browser 保留，primary 与新 provider 生效', () => {
+  const existing = advancedDisk();
+  const incoming = configCenterSave();
+  const snapshots = [existing, incoming].map((v) => JSON.parse(JSON.stringify(v)));
+
+  const merged = mergeConfig(existing, incoming, { keepProviders: ['uclaw-cloud'], preserveAdvanced: true });
+
+  assert.deepEqual([existing, incoming], snapshots, '入参不得被改动');
+
+  assert.equal(merged.agents.defaults.model.primary, 'deepseek/deepseek-v4-flash', '主模型以请求为准');
+  assert.deepEqual(merged.agents.defaults.model.fallbacks, ['uclaw-cloud/other'], 'fallbacks 保留');
+  assert.deepEqual(merged.agents.list, [{ id: 'agent-a', name: 'A' }], 'agents.list 保留');
+  assert.deepEqual(merged.agents.defaults.workspace, { cwd: '/keep/workspace' });
+  assert.deepEqual(merged.agents.defaults.tools, { allow: ['read', 'write'] });
+
+  assert.equal(merged.gateway.auth.advancedAuthFlag, 'keep-me', 'gateway.auth 未知子字段保留');
+  assert.equal(merged.gateway.auth.token, 'uclaw');
+  assert.equal(merged.gateway.remote.remoteKeep, 42);
+  assert.equal(merged.gateway.customGatewayKey, 'keep-me-too');
+
+  assert.deepEqual(merged.commands.myCustomCommand, { id: 'x' }, 'commands 未知项保留');
+  assert.deepEqual(merged.meta, { ui: { theme: 'dark' } }, '未提交 meta 保留');
+  assert.deepEqual(merged.env, { MY_ENV: 'keep' }, '未提交 env 保留');
+
+  assert.deepEqual(Object.keys(merged.models.providers).sort(), ['deepseek', 'uclaw-cloud']);
+  assert.equal(merged.models.providers['uclaw-cloud'].apiKey, 'sk-wallet');
+
+  assert.deepEqual(merged.plugins, existing.plugins, '非受管字段照常保留');
+  assert.deepEqual(merged.channels, existing.channels);
+  assert.deepEqual(merged.cron, existing.cron);
+  assert.deepEqual(merged.browser, existing.browser);
+});
+
+test('mergeConfig(preserveAdvanced): 请求带了的字段仍整体生效；不传选项时高级字段按默认语义被清空', () => {
+  const existing = advancedDisk();
+  const incoming = configCenterSave();
+  incoming.agents.list = [{ id: 'new-agent' }];
+  incoming.agents.defaults.model.fallbacks = [];
+  incoming.env = { NEW_ENV: '1' };
+  incoming.meta = { fresh: true };
+
+  const merged = mergeConfig(existing, incoming, { keepProviders: ['uclaw-cloud'], preserveAdvanced: true });
+  assert.deepEqual(merged.agents.list, [{ id: 'new-agent' }], '请求明确带的字段胜出');
+  assert.deepEqual(merged.agents.defaults.model.fallbacks, [], '请求明确带的 fallbacks 生效');
+  assert.deepEqual(merged.env, { NEW_ENV: '1' }, '提交了 env 就替换');
+  assert.deepEqual(merged.meta, { fresh: true }, '提交了 meta 就替换');
+
+  // 默认（不传 preserveAdvanced）：请求没带的受管字段照旧清空（删除语义不变）。
+  const plain = mergeConfig(advancedDisk(), configCenterSave());
+  assert.ok(!('meta' in plain), '默认：未带 meta 清空');
+  assert.ok(!('env' in plain), '默认：未带 env 清空');
+  assert.deepEqual(plain.agents, configCenterSave().agents, '默认：agents 整体替换');
+  assert.equal(plain.gateway.auth.advancedAuthFlag, undefined, '默认：gateway 整体替换');
+  assert.equal(plain.commands.myCustomCommand, undefined);
+});
+
+test('mergeConfig(preserveAdvanced): 未带 models 仍保留磁盘 models（只在本选项下），钱包不被误清', () => {
+  const existing = advancedDisk();
+  const noModels = { agents: { defaults: { model: { primary: 'x/y' } } } };
+  const merged = mergeConfig(existing, noModels, { keepProviders: ['uclaw-cloud'], preserveAdvanced: true });
+  assert.equal(merged.models.providers['uclaw-cloud'].apiKey, 'sk-wallet', 'preserveAdvanced 下未带 models 不清空');
+  assert.equal(merged.agents.defaults.model.primary, 'x/y');
+  // 同一请求不带选项：仍是"未带视为清空"。
+  assert.ok(!('models' in mergeConfig(existing, noModels)));
+});

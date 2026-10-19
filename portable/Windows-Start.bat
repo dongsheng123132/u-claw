@@ -39,7 +39,7 @@ if not exist "%NODE_BIN%" (
     call "%UCLAW_DIR%setup.bat"
     if not exist "%NODE_BIN%" (
         echo   [ERROR] Setup finished but runtime still missing: %NODE_BIN%
-        echo   Retry manually: setup.bat   Logs: data\logs\
+        echo   Retry manually: setup.bat
         pause
         exit /b 1
     )
@@ -65,7 +65,6 @@ if not exist "%DATA_DIR%" mkdir "%DATA_DIR%"
 if not exist "%STATE_DIR%" mkdir "%STATE_DIR%"
 if not exist "%DATA_DIR%\memory" mkdir "%DATA_DIR%\memory"
 if not exist "%DATA_DIR%\backups" mkdir "%DATA_DIR%\backups"
-if not exist "%DATA_DIR%\logs" mkdir "%DATA_DIR%\logs"
 
 REM Strip host-machine provider credential variables before starting the gateway.
 REM If the PC happens to have DASHSCOPE_API_KEY etc. set, OpenClaw treats that
@@ -82,8 +81,6 @@ if defined UCLAW_STRIP_ENV (
     echo   Stripped host provider env vars: %UCLAW_STRIP_ENV%
 )
 
-if defined NODE_COMPILE_CACHE echo   Cache on local disk: %UCLAW_CACHE_ROOT%
-
 REM Default config (migrate legacy if present, otherwise create)
 if not exist "%STATE_DIR%\openclaw.json" (
     if exist "%DATA_DIR%\config.json" (
@@ -98,16 +95,18 @@ if not exist "%STATE_DIR%\openclaw.json" (
     echo.
 )
 
-REM Startup cache acceleration. Session/identity/state stay portable on USB;
-REM only the patched OpenClaw managed Chromium directory uses the local disk.
-REM Do not inherit a browser root from the calling shell.
+REM Startup cache acceleration via the shared resolver helper (lib\portable-cache-env.bat).
+REM Session/identity/state stay portable on USB; compile/npm/temp/log/browser dirs are local.
+REM The helper clears any inherited browser root itself; no local cache = hard stop.
 set "OPENCLAW_MANAGED_BROWSER_DIR="
-for /f "usebackq tokens=1,* delims==" %%a in (`""%NODE_BIN%" "%UCLAW_DIR%lib\portable-cache.mjs" "%STATE_DIR%" "%UCLAW_DIR%" 2^>nul"`) do (
-    if "%%a"=="UCLAW_COMPILE_CACHE_DIR" set "NODE_COMPILE_CACHE=%%b"
-    if "%%a"=="UCLAW_CACHE_ROOT" set "UCLAW_CACHE_ROOT=%%b"
-    if "%%a"=="UCLAW_MANAGED_BROWSER_DIR" set "OPENCLAW_MANAGED_BROWSER_DIR=%%b"
+call "%UCLAW_DIR%lib\portable-cache-env.bat" "%STATE_DIR%" "%UCLAW_DIR%"
+if errorlevel 1 (
+    echo   [ERROR] No writable local cache directory on this PC.
+    echo   U-Claw will not write cache to the portable drive. Fix disk space or permissions and start again.
+    pause
+    exit /b 1
 )
-if defined NODE_COMPILE_CACHE echo   Cache on local disk: %UCLAW_CACHE_ROOT%
+if defined UCLAW_CACHE_ROOT echo   Cache on local disk: %UCLAW_CACHE_ROOT%
 
 REM Launcher-level single-instance guard. OpenClaw's own lock is created too late:
 REM a second double-click otherwise picks another port and writes the same USB state.
@@ -157,8 +156,7 @@ if not exist "%CORE_DIR%\node_modules" (
     echo   File system: NTFS recommended. exFAT/FAT32 will be very slow.
     echo.
     cd /d "%CORE_DIR%"
-    REM Keep npm cache inside the portable app instead of system APPDATA.
-    set "npm_config_cache=%APP_DIR%\.npm-cache"
+    REM npm cache comes from portable-cache-env.bat (local disk), never on the portable drive.
     call "%NPM_BIN%" install --registry=https://registry.npmmirror.com --ignore-scripts --no-audit --no-fund --omit=dev
     echo.
     echo   Dependencies installed!
@@ -179,16 +177,8 @@ if defined NO_PROXY (
     echo   Direct-connect via NO_PROXY: %NO_PROXY%
 )
 
-REM Async update check (non-blocking, 5s timeout, silent failure)
-REM Writes data\.openclaw\update-available.json if a newer version is on OSS.
-REM config-server serves this file via GET /api/update-status for the desktop shell.
-REM Version file lookup order: portable/OPENCLAW_VERSION (USB), then repo-root ../OPENCLAW_VERSION (dev)
-set "VERSION_FILE=%UCLAW_DIR%OPENCLAW_VERSION"
-if not exist "%VERSION_FILE%" set "VERSION_FILE=%UCLAW_DIR%..\OPENCLAW_VERSION"
-if exist "%VERSION_FILE%" (
-    start /B "" "%NODE_BIN%" "%UCLAW_DIR%lib\check-update.mjs" "%VERSION_FILE%" "%STATE_DIR%" >nul 2>&1
-)
-
+REM Update check on startup is retired: no stale manifest reads, no OSS requests.
+REM Upgrades ship as a verified stable bundle; users open the release page manually.
 
 REM The WeChat plugin is not staged at startup; Config Center no longer offers WeChat or channel setup.
 
@@ -254,7 +244,7 @@ REM returning users who had already picked a model -- that's the "every time
 REM I start it a config page pops up" complaint. Real intended design (see
 REM repo CLAUDE.md): first run (no model configured) opens Config Center;
 REM configured runs only open the Dashboard. Config Center is still reachable
-REM any time via Windows-Menu.bat -- this only changes what auto-opens here.
+REM any time via Windows-Maintain.bat -- this only changes what auto-opens here.
 REM Silent-fail helper: any read/parse error is treated as "not configured",
 REM so at worst users see one extra Config Center tab, never zero.
 set "MODEL_CONFIGURED=0"
@@ -286,6 +276,7 @@ start /B "" "%NODE_BIN%" "%UCLAW_DIR%lib\prewarm.mjs" %PORT% uclaw >nul 2>&1
 echo.
 echo   ========================================
 echo   Starting OpenClaw Gateway on port %PORT%...
+echo   Model/wallet settings: run Windows-Maintain.bat
 echo   First run on a USB drive may take several minutes
 echo   (unpacking bundled components). Please wait;
 echo   Model configuration is complete. Waiting for Gateway readiness.

@@ -33,6 +33,16 @@
 - **现在不做**（有真实用户持续在要再说）：配置中心里同时管理多个模型服务（#61、#23）；cc switch（#63）。
 - **新功能三问**（三个都答得上才提）：现在有真实用户在要吗？能不能用现有核心表达，而不是新开一块？坏了怎么发现、谁来修？
 
+### 便携版减法与磁盘边界（2026-10-19）
+
+- 双击 Start 是主路径：首次配置模型，保存后等待网关真正就绪再在同一页进入 WebUI；已配置直接进入 WebUI。设置入口必须始终可找回；维护入口只负责诊断、日志、备份恢复和原生 CLI，不再提供第二套网关启动、渠道向导、工厂重置、泛化清理或按端口杀进程。
+- 保留虾盘云设备钱包和自填 Key / 更换模型。钱包不是激活门禁；切换模型不能删除钱包 provider，也不能在启动时重写用户的模型、渠道、Agent 和插件配置。钱包凭证及余额归属继续沿用现有服务端协议，不由硬件指纹派生密钥。
+- 删除随盘 `skills-cn/` 附加内容和重复页面，保留 OpenClaw 原生技能、文件/工具调用、浏览器、定时任务、多 Agent 与多模态接入机制；高级能力按上游原生方式使用，不新增 U-Claw 管理台，也不以修改上游打包 JS 的方式隐藏菜单。安全鉴权与设备配对不得因减法移除。
+- Node 编译缓存、npm 缓存、受管浏览器 profile、临时文件和运行日志放宿主机本地硬盘，按便携实例隔离；本机首选目录失败时尝试其他本机目录，不静默回落到 U 盘频繁写。浏览器 profile 含本机登录态，不承诺随盘迁移。配置、钱包/密钥存储、会话、记忆与用户文件仍随盘，不把整个 STATE_DIR 搬到本机。
+- 不自动追随上游、不在启动时请求失效的更新清单；升级以经过验证的稳定整包为单位，保留手动查看发行页入口。
+- 本机缓存候选目录全都不可写时，进入本地 WebUI 的启动、CLI 和体检工具明确告警并退出，不静默把浏览器/临时高频数据写回 U 盘；诊断仍可给出该错误。浏览器 profile 含本机登录态，不承诺随盘迁移。
+- 验收除首启对话外，须覆盖换模型后钱包和高级配置保留、日志/缓存实际落本机、重复启动、故障恢复和旧漏洞回归；发布前分别在干净 Windows + exFAT U 盘、macOS 上验对应路径。开发机测试不等于这些真机验收。
+
 已移出的功能（聊天渠道入口、微信扫码、Config.html 等旧页面、SkillHub、Electron 桌面版、本地模型发现、Linux 可启动盘）可从 tag `archive/pre-scope-razor-2026-10-05` 找回；Linux 可启动盘在独立仓库 [u-claw-linux](https://github.com/dongsheng123132/u-claw-linux) 继续维护。
 
 ## 开发环境
@@ -97,7 +107,7 @@ bash Mac-Start.command           # macOS 启动
 fix(portable): node-extract path missing intermediate dir
 fix(install.sh): npm wrapper不能用 node 直接执行
 docs: 补充 Windows 11 ARM64 支持说明
-feat(skills-cn): 增加 douyin-script 技能
+feat(portable): 维护菜单增加备份入口
 ```
 
 不接受："update"、"fix"、"修改若干文件" 这种。
@@ -136,12 +146,6 @@ git push origin fix/install-sh-npm-path
 - 全部走 npmmirror.com 镜像，不能假设用户能访问 GitHub/npm 官方
 - 安装目录固定为 `~/.uclaw/`（Mac/Linux）或 `%USERPROFILE%\.uclaw\`（Windows）
 - 启动脚本要找空闲端口（18789-18799），不要写死
-
-### `skills-cn/`
-
-- 技能格式是 `<skill-name>/SKILL.md`，frontmatter 里有 `name`、`description`、`metadata`
-- 技能内容用中文写，给中国用户看
-- 提交新技能前先看现有技能（小红书/微博/B 站等）的写法
 
 ## 行为准则
 

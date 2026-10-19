@@ -62,11 +62,14 @@ export async function upgradeSessionSchema(root, doctor = runDoctor) {
     finally { db.close(); }
   }
   await writeFile(join(backupDir, 'manifest.json'), JSON.stringify({config:'openclaw.json',databases:files.map((file,index)=>({original:file,backup:`database-${index}.sqlite`}))}, null, 2));
-  const logs = join(root, 'data/logs');
+  // 日志目录跟缓存 helper 走：入口经 portable-cache-env 导出 UCLAW_LOG_DIR 时落本机日志
+  // 目录，不再写 data/logs；独立调用未导出时保持旧路径（兼容既有测试与手动排障）。
+  const logs = (process.env.UCLAW_LOG_DIR && process.env.UCLAW_LOG_DIR.trim()) || join(root, 'data/logs');
+  const logFile = join(logs, 'session-upgrade.log');
   await mkdir(logs, { recursive: true });
   console.log(`Upgrading saved sessions for OpenClaw 2026.10.2. This can take several minutes. Backup: ${backupDir}`);
-  await doctor(root, join(logs, 'session-upgrade.log'));
-  if ((await inspectAgentSchemas(state)).some(item => item.version < SCHEMA_VERSION)) throw new Error('Session upgrade incomplete. See data/logs/session-upgrade.log; your pre-upgrade backup has been retained.');
+  await doctor(root, logFile);
+  if ((await inspectAgentSchemas(state)).some(item => item.version < SCHEMA_VERSION)) throw new Error(`Session upgrade incomplete. See ${logFile}; your pre-upgrade backup has been retained.`);
   return { upgraded: true, backupDir };
 }
 

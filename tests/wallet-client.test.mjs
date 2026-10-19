@@ -396,7 +396,8 @@ test('applyKey 写入的模型集合必须等于 models.json 单一真相源（�
     const merged = applyKey(configPath, 'sk-drift...test');
     const written = merged.models.providers[CLOUD_PROVIDER_ID].models.map((m) => m.id);
 
-    const catalog = JSON.parse(readFileSync(join(process.cwd(), 'portable', 'models.json'), 'utf8'));
+    const catalogPath = new URL('../portable/models.json', import.meta.url);
+    const catalog = JSON.parse(readFileSync(catalogPath, 'utf8'));
     const entry = catalog.providers.find((p) => p.id === CLOUD_PROVIDER_ID);
     const expected = Array.from(new Set([entry.model, ...(entry.models || [])]));
 

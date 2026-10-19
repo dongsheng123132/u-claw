@@ -21,6 +21,21 @@
 //     不能放进 MANAGED_TOP_LEVEL_KEYS，否则"没带=清空"。
 //   - 其余所有顶层字段（plugins、以及任何未来出现的未知字段）：UI 从不碰，就算请求体里出现
 //     也无视，一律原样保留磁盘上的版本。
+//   - models.providers 里"别的写入方"拥有的条目（options.keepProviders，目前只有虾盘云设备钱包
+//     写的 uclaw-cloud）：配置中心 buildConfig() 一次只带用户选中的那一个 provider，按上面
+//     "models 整体替换"保存会把已领取额度的凭据冲掉。调用方传 keepProviders=[id…] 后：请求带了
+//     models.providers 却没点名这些 id → 把磁盘上的条目原样补回；请求点名了 → 以请求为准；
+//     请求根本没带 models → 仍按"未带视为清空"。不传该选项则行为与上面完全一致（#58 的删除
+//     语义、钱包 removeKey() 删 uclaw-cloud 都靠这一点）。
+//   - options.preserveAdvanced（仅 POST /api/config 传，配置中心专用）：原生高级设置的保留，
+//     "未带受管字段 = 保留磁盘版本，带了 = 保留未知层级后按请求更新"：
+//       * agents：list、defaults.workspace/tools 等未知字段保留；defaults.model 里请求没带的
+//         字段（fallbacks 等）保留，请求带的 primary 生效；
+//       * gateway：磁盘上的未知字段（含 auth/remote 的未知子字段）在请求提交时一并保留；
+//       * commands：磁盘上的未知命令项在请求提交时保留；meta / env（以及其余受管字段）未带
+//         时保留，带了时整体替换。
+//     不传该选项 = 上面的默认"未带视为清空"完全不变（wallet removeKey 等调用方都不传，
+//     删除语义照旧）。这不是通用深合并框架，只处理上面这些已知层级。
 //
 // 别做无脑深合并：那会导致"用户在 UI 里删掉的东西被合并救回来"，一个 bug 换一个 bug。
 //
@@ -76,22 +91,95 @@ export function readConfigSafe(configPath) {
   }
 }
 
+// ── preserveAdvanced 的两段已知层级合并（配置中心专用，只做这两段，不做通用深合并） ──
+
+// gateway：请求提交时，磁盘上的未知字段保留；auth / remote 各自再保留未知子字段。
+function mergeGatewayAdvanced(existingGateway, incomingGateway) {
+  const base = isPlainObject(existingGateway) ? existingGateway : {};
+  const merged = { ...base, ...incomingGateway };
+  for (const key of ['auth', 'remote']) {
+    if (isPlainObject(base[key]) && isPlainObject(incomingGateway[key])) {
+      merged[key] = { ...base[key], ...incomingGateway[key] };
+    }
+  }
+  return merged;
+}
+
+// agents：磁盘上的未知顶层字段（list 等）保留；defaults 里的未知字段（workspace/tools 等）
+// 保留；defaults.model 逐字段合并——请求带的 primary 生效，请求没带的（fallbacks 等）保留。
+function mergeAgentsAdvanced(existingAgents, incomingAgents) {
+  const base = isPlainObject(existingAgents) ? existingAgents : {};
+  const merged = { ...base };
+  for (const [key, value] of Object.entries(incomingAgents)) {
+    if (key === 'defaults' && isPlainObject(value)) {
+      const baseDefaults = isPlainObject(base.defaults) ? base.defaults : {};
+      const defaults = { ...baseDefaults };
+      for (const [dk, dv] of Object.entries(value)) {
+        if (dk === 'model' && isPlainObject(dv)) {
+          const baseModel = isPlainObject(baseDefaults.model) ? baseDefaults.model : {};
+          defaults.model = { ...baseModel, ...dv };
+        } else {
+          defaults[dk] = dv;
+        }
+      }
+      merged.defaults = defaults;
+    } else {
+      merged[key] = value;
+    }
+  }
+  return merged;
+}
+
 /**
  * 合并现有配置（磁盘上的）与本次请求（前端提交的），返回待写盘的新对象。
  * 见文件头注释：受管字段整体替换（支持删除），channels 带了才整体替换，其余字段原样保留磁盘版本。
+ *
+ * options.keepProviders：provider ID 数组（默认空）。请求带了 models.providers 但没点名的 ID，
+ * 若磁盘上有同名条目就原样补回（深拷贝，不改入参）；不传则与旧行为完全一致。
+ * options.preserveAdvanced：true 时受管字段"未带 = 保留磁盘版本，带了 = 保留未知层级后按请求
+ * 更新"（见文件头注释）；默认 false 保持"未带视为清空"的删除语义不变。
  */
-export function mergeConfig(existingConfig, incomingConfig) {
+export function mergeConfig(existingConfig, incomingConfig, options = {}) {
   const existing = isPlainObject(existingConfig) ? existingConfig : {};
   const incoming = isPlainObject(incomingConfig) ? incomingConfig : {};
+  const keepProviders = options && Array.isArray(options.keepProviders) ? options.keepProviders : [];
+  const preserveAdvanced = !!(options && options.preserveAdvanced === true);
 
   const merged = { ...existing };
 
   for (const key of MANAGED_TOP_LEVEL_KEYS) {
     if (Object.prototype.hasOwnProperty.call(incoming, key)) {
-      merged[key] = incoming[key];
-    } else if (key !== 'gateway') {
+      if (preserveAdvanced && key === 'gateway' && isPlainObject(incoming[key])) {
+        merged[key] = mergeGatewayAdvanced(existing[key], incoming[key]);
+      } else if (preserveAdvanced && key === 'agents' && isPlainObject(incoming[key])) {
+        merged[key] = mergeAgentsAdvanced(existing[key], incoming[key]);
+      } else if (preserveAdvanced && key === 'commands' && isPlainObject(incoming[key]) && isPlainObject(existing[key])) {
+        merged[key] = { ...existing[key], ...incoming[key] };
+      } else {
+        merged[key] = incoming[key];
+      }
+    } else if (!preserveAdvanced && key !== 'gateway') {
+      // 默认：未带受管字段视为清空；preserveAdvanced：未带 = 保留磁盘版本。
       delete merged[key];
     }
+  }
+
+  // 只有请求自己带了 models.providers 才补回：请求没带 models 时"未带视为清空"照旧，
+  // 不能借 keepProviders 把整段 models 救活。补回的条目放在请求自己的 provider 之后，
+  // 主模型（agents）一概不碰。
+  if (keepProviders.length && isPlainObject(incoming.models) && isPlainObject(incoming.models.providers)) {
+    const diskProviders = isPlainObject(existing.models) && isPlainObject(existing.models.providers)
+      ? existing.models.providers
+      : {};
+    let providers = null;
+    for (const id of keepProviders) {
+      if (typeof id !== 'string') continue;
+      if (!Object.prototype.hasOwnProperty.call(diskProviders, id) || !isPlainObject(diskProviders[id])) continue;
+      if (Object.prototype.hasOwnProperty.call(incoming.models.providers, id)) continue;
+      if (!providers) providers = { ...incoming.models.providers };
+      providers[id] = structuredClone(diskProviders[id]);
+    }
+    if (providers) merged.models = { ...incoming.models, providers };
   }
 
   if (!isPlainObject(merged.gateway)) {
@@ -147,10 +235,11 @@ export function writeConfigAtomic(configPath, config) {
 
 /**
  * 一步到位的便捷封装：读现有配置 → 合并 → 原子写回。给 server.js 的 POST /api/config 用。
+ * options 原样传给 mergeConfig（目前有 keepProviders / preserveAdvanced），默认不传＝旧行为。
  */
-export function saveConfigMerged(configPath, incomingConfig) {
+export function saveConfigMerged(configPath, incomingConfig, options = {}) {
   const existing = readConfigSafe(configPath);
-  const merged = mergeConfig(existing, incomingConfig);
+  const merged = mergeConfig(existing, incomingConfig, options);
   writeConfigAtomic(configPath, merged);
   return merged;
 }

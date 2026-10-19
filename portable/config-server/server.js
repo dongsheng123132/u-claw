@@ -3,6 +3,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { execFile } = require('child_process');
+const { createHash } = require('crypto');
 
 // config-server 段与 gateway 段（18789-18799，见 Windows-Start.bat / Mac-Start.command）
 // 曾经重叠（18788-18798 向上顺延会撞进 gateway 的地盘）。v2.2.1 起改为向下顺延，
@@ -189,8 +190,12 @@ const server = http.createServer((req, res) => {
         configServerPort = Number.isInteger(runtime.configServerPort) ? runtime.configServerPort : null;
       } catch (_) { /* 损坏的 runtime.json：当作没有 configServerPort，继续走 gatewayPort 的三级回退 */ }
       const gatewayPort = await gatewayPortFromRuntime();
+      // instanceId：本实例身份指纹 = sha256(path.resolve(OPENCLAW_STATE_DIR))。
+      // 与 lib/portable-maintenance.mjs 的 instanceIdOf() 同一算法——维护入口用它
+      // 核对"runtime.json 里的端口是不是当前这支 U 盘的 config server"，foreign/stale 不给 URL。
+      const instanceId = createHash('sha256').update(path.resolve(OPENCLAW_STATE_DIR)).digest('hex');
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ configServerPort, gatewayPort }));
+      res.end(JSON.stringify({ configServerPort, gatewayPort, instanceId }));
     })();
     return;
   }
@@ -263,47 +268,15 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // API: Update status — read update-available.json written by check-update.mjs
-  // Returns { available: false } if no info or stale; otherwise the manifest payload.
-  if (req.url === '/api/update-status' && req.method === 'GET') {
-    try {
-      const stateDir = process.env.OPENCLAW_STATE_DIR
-        || path.join(__dirname, '../data/.openclaw');
-      const updateFile = path.join(stateDir, 'update-available.json');
-      if (!fs.existsSync(updateFile)) {
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ available: false, reason: 'no-check-yet' }));
-        return;
-      }
-      const payload = JSON.parse(fs.readFileSync(updateFile, 'utf8'));
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify(payload));
-    } catch (err) {
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ available: false, reason: 'read-failed', error: err.message }));
-    }
-    return;
-  }
-
-  // API: Trigger update check on demand (so users can press a "Check now" button)
-  if (req.url === '/api/update-check' && req.method === 'POST') {
-    (async () => {
-      try {
-        const mod = await import('../lib/check-update.mjs');
-        const portableRoot = path.join(__dirname, '..');
-        const versionFilePath = fs.existsSync(path.join(portableRoot, 'OPENCLAW_VERSION'))
-          ? path.join(portableRoot, 'OPENCLAW_VERSION')
-          : path.join(portableRoot, '..', 'OPENCLAW_VERSION');
-        const stateDir = process.env.OPENCLAW_STATE_DIR
-          || path.join(portableRoot, 'data/.openclaw');
-        const result = await mod.checkUpdate({ versionFilePath, stateDir });
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify(result));
-      } catch (err) {
-        res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: err.message }));
-      }
-    })();
+  // 已退役的更新接口：兼容旧调用方，不读旧清单、不联网；升级走稳定整包发行页。
+  if ((req.url === '/api/update-status' && req.method === 'GET')
+      || (req.url === '/api/update-check' && req.method === 'POST')) {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      available: false,
+      supported: false,
+      releasePageUrl: 'https://github.com/dongsheng123132/u-claw/releases',
+    }));
     return;
   }
 
@@ -377,7 +350,16 @@ const server = http.createServer((req, res) => {
                 throw err;
               }
               const { readConfigSafe, mergeConfig, writeConfigAtomic } = await import('../lib/merge-config.mjs');
-          const merged = mergeConfig(readConfigSafe(CONFIG_PATH), incoming);
+          // 配置中心只提交选中的 provider；保留钱包条目，但主模型仍以请求为准。
+          // 补回的磁盘条目不经 moveIncomingSecretsToStore；请求点名时则以请求为准。
+          // preserveAdvanced：保存模型时保留原生高级设置（agents.list/defaults.workspace、
+          // gateway.auth/remote 未知子字段、commands 未知项、未提交的 meta/env 等），
+          // 只更新请求明确带的字段；钱包 removeKey 不走本选项，默认删除语义不变。
+          const { CLOUD_PROVIDER_ID } = await import('../lib/wallet-client.mjs');
+          const merged = mergeConfig(readConfigSafe(CONFIG_PATH), incoming, {
+            keepProviders: [CLOUD_PROVIDER_ID],
+            preserveAdvanced: true,
+          });
           try {
             const { guardOfficialProvidersInMemory } = await import('../lib/official-provider-guard.mjs');
             guardOfficialProvidersInMemory(merged, {
@@ -510,13 +492,30 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // Serve static files
-  const requestPath = new URL(req.url, 'http://127.0.0.1').pathname;
+  // Serve static files. 保留原始路径的 ..，不能先让 URL 解析器消掉它再检查边界。
+  let requestPath;
+  try {
+    if (!req.url.startsWith('/') || req.url.startsWith('//')
+        || /[#\x00-\x20\x7f]/.test(req.url) || /%(?![0-9a-f]{2})/i.test(req.url)) {
+      throw new Error('bad URL');
+    }
+    requestPath = decodeURIComponent(req.url.split('?')[0]);
+    if (requestPath.includes('\0')) throw new Error('bad path');
+  } catch (_) {
+    res.writeHead(400);
+    res.end('Bad Request');
+    return;
+  }
+
+  const publicDir = path.resolve(__dirname, 'public');
   const filePath = requestPath === '/startup'
-    ? path.join(__dirname, '../lib/loading.html')
-    : requestPath === '/'
-      ? path.join(__dirname, 'public/index.html')
-      : path.join(__dirname, 'public', requestPath);
+    ? path.resolve(__dirname, '../lib/loading.html')
+    : path.resolve(publicDir, '.' + (requestPath === '/' ? '/index.html' : requestPath.replace(/\\/g, '/')));
+  if (requestPath !== '/startup' && !filePath.startsWith(publicDir + path.sep)) {
+    res.writeHead(403);
+    res.end('Forbidden');
+    return;
+  }
 
   if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
     const ext = path.extname(filePath);

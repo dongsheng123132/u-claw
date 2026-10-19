@@ -37,6 +37,13 @@ if [ ! -x "$CORE_DIR/node_modules/.bin/openclaw" ]; then
     exit 1
 fi
 
+# 本机缓存/临时/日志目录（共享 helper）；没有可写本机缓存 = 明确失败退出。
+if ! . "$UCLAW_DIR/lib/portable-cache-env.sh" "$STATE_DIR" "$UCLAW_DIR" "$NODE_BIN"; then
+    echo -e "  ${RED}无可写本机缓存目录，拒绝回落 U 盘。${NC}"
+    read -p "  Press Enter to exit..."
+    exit 1
+fi
+
 export OPENCLAW_HOME="$DATA_DIR"
 export OPENCLAW_STATE_DIR="$STATE_DIR"
 export OPENCLAW_CONFIG_PATH="$STATE_DIR/openclaw.json"

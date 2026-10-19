@@ -25,6 +25,11 @@ fi
 # 去掉 macOS 隔离属性，避免 Gatekeeper 拦截
 xattr -rd com.apple.quarantine "$UCLAW_DIR" 2>/dev/null || true
 
+# 接入本机缓存 helper（体检工具：失败时报告错误但继续基础网络检查）。
+if ! . "$UCLAW_DIR/lib/portable-cache-env.sh" "$UCLAW_DIR/data/.openclaw" "$UCLAW_DIR" "$NODE_BIN"; then
+    echo "  [警告] 无可写本机缓存目录（见上方错误），继续体检。"
+fi
+
 "$NODE_BIN" "$UCLAW_DIR/lib/intranet-check.mjs" "$CONFIG_FILE"
 
 echo ""

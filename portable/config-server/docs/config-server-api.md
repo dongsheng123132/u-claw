@@ -16,7 +16,7 @@
 | 端口覆盖 | 环境变量 `UCLAW_CONFIG_PORT`（测试用） | 文件末尾 |
 | 配置路径 | `process.env.OPENCLAW_CONFIG_PATH \|\| <stateDir>/openclaw.json`（默认 `<OPENCLAW_HOME>/.openclaw/openclaw.json`） | 文件首部 `CONFIG_PATH` |
 | 运行时端口文件 | `<stateDir>/runtime.json`，写 `configServerPort` + `configServerUpdatedAt` | `listenWithFallback()` 内的 `setTimeout(..., 250)` |
-| 静态文件 | `public/` 目录（`/` → `public/index.html`，其余按扩展名分发） | 文件底部 "Serve static files" 分支 |
+| 静态文件 | `/startup` 显式映射 `lib/loading.html`；其余路径解码一次并限制在 `public/` 内（`/` → `public/index.html`，query 不参与文件名，畸形 URL/百分号返回 400、越界返回 403） | 文件底部 "Serve static files" 分支 |
 | 鉴权 | 无（依赖同源 + 127.0.0.1 绑定） | CORS 段落 |
 | 默认响应 | JSON `Content-Type: application/json` | 全部 API 路由 |
 
@@ -50,8 +50,8 @@ if (req.method === 'OPTIONS') { res.writeHead(200); res.end(); return; }
 | 2 | GET | `/api/config` | ✗ | **回显 apiKey 明文** |
 | 3 | POST | `/api/config` | ✓(reload) | 合并 + 原子写 |
 | 4 | GET | `/api/gateway-check` | ✓ | `?port=` |
-| 5 | GET | `/api/update-status` | ✗ | 读状态文件 |
-| 6 | POST | `/api/update-check` | ✓ | 触发联网检查 |
+| 5 | GET | `/api/update-status` | ✗ | 兼容接口，固定返回退役状态及发行页 |
+| 6 | POST | `/api/update-check` | ✗ | 兼容接口，不再触发检查 |
 | 7 | POST | `/api/provider-models` | ✓ | 带 Key 拉 `/v1/models` |
 | 8 | GET | `/api/wallet/status` | ✗ | **回显明文 apiKey + rechargeUrl** |
 | 9 | POST | `/api/wallet/claim` | ✓ | 一键领取 |
@@ -73,17 +73,18 @@ if (req.method === 'OPTIONS') { res.writeHead(200); res.end(); return; }
 
 **响应 200**
 ```json
-{ "configServerPort": 18788, "gatewayPort": 18789 }
+{ "configServerPort": 18788, "gatewayPort": 18789, "instanceId": "…sha256…" }
 ```
 
 | 字段 | 类型 | 说明 |
 | ---- | ---- | ---- |
 | `configServerPort` | `number\|null` | 当前服务实际绑定的端口 |
 | `gatewayPort` | `number\|null` | 探测到的 gateway 端口，找不到则为 `null`（前端应回退到 `findGatewayPort()` 盲扫） |
+| `instanceId` | `string` | 本实例身份 = `sha256(path.resolve(OPENCLAW_STATE_DIR))`。维护入口（`lib/portable-maintenance.mjs settings-url`）用它核对 runtime.json 端口是不是当前这支 U 盘的 config server；foreign/stale 不给 URL |
 
 **敏感字段**：无。
 
-**错误**：本端点永不返回 `5xx`——`runtime.json` 损坏时两项字段都按 `null` 返回。
+**错误**：本端点永不返回 `5xx`——`runtime.json` 损坏时端口字段按 `null` 降级，`instanceId` 仍照常计算（它只依赖 `OPENCLAW_STATE_DIR` 环境变量）。
 
 ---
 
@@ -105,6 +106,8 @@ if (req.method === 'OPTIONS') { res.writeHead(200); res.end(); return; }
 合并写入而非整份覆盖（issue #58）。逻辑见 `lib/merge-config.mjs`：
 - 受管顶层字段 `gateway / commands / meta / models / agents / env`：以本次请求为准整体替换，**未带则视为清空**（但 `gateway` 有保底：缺字段时补回 `{mode:'local', auth:{mode:'token', token:'uclaw'}}`）。
 - `channels`（issue #67）：请求体里带了且是对象 → **整体替换**磁盘上的 `channels`（支持删除）；没带或不是对象 → 保留磁盘版本（保存模型不会冲掉渠道）。
+- `models.providers.uclaw-cloud`（设备钱包写入）：请求带了对象形式的 `models.providers` 却没点名它 → 从磁盘原样保留（`keepProviders: [CLOUD_PROVIDER_ID]`）；请求点名时以请求为准；没有 `models` 时仍清空。请求所选的其他 provider 和 `agents.defaults.model.primary` 照常生效，不会固定成虾盘云唯一模型。默认不传选项的合并仍可删除 provider，钱包 `removeKey()` 也仍能删除它。补回的磁盘条目不经过 incoming secret store 流程。
+- 原生高级设置（配置中心专用 `preserveAdvanced: true`，只在本端点传）：保存模型时保留 `agents.list`、`agents.defaults.workspace/tools` 等未知字段、`agents.defaults.model.fallbacks`、`gateway` 未知字段（含 `auth`/`remote` 未知子字段）、`commands` 未知项，以及未提交的 `meta`/`env`/`models`；只更新请求明确携带的字段（`defaults.model.primary` 以本次选择为准）。不传该选项时"未带受管字段视为清空"的默认删除语义完全不变（钱包 `removeKey()` 等调用方都不传）。
 - 其余顶层字段（`plugins` 等 UI 不管理的字段）：**无视请求体里的值**，一律保留磁盘上的版本。
 - 顶层 `agent`（旧键）会被 `delete merged.agent` 清掉。
 - 写盘是**原子写**：`.tmp-<pid>-<rand>` → `renameSync` 替换；写前尽力备份 `.bak`，备份失败不阻断。
@@ -179,24 +182,26 @@ if (req.method === 'OPTIONS') { res.writeHead(200); res.end(); return; }
 
 ### 2.5 `GET /api/update-status`
 
-读 `<stateDir>/update-available.json`（不存在/损坏都返回降级形态）。**永不返回 5xx**——所有失败路径都是 `{available:false}`。
+已退役，保留兼容路由。**不读取** `<stateDir>/update-available.json`，即使旧清单声称有更新也不使用。
 
-| 场景 | Body |
-| ---- | ---- |
-| 文件不存在 | `{available:false, reason:"no-check-yet"}` |
-| 有新版（`lib/check-update.mjs` 写入） | `{available:true, checkedAt, localVersion, remoteVersion, releaseDate, downloadUrl, releasePageUrl, notes}` |
-| 已是最新 | `{available:false, checkedAt}` |
-| 读失败 | `{available:false, reason:"read-failed", error}` |
+**固定响应 200**：
+```json
+{
+  "available": false,
+  "supported": false,
+  "releasePageUrl": "https://github.com/dongsheng123132/u-claw/releases"
+}
+```
+
+升级由用户在发行页选择经过验证的稳定整包。
 
 **敏感字段**：无。
 
 ### 2.6 `POST /api/update-check`
 
-`import('../lib/check-update.mjs')` → `checkUpdate({versionFilePath, stateDir})`。5s 超时拉 OSS `latest.json`，写/清 `update-available.json`。**请求体忽略**。
+已退役，保留兼容路由，**请求体忽略**。不导入 `check-update.mjs`，不请求 OSS，不读取、写入或清理旧更新清单。`publish-latest.mjs` 发布辅助工具保留。
 
-**响应 200**：成功或可恢复失败 → `{ok:true, available, localVersion, remoteVersion, ...}` / `{ok:false, reason:"missing-paths"|"no-local-version"|"fetch-failed"|"invalid-manifest"}`
-
-**响应 500**：`import` 失败或未捕获异常 → `{error}`
+**固定响应 200**：与 `/api/update-status` 相同的 `{available:false, supported:false, releasePageUrl:"https://github.com/dongsheng123132/u-claw/releases"}`。
 
 **敏感字段**：无。
 
@@ -294,7 +299,7 @@ if (req.method === 'OPTIONS') { res.writeHead(200); res.end(); return; }
 
 | 问题 | 答案（基于代码事实） |
 | ---- | -------------------- |
-| 是整份覆盖还是合并？ | **合并**：`mergeConfig(existing, incoming)`。`gateway/commands/meta/models/agents/env` 六个受管顶层字段以本次请求为准整体替换（未带视为清空，但 `gateway` 有保底 token）；`channels` 请求里带了（且是对象）就整体替换、没带则保留磁盘原值；其他顶层字段（典型如 `plugins`）一律保留磁盘原值。 |
+| 是整份覆盖还是合并？ | **合并**：`mergeConfig(existing, incoming, {keepProviders:[CLOUD_PROVIDER_ID], preserveAdvanced:true})`。`gateway/commands/meta/models/agents/env` 六个受管顶层字段整体替换（未带视为清空，但 `gateway` 有保底 token）；例外是请求带 `models.providers` 且未点名钱包 `uclaw-cloud` 时从磁盘保留它，主模型仍以请求为准；`preserveAdvanced` 下原生高级设置（agents.list/defaults.workspace、gateway/auth/remote 未知子字段、commands 未知项、未提交的 meta/env/models）保留。`channels` 带了对象则替换、否则保留；其他顶层字段（如 `plugins`）保留磁盘原值。 |
 | 有写锁吗？ | **没有显式写锁**。两次并发 POST 时两次都 `readConfigSafe → mergeConfig → writeConfigAtomic`，最后一次 `renameSync` 胜出；中间过程不会丢字段但会丢「两次 POST 之间第三方进程（wallet `applyKey`）的写入」。建议应用层串行化，或每次保存前 `GET /api/config` 拉最新再改。 |
 | 写盘是原子的吗？ | **是**：`writeConfigAtomic()` 用 `.<name>.tmp-<pid>-<rand>` 写临时文件再 `renameSync` 替换；写前会备份 `<name>.bak`，备份失败不阻断。 |
 | 失败会半截写坏吗？ | **不会**：renameSync 在同一文件系统内是原子操作，进程被杀/断电不会留下半截 JSON。 |

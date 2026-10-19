@@ -55,17 +55,33 @@ if xattr -l "$NODE_BIN" 2>/dev/null | grep -q "com.apple.quarantine"; then
     echo -e "  ${GREEN}Done${NC}"
 fi
 
-# ---- 2b. 启动日志收集（bug 证据自动留盘）----
-# 把本次启动的全部输出同时写进 data/logs/startup-YYYYMMDD-HHMMSS.log，
-# 网关异常退出时把尾部快照进 bug-report-*.log。保留最近 10 份，老的自动清。
-# 用户反馈 bug 时：直接把这个文件发来即可，不用截图猜。
-# 注意：必须在 runtime 检查/setup 自动调用之前开启，否则 setup 阶段的失败无日志可查。
-mkdir -p "$DATA_DIR/logs"
-START_LOG="$DATA_DIR/logs/startup-$(date +%Y%m%d-%H%M%S).log"
+# ---- 2b. 启动日志收集（本机本地，绝不写 U 盘）----
+# 先用共享 helper（lib/portable-cache-env.sh → portable-cache.mjs）解析本机日志/缓存目录；
+# 盘内还没有 runtime 时（首次），先用系统临时目录兜底记录 setup 阶段的失败，runtime 就绪后
+# （第 3 节之后）再接入 helper 并把日志切到本机缓存目录。没有可写本机缓存 = 明确失败退出。
+CACHE_READY=0
+LOG_DIR=""
+unset OPENCLAW_MANAGED_BROWSER_DIR NODE_COMPILE_CACHE npm_config_cache
+if [ -f "$NODE_BIN" ]; then
+    if . "$UCLAW_DIR/lib/portable-cache-env.sh" "$STATE_DIR" "$UCLAW_DIR" "$NODE_BIN"; then
+        CACHE_READY=1
+        LOG_DIR="$UCLAW_LOG_DIR"
+    else
+        echo -e "  ${RED}无可写本机缓存目录，拒绝回落 U 盘。${NC}"
+        read -p "  Press Enter to exit..."
+        exit 1
+    fi
+fi
+if [ -z "$LOG_DIR" ]; then
+    # 无 node 的基础路径：系统本地临时日志（缺 runtime 的失败也要留证据，但不能落 U 盘）。
+    LOG_DIR="${TMPDIR:-/tmp}/u-claw-startup-logs"
+fi
+mkdir -p "$LOG_DIR"
+START_LOG="$LOG_DIR/startup-$(date +%Y%m%d-%H%M%S).log"
 exec > >(tee -a "$START_LOG") 2>&1
 echo "U-Claw start $(date) | $(uname -s) $(uname -m) | OPENCLAW $(cat "$UCLAW_DIR/OPENCLAW_VERSION" 2>/dev/null)"
 # 清理旧日志：只留最近 10 个 startup/bug 报告
-ls -t "$DATA_DIR"/logs/startup-*.log "$DATA_DIR"/logs/bug-report-*.log 2>/dev/null | tail -n +11 | xargs rm -f 2>/dev/null || true
+ls -t "$LOG_DIR"/startup-*.log "$LOG_DIR"/bug-report-*.log 2>/dev/null | tail -n +11 | xargs rm -f 2>/dev/null || true
 
 # ---- 3. Check runtime ----
 if [ ! -f "$NODE_BIN" ]; then
@@ -77,7 +93,7 @@ if [ ! -f "$NODE_BIN" ]; then
             echo -e "  ${GREEN}✓ 环境就绪，继续启动${NC}"
         else
             echo -e "  ${RED}setup 完成但仍找不到 $NODE_BIN${NC}"
-            echo "  可手动重试: bash setup.sh   或查看 data/logs/startup-*.log"
+            echo "  可手动重试: bash setup.sh   或查看 $LOG_DIR/startup-*.log"
             read -p "  Press Enter to exit..."
             exit 1
         fi
@@ -94,8 +110,26 @@ NODE_VER=$("$NODE_BIN" --version)
 echo -e "  Node.js: ${GREEN}${NODE_VER}${NC}"
 echo ""
 
+# runtime 刚由 setup 补齐时，在这里第一次接入本机缓存 helper（2b 时 node 还不存在）。
+if [ "$CACHE_READY" -eq 0 ]; then
+    if . "$UCLAW_DIR/lib/portable-cache-env.sh" "$STATE_DIR" "$UCLAW_DIR" "$NODE_BIN"; then
+        CACHE_READY=1
+        if [ "$LOG_DIR" != "$UCLAW_LOG_DIR" ]; then
+            LOG_DIR="$UCLAW_LOG_DIR"
+            mkdir -p "$LOG_DIR"
+            START_LOG="$LOG_DIR/startup-$(date +%Y%m%d-%H%M%S).log"
+            exec > >(tee -a "$START_LOG") 2>&1
+            echo "U-Claw start (log switched to local cache dir) $(date)"
+        fi
+    else
+        echo -e "  ${RED}无可写本机缓存目录，拒绝回落 U 盘。${NC}"
+        read -p "  Press Enter to exit..."
+        exit 1
+    fi
+fi
+
 # ---- 4. Init data directories ----
-mkdir -p "$STATE_DIR" "$DATA_DIR/memory" "$DATA_DIR/backups" "$DATA_DIR/logs"
+mkdir -p "$STATE_DIR" "$DATA_DIR/memory" "$DATA_DIR/backups"
 
 # ---- 4b. Strip host-machine provider credential variables (parity with Windows) ----
 # If the Mac happens to have DASHSCOPE_API_KEY etc. exported, OpenClaw treats that
@@ -138,17 +172,11 @@ CFGEOF
     echo ""
 fi
 
-# ---- 5b. 加速：把可重建的高 IO 数据放到本机硬盘 ----
-# 会话、设备身份与授权状态全部留在 U 盘；只有打过补丁的受管 Chromium 目录在本机。
-unset OPENCLAW_MANAGED_BROWSER_DIR
-while IFS='=' read -r _k _v; do
-    case "$_k" in
-        UCLAW_COMPILE_CACHE_DIR) export NODE_COMPILE_CACHE="$_v" ;;
-        UCLAW_CACHE_ROOT) UCLAW_CACHE_ROOT="$_v" ;;
-        UCLAW_MANAGED_BROWSER_DIR) export OPENCLAW_MANAGED_BROWSER_DIR="$_v" ;;
-    esac
-done < <("$NODE_BIN" "$UCLAW_DIR/lib/portable-cache.mjs" "$STATE_DIR" "$UCLAW_DIR" 2>/dev/null)
-[ -n "$NODE_COMPILE_CACHE" ] && echo -e "  ${GREEN}Cache on local disk:${NC} $UCLAW_CACHE_ROOT"
+# ---- 5b. 本机缓存已在 2b / 第 3 节之后由 portable-cache-env.sh 统一接入 ----
+# 会话、设备身份与授权状态全部留在 U 盘；compile/npm/temp/log/受管浏览器全在本机。
+if [ "$CACHE_READY" -eq 1 ] && [ -n "$UCLAW_CACHE_ROOT" ]; then
+    echo -e "  ${GREEN}Cache on local disk:${NC} $UCLAW_CACHE_ROOT"
+fi
 
 # ---- 5c. 单实例闸门（同一支 U 盘不能双击出两个 Gateway）----
 # 锁跟随 U 盘 state（不是本机缓存）：复制 U 盘也不会错误复用另一支盘的实例。
@@ -192,8 +220,7 @@ if [ ! -d "$CORE_DIR/node_modules" ]; then
     echo "  Falling back to npm install (USB drives may take 20+ min)."
     echo "  TIP: re-download u-claw-portable-*.zip with bundled deps."
     cd "$CORE_DIR"
-    # 把 npm 缓存留在盘内，避免污染系统 ~/.npm（拔盘不留痕）
-    npm_config_cache="$APP_DIR/.npm-cache" \
+    # npm 缓存走本机 cache（portable-cache-env.sh 已导出 npm_config_cache），绝不写盘内。
     "$NODE_BIN" "$NODE_DIR/bin/npm" install --registry=https://registry.npmmirror.com --ignore-scripts --no-audit --no-fund --omit=dev 2>&1
     echo -e "  ${GREEN}Dependencies installed${NC}"
     echo ""
@@ -206,15 +233,9 @@ if ! "$NODE_BIN" "$UCLAW_DIR/lib/runtime-preflight.mjs" "$UCLAW_DIR"; then
     exit 1
 fi
 
-# ---- 7b. Async update check (non-blocking, 5s timeout, silent failure) ----
-# Writes data/.openclaw/update-available.json if a newer version is on OSS.
-# config-server serves this file via GET /api/update-status for the desktop shell.
-# Version file lookup: portable/OPENCLAW_VERSION (USB) → ../OPENCLAW_VERSION (dev)
-VERSION_FILE="$UCLAW_DIR/OPENCLAW_VERSION"
-[ -f "$VERSION_FILE" ] || VERSION_FILE="$UCLAW_DIR/../OPENCLAW_VERSION"
-if [ -f "$VERSION_FILE" ]; then
-    "$NODE_BIN" "$UCLAW_DIR/lib/check-update.mjs" "$VERSION_FILE" "$STATE_DIR" >/dev/null 2>&1 &
-fi
+# ---- 7b. Update check on startup is retired ----
+# No stale-manifest reads, no OSS requests. Upgrades ship as a verified stable
+# bundle; users open the GitHub release page manually.
 
 # ---- 7c. Intranet/self-hosted model fix ----
 # Keep the configured model host(s) off any corporate HTTP_PROXY/HTTPS_PROXY.
@@ -308,6 +329,7 @@ echo -e "  ${GREEN}════════════════════�
 echo -e "  ${GREEN}🦞 U-Claw is running!${NC}"
 echo -e "  ${GREEN}   Dashboard:     http://127.0.0.1:$PORT/#token=uclaw${NC}"
 echo -e "  ${GREEN}   Config Center: http://127.0.0.1:$CONFIG_PORT/${NC}"
+echo -e "  ${YELLOW}更换模型/钱包：运行 Mac-Maintain.command${NC}"
 echo ""
 echo -e "  ${YELLOW}Press Ctrl+C to stop${NC}"
 echo -e "  ${GREEN}════════════════════════════════${NC}"
@@ -330,8 +352,8 @@ GW_EXIT=$?
 # Ctrl+C 走 trap cleanup（exit 0）不会到这；走到这里说明 gateway 自己退了。
 if [ "$GW_EXIT" -ne 0 ]; then
     echo -e "  ${YELLOW}OpenClaw exited unexpectedly (code $GW_EXIT)${NC}"
-    # ---- bug 证据自动留盘：网关异常退出 = 有 bug，把现场快照成一份报告 ----
-    BUG_LOG="$DATA_DIR/logs/bug-report-$(date +%Y%m%d-%H%M%S).log"
+    # ---- bug 证据自动留盘：网关异常退出 = 有 bug，把现场快照成一份报告（本机日志目录）----
+    BUG_LOG="$LOG_DIR/bug-report-$(date +%Y%m%d-%H%M%S).log"
     {
         echo "U-Claw Bug Report (auto-generated)"
         echo "时间: $(date)"
@@ -345,7 +367,7 @@ if [ "$GW_EXIT" -ne 0 ]; then
         tail -n 50 "$HOME/Library/Caches/U-Claw"/*/openclaw*.log 2>/dev/null || true
     } > "$BUG_LOG" 2>&1
     chmod 644 "$BUG_LOG" 2>/dev/null
-    echo -e "  ${CYAN}Bug 报告已自动保存: data/logs/$(basename "$BUG_LOG")${NC}"
+    echo -e "  ${CYAN}Bug 报告已自动保存: $BUG_LOG${NC}"
     echo -e "  ${CYAN}反馈时把这个文件发给我们即可。${NC}"
 fi
 kill $CONFIG_PID 2>/dev/null

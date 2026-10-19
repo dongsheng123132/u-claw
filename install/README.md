@@ -1,7 +1,7 @@
 # U-Claw 一键安装 / One-Line Install
 
-> 一行命令安装 OpenClaw + 技能包 + 模型配置
-> One command to install OpenClaw + skills + model config
+> 一行命令安装 OpenClaw + 模型配置
+> One command to install OpenClaw + model config
 
 ## 安装 / Install
 
@@ -29,28 +29,26 @@ powershell -ExecutionPolicy Bypass -File install\install.ps1
 
 ## 安装流程
 
-### Mac / Linux（7 步）
+### Mac / Linux（6 步）
 
 | 步骤 | 内容 | 说明 |
 |------|------|------|
 | 1 | Node.js v22 | 安装到 `~/.uclaw/runtime/`，系统有 v20+ 则复用 |
 | 2 | OpenClaw | npm 安装到 `~/.uclaw/core/` |
 | 3 | QQ 插件 | 非致命，失败不影响主功能 |
-| 4 | 10 个中国技能 | 小红书、B站、微博等内容创作技能 |
-| 5 | 模型配置 | 中文交互菜单，默认 DeepSeek |
-| 6 | 启动脚本 | 生成 start.command (Mac) / start.sh (Linux) |
-| 7 | 验证 | 检查各组件安装状态 |
+| 4 | 模型配置 | 中文交互菜单，默认 DeepSeek |
+| 5 | 启动脚本 | 生成 start.command (Mac) / start.sh (Linux) |
+| 6 | 验证 | 检查各组件安装状态 |
 
-### Windows（6 步）
+### Windows（5 步）
 
 | 步骤 | 内容 | 说明 |
 |------|------|------|
 | 1 | Node.js v22 | 下载到 `%USERPROFILE%\.uclaw\runtime\`，系统有 v20+ 则复用 |
 | 2 | OpenClaw + QQ 插件 | 下载预打包 bundle，走国内镜像 |
-| 3 | 10 个中国技能 | 小红书、B站、微博等内容创作技能 |
-| 4 | 模型配置 | 交互菜单，默认 DeepSeek |
-| 5 | 启动脚本 | 生成 start.bat |
-| 6 | 验证 | 检查各组件安装状态 |
+| 3 | 模型配置 | 交互菜单，默认 DeepSeek |
+| 4 | 启动脚本 | 生成 start.bat |
+| 5 | 验证 | 检查各组件安装状态 |
 
 ## 支持的 AI 模型
 
@@ -87,7 +85,6 @@ powershell -ExecutionPolicy Bypass -File install\install.ps1
 ├── core/                        # OpenClaw + QQ 插件
 │   ├── package.json
 │   └── node_modules/
-│       └── openclaw/skills/     ← 技能在这里
 ├── data/
 │   ├── .openclaw/openclaw.json  ← 模型配置
 │   ├── memory/                  ← AI 记忆
@@ -103,21 +100,6 @@ powershell -ExecutionPolicy Bypass -File install\install.ps1
 - **Windows 编码**: `chcp 65001` + UTF8 输出确保中文显示
 - **管道模式**: `curl | bash` 时自动跳过交互，使用默认配置
 - **卸载**: `rm -rf ~/.uclaw` (Mac/Linux) 或删除 `%USERPROFILE%\.uclaw` (Windows)
-
-## 包含技能
-
-| 技能 | 用途 |
-|------|------|
-| xiaohongshu-writer | 小红书笔记写作 |
-| bilibili-helper | B站视频优化 |
-| weibo-poster | 微博内容创作 |
-| wechat-article | 微信公众号文章 |
-| zhihu-writer | 知乎回答/文章 |
-| douyin-script | 抖音短视频脚本 |
-| china-search | 国内搜索引擎 |
-| china-translate | 中英互译 |
-| china-weather | 天气查询 |
-| deepseek-helper | DeepSeek API 助手 |
 
 ## 与其他分发形式的关系
 

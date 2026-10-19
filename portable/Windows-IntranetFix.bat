@@ -15,6 +15,13 @@ if not exist "%NODE_BIN%" (
     exit /b 1
 )
 
+REM Local cache/temp/log dirs via the shared resolver. This is a checkup tool:
+REM report a cache problem but keep going with the basic network checks.
+call "%UCLAW_DIR%lib\portable-cache-env.bat" "%UCLAW_DIR%data\.openclaw" "%UCLAW_DIR%"
+if errorlevel 1 (
+    echo   [WARNING] No writable local cache directory. Continuing the check.
+)
+
 "%NODE_BIN%" "%UCLAW_DIR%lib\intranet-check.mjs" "%CONFIG_PATH%"
 
 echo.

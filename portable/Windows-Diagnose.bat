@@ -4,7 +4,22 @@ chcp 65001 >nul 2>&1
 title U-Claw - Diagnostic Tool
 
 set "UCLAW_DIR=%~dp0"
-set "LOG_FILE=%UCLAW_DIR%diagnostic-log.txt"
+REM Log destination: local cache logs via the shared resolver when possible.
+REM No runtime or no writable local cache -> system temp (never the USB drive),
+REM and the cache error above stays visible: Diagnose must keep running.
+set "NODE_BIN=%UCLAW_DIR%app\runtime\node-win-x64\node.exe"
+set "DIAG_TMP=%TEMP%"
+if not defined DIAG_TMP set "DIAG_TMP=%SystemRoot%\Temp"
+set "LOG_FILE=%DIAG_TMP%\u-claw\diagnostic-log.txt"
+if not exist "%DIAG_TMP%\u-claw" mkdir "%DIAG_TMP%\u-claw"
+if exist "%NODE_BIN%" (
+    call "%UCLAW_DIR%lib\portable-cache-env.bat" "%UCLAW_DIR%data\.openclaw" "%UCLAW_DIR%"
+    if errorlevel 1 (
+        echo   [WARNING] No writable local cache directory. Log stays in the temp dir.
+    ) else (
+        set "LOG_FILE=!UCLAW_LOG_DIR!\diagnostic-log.txt"
+    )
+)
 
 echo.
 echo   ========================================

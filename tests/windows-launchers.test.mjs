@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -33,7 +33,7 @@ test('Windows-Start dependency fallback text escapes parentheses inside IF block
 test('portable Windows launchers disable OpenClaw bonjour discovery', () => {
   for (const scriptName of [
     'Windows-Start.bat',
-    'Windows-Menu.bat',
+    'Windows-Maintain.bat',
     'Windows-Install.bat',
   ]) {
     const script = readRepoFile('portable', scriptName);
@@ -45,20 +45,44 @@ test('portable Windows launchers disable OpenClaw bonjour discovery', () => {
   }
 });
 
-test('portable launchers keep OpenClaw state portable and redirect only managed browser data', () => {
+test('portable launchers keep OpenClaw state portable and route cache/temp/log through the shared helper', () => {
   const winStart = readRepoFile('portable', 'Windows-Start.bat');
   assert.match(
     winStart,
-    /UCLAW_MANAGED_BROWSER_DIR" set "OPENCLAW_MANAGED_BROWSER_DIR=%%b/,
-    'Windows launcher must consume the local managed browser directory',
+    /call "%UCLAW_DIR%lib\\portable-cache-env\.bat" "%STATE_DIR%" "%UCLAW_DIR%"/,
+    'Windows launcher must call the shared cache resolver helper',
   );
   assert.match(winStart, /set "OPENCLAW_MANAGED_BROWSER_DIR="/);
+  assert.match(
+    winStart,
+    /if errorlevel 1 \([\s\S]*No writable local cache directory[\s\S]*exit \/b 1/,
+    'Windows launcher must stop with a visible error when no writable local cache exists',
+  );
   assert.doesNotMatch(winStart, /UCLAW_RUNTIME_STATE_DIR/);
+  assert.doesNotMatch(winStart, /APP_DIR\\\.npm-cache|\.npm-cache/, 'npm cache must not live on the portable drive');
+  assert.doesNotMatch(winStart, /check-update\.mjs/, 'startup update check is retired');
+
+  const helperBat = readRepoFile('portable', 'lib', 'portable-cache-env.bat');
+  assert.match(helperBat, /OPENCLAW_MANAGED_BROWSER_DIR=/, 'helper must export the managed browser dir');
+  assert.match(helperBat, /NODE_DISABLE_COMPILE_CACHE=1/, 'helper must disable compile cache on failure');
+  assert.doesNotMatch(helperBat, /2\^>nul/, 'helper must not swallow node stderr');
 
   const macStart = readRepoFile('portable', 'Mac-Start.command');
-  assert.match(macStart, /UCLAW_MANAGED_BROWSER_DIR\) export OPENCLAW_MANAGED_BROWSER_DIR="\$_v"/);
+  assert.match(macStart, /portable-cache-env\.sh/, 'Mac launcher must source the shared cache resolver helper');
   assert.match(macStart, /unset OPENCLAW_MANAGED_BROWSER_DIR/);
   assert.match(macStart, /OPENCLAW_STATE_DIR="\$STATE_DIR"/);
+  assert.match(
+    macStart,
+    /portable-cache-env\.sh[\s\S]*无可写本机缓存目录[\s\S]*exit 1/,
+    'Mac launcher must stop with a visible error when no writable local cache exists',
+  );
+  assert.doesNotMatch(macStart, /data\/logs\/startup-/, 'startup log must live in the local log dir, not on USB');
+  assert.doesNotMatch(macStart, /check-update\.mjs/, 'startup update check is retired');
+  assert.doesNotMatch(macStart, /\.npm-cache/, 'npm cache must not live on the portable drive');
+
+  const helperSh = readRepoFile('portable', 'lib', 'portable-cache-env.sh');
+  assert.match(helperSh, /OPENCLAW_MANAGED_BROWSER_DIR=/, 'sh helper must export the managed browser dir');
+  assert.match(helperSh, /NODE_DISABLE_COMPILE_CACHE=1/, 'sh helper must disable compile cache on failure');
 });
 
 test('Mac launcher gates duplicate clicks behind the portable single-instance lock', () => {
@@ -88,8 +112,8 @@ test('Windows startup only auto-opens Config Center when no model is configured 
   // replaced the old "always open Config Center" behavior below with the
   // design documented in the repo CLAUDE.md: first run (no model configured)
   // opens Config Center; configured runs land on the Dashboard only. The
-  // config-server itself still always starts, and Windows-Menu.bat still
-  // offers the setup wizard, so Config Center remains reachable manually.
+  // config-server itself still always starts, and Windows-Maintain.bat still
+  // offers the settings entry, so Config Center remains reachable manually.
   const script = readRepoFile('portable', 'Windows-Start.bat');
 
   assert.match(
@@ -180,8 +204,10 @@ test('customer-facing .bat launchers are pure ASCII (cmd.exe mis-parses UTF-8 Ch
   // node tools' stdout (rendered fine under chcp 65001), never in the .bat itself.
   for (const name of [
     'Windows-Start.bat',
+    'Windows-Maintain.bat',
     'Windows-IntranetFix.bat',
     'OpenClaw-Doctor.bat',
+    join('lib', 'portable-cache-env.bat'),
   ]) {
     const bytes = readFileSync(join(repoRoot, 'portable', name));
     const offending = bytes.findIndex((b) => b > 0x7f);
@@ -193,6 +219,7 @@ test('customer-facing .bat launchers are pure ASCII (cmd.exe mis-parses UTF-8 Ch
 test('macOS .command launchers are LF-only (CRLF breaks #!/bin/bash on macOS)', () => {
   for (const name of [
     'Mac-Start.command',
+    'Mac-Maintain.command',
     'Mac-IntranetFix.command',
     'Mac-OpenClaw-Doctor.command',
   ]) {
@@ -208,19 +235,40 @@ test('macOS intranet / doctor launchers call the shared cross-platform scripts',
   assert.match(readRepoFile('portable', 'Mac-OpenClaw-Doctor.command'), /doctor --non-interactive/);
 });
 
-test('portable menus expose a CLI terminal entry point (issue #53)', () => {
-  // Windows-Menu.bat and Mac-Menu.command are the only menus most users ever
-  // see (Windows-Start.bat / Mac-Start.command only open the web UI); before
-  // this the standalone OpenClaw-CLI.bat / Mac-OpenClaw-CLI.command existed
-  // but had no entry in either menu, so users assumed U-Claw was "web only"
-  // (issue #53). Both menus must offer a way to launch them.
-  const winMenu = readRepoFile('portable', 'Windows-Menu.bat');
-  assert.match(winMenu, /goto :clitool/, 'Windows-Menu.bat menu choice should route to a CLI entry');
-  assert.match(winMenu, /:clitool[\s\S]*OpenClaw-CLI\.bat/, 'Windows-Menu.bat should launch OpenClaw-CLI.bat');
+test('portable maintain menus expose a CLI terminal entry point (issue #53)', () => {
+  // Windows-Maintain.bat and Mac-Maintain.command are the only maintenance menus
+  // most users ever see; they must offer a way to launch the raw OpenClaw CLI.
+  const winMenu = readRepoFile('portable', 'Windows-Maintain.bat');
+  assert.match(winMenu, /goto :cli/, 'Windows-Maintain.bat menu choice should route to a CLI entry');
+  assert.match(winMenu, /:cli[\s\S]*OpenClaw-CLI\.bat/, 'Windows-Maintain.bat should launch OpenClaw-CLI.bat');
 
-  const macMenu = readRepoFile('portable', 'Mac-Menu.command');
-  assert.match(macMenu, /do_cli/, 'Mac-Menu.command should have a CLI menu action');
-  assert.match(macMenu, /Mac-OpenClaw-CLI\.command/, 'Mac-Menu.command should launch Mac-OpenClaw-CLI.command');
+  const macMenu = readRepoFile('portable', 'Mac-Maintain.command');
+  assert.match(macMenu, /do_cli/, 'Mac-Maintain.command should have a CLI menu action');
+  assert.match(macMenu, /Mac-OpenClaw-CLI\.command/, 'Mac-Maintain.command should launch Mac-OpenClaw-CLI.command');
+});
+
+test('maintain menus are thin input/open layers with no dangerous actions', () => {
+  for (const name of ['Windows-Maintain.bat', 'Mac-Maintain.command']) {
+    const menu = readRepoFile('portable', name);
+    assert.doesNotMatch(menu, /doctor[^\n]*--repair/, `${name} must not offer doctor --repair`);
+    assert.doesNotMatch(menu, /doctor[^\n]*--fix/, `${name} must not offer doctor --fix`);
+    assert.doesNotMatch(menu, /taskkill|killall|fuser\s+-k|lsof[^\n]*kill/i, `${name} must not kill ports/processes`);
+    assert.doesNotMatch(menu, /gateway run/, `${name} must not start a second gateway`);
+    assert.doesNotMatch(menu, /onboard|channels add|plugins install/i, `${name} must not run channel/plugin install`);
+    // Options must cover the approved set (plus exit).
+    for (const needle of ['settings-url', 'logs-path', 'backup', 'restore', 'OpenClaw-CLI', 'releases']) {
+      assert.ok(menu.includes(needle), `${name} missing option ${needle}`);
+    }
+    assert.match(menu, /Diagnose/i, `${name} missing Diagnose option`);
+  }
+  // Old full-featured menus must be gone (no revival shim).
+  for (const gone of [
+    join('portable', 'Windows-Menu.bat'),
+    join('portable', 'Mac-Menu.command'),
+    join('portable', 'lib', 'maintain.sh'),
+  ]) {
+    assert.equal(existsSync(join(repoRoot, gone)), false, `${gone} must be deleted`);
+  }
 });
 
 test('OpenClaw doctor launcher is read-only (no destructive repair flags)', () => {
@@ -230,6 +278,40 @@ test('OpenClaw doctor launcher is read-only (no destructive repair flags)', () =
   assert.doesNotMatch(bat, /doctor[^\n]*--fix/);
   assert.doesNotMatch(bat, /doctor[^\n]*--repair/);
   assert.doesNotMatch(bat, /doctor[^\n]*--force/);
+});
+
+test('随盘 skills-cn/ 已整体移出：无目录、setup 不复制、仓库无路径引用', () => {
+  // 范围剃刀 2026-10-19：OpenClaw 自己能做的（技能）不再包一层；同内容不得
+  // 在 portable/ 与 install/ 各留一份会漂移的副本。
+  assert.equal(existsSync(join(repoRoot, 'portable', 'skills-cn')), false, 'portable/skills-cn/ must be deleted');
+
+  const setupSh = readRepoFile('portable', 'setup.sh');
+  assert.doesNotMatch(setupSh, /SKILLS_CN|skills-cn/, 'setup.sh must not copy skills-cn');
+
+  // 全仓扫描：只允许 CONTRIBUTING.md 里的规格句/历史示例提到 skills-cn。
+  const offenders = [];
+  const skipDirs = new Set(['.git', 'node_modules', 'app', 'data', '.claude', 'dist']);
+  const allowedFiles = new Set([
+    join('CONTRIBUTING.md'),
+    join('tests', 'windows-launchers.test.mjs'),
+  ]);
+  const walk = (dir, rel) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      if (entry.isDirectory()) {
+        if (skipDirs.has(entry.name)) continue;
+        walk(join(dir, entry.name), join(rel, entry.name));
+        continue;
+      }
+      if (!/\.(md|mjs|js|json|sh|ps1|bat|command|html|yml|yaml|txt)$/.test(entry.name)) continue;
+      const relPath = join(rel, entry.name);
+      if (allowedFiles.has(relPath)) continue;
+      let content = '';
+      try { content = readFileSync(join(dir, entry.name), 'utf8'); } catch { continue; }
+      if (content.includes('skills-cn')) offenders.push(relPath);
+    }
+  };
+  walk(repoRoot, '');
+  assert.deepEqual(offenders, [], `skills-cn path references must be gone: ${offenders.join(', ')}`);
 });
 
 // cmd.exe treats ')' as the end of an IF/FOR ( ... ) block, so an unescaped paren in
@@ -264,7 +346,7 @@ test('Windows launchers have no unescaped parens in echoes inside IF/FOR blocks 
     'Windows-IntranetFix.bat',
     'OpenClaw-Doctor.bat',
     'Windows-Diagnose.bat',
-    'Windows-Menu.bat',
+    'Windows-Maintain.bat',
     'Windows-Install.bat',
   ]) {
     const bat = readRepoFile('portable', name);

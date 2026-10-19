@@ -11,7 +11,6 @@
 - [ ] ✨ 新功能
 - [ ] 📝 文档/README
 - [ ] 🔧 脚本/构建（portable, install）
-- [ ] 🎨 技能 (skills-cn)
 - [ ] ♻️ 重构（不改变行为）
 - [ ] 🧪 测试
 
@@ -38,7 +37,6 @@
 
 - [ ] portable/ (便携 USB)
 - [ ] install/ (一键安装脚本)
-- [ ] skills-cn/ (中国本地化技能)
 - [ ] 仅文档
 
 ## 自检 / Checklist

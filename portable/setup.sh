@@ -137,13 +137,20 @@ else
 PKGJSON
     fi
 
-    # Install with China mirror（缓存留盘内，拔盘不留痕）
+    # Install with China mirror（npm 缓存走本机缓存 helper，绝不写盘内）
     # --ignore-scripts 必须加：openclaw 的 preinstall 脚本会调系统 `node`，但便携版
     # 用的是 app/runtime 下的 node（不在 PATH），未装 Node 的 Mac 用户会因
     # "node: command not found" 安装失败 (code 127)。与 Mac-Start.command 的 fallback 对齐。
     NODE_BIN="$NODE_TARGET/bin/node"
     NPM_BIN="$NODE_TARGET/bin/npm"
-    npm_config_cache="$APP_DIR/.npm-cache" "$NODE_BIN" "$NPM_BIN" install --prefix "$CORE_DIR" --registry="$MIRROR" --ignore-scripts --no-audit --no-fund --omit=dev
+    if . "$SCRIPT_DIR/lib/portable-cache-env.sh" "$SCRIPT_DIR/data/.openclaw" "$SCRIPT_DIR" "$NODE_BIN"; then
+        echo -e "  ${GREEN}✓${NC} 本机缓存目录就绪: $UCLAW_CACHE_ROOT"
+    else
+        # setup 阶段本机缓存不可写：退回 npm 默认的用户缓存（仍是本机 HOME），继续安装。
+        unset npm_config_cache
+        echo -e "  ${RED}⚠ 无可写本机缓存目录，npm 使用系统默认缓存（不会写 U 盘）。${NC}"
+    fi
+    "$NODE_BIN" "$NPM_BIN" install --prefix "$CORE_DIR" --registry="$MIRROR" --ignore-scripts --no-audit --no-fund --omit=dev
 
     # Keep durable OpenClaw state on the USB volume, but redirect only the
     # managed Chromium profile to the host cache.  These vendor patches are
@@ -157,23 +164,6 @@ PKGJSON
     if [ "$ARCH" = "arm64" ]; then RUNTIME_ARCH=arm64; else RUNTIME_ARCH=x64; fi
     printf 'darwin-%s\n' "$RUNTIME_ARCH" > "$CORE_DIR/.uclaw-runtime-platform"
     echo -e "  ${GREEN}✓${NC} OpenClaw 安装完成"
-fi
-
-# ---- 4. Install China-optimized skills ----
-SKILLS_CN="$SCRIPT_DIR/skills-cn"
-SKILLS_TARGET="$CORE_DIR/node_modules/openclaw/skills"
-
-if [ -d "$SKILLS_CN" ] && [ -d "$SKILLS_TARGET" ]; then
-    echo -e "  ${CYAN}↓${NC} 安装中国优化技能 (skills-cn)..."
-    SKILL_COUNT=0
-    for skill_dir in "$SKILLS_CN"/*/; do
-        skill_name=$(basename "$skill_dir")
-        if [ ! -d "$SKILLS_TARGET/$skill_name" ]; then
-            cp -R "$skill_dir" "$SKILLS_TARGET/$skill_name"
-            SKILL_COUNT=$((SKILL_COUNT + 1))
-        fi
-    done
-    echo -e "  ${GREEN}✓${NC} 中国技能安装完成 (+$SKILL_COUNT 个)"
 fi
 
 # ---- Done ----

@@ -70,7 +70,8 @@ stays clean (no node_modules, no app/ runtime).
 portable/           THE USB content (= repo + setup.sh downloads)
                     setup.sh / setup.bat / setup.ps1 — fill in app/ (Node + OpenClaw + plugins)
                     {Mac,Windows}-Start    — launch gateway + config-server, open dashboard / 配置中心
-                    {Mac,Windows}-Menu     — interactive CLI launcher (pick start/config/CLI/diagnose)
+                    {Mac,Windows}-Maintain — thin maintain menu (model/wallet settings, diagnose, local
+                        logs, backup, restore to a fresh folder, native CLI, stable release page)
                     {Mac,Windows}-Install  — copy USB → computer (~/.uclaw/ or %USERPROFILE%)
                     {Mac,Windows}-Diagnose — health check / collect logs for bug reports
                     {Mac-OpenClaw-CLI,OpenClaw-CLI.bat} — drop into raw `openclaw` CLI (chat channels are managed
@@ -83,13 +84,10 @@ portable/           THE USB content (= repo + setup.sh downloads)
                     default-config.json    — seed config copied to data/.openclaw/ on first run
                     app/core/ (OpenClaw) + app/runtime/ (Node.js) — downloaded by setup.sh
                     data/.openclaw/openclaw.json — user config (on USB, portable)
-                    skills-cn/             — 17 个中国本地化技能（小红书/微博/B站/抖音/知乎/
-                                             微信公众号/Word/Excel/PPT/天气/搜索/翻译/DeepSeek/
-                                             图片压缩/PDF工具/二维码/网页转Markdown）
 
 install/            一键在线安装模块（curl | bash / irm | iex）
                     install.sh (Mac/Linux) + install.ps1 (Windows)
-                    7 步流程: 系统检测 → Node.js → OpenClaw → QQ插件 → 技能 → 模型配置 → 启动脚本
+                    6 步流程: 系统检测 → Node.js → OpenClaw → QQ插件 → 模型配置 → 启动脚本
                     安装到 ~/.uclaw/，与 Mac-Install.command 结果相同
 
 ```
@@ -103,7 +101,7 @@ The portable launchers auto-find a free port in range 18789–18799 and start th
 
 - **Node.js discovery**: Portable looks at `app/runtime/node-mac-arm64/bin/node` (Windows: `app/runtime/node-win-x64/node.exe`)
 - **China mirrors**: All downloads use `npmmirror.com` — Node.js binaries from `npmmirror.com/mirrors/node`, npm packages from `registry.npmmirror.com`
-- **`OPENCLAW_VERSION` file**: single source of truth for the bundled OpenClaw runtime version (e.g. `2026.6.8`). CI reads it to pin the npm install; it's copied into `portable/` so USB users / `check-update.mjs` can compare installed vs latest. Bump this file to upgrade.
+- **`OPENCLAW_VERSION` file**: single source of truth for the bundled OpenClaw runtime version (e.g. `2026.6.8`). CI reads it to pin the npm install; it's copied into `portable/` for reference. Bump this file to upgrade.
 - **Environment variables**: `OPENCLAW_HOME`, `OPENCLAW_STATE_DIR`, `OPENCLAW_CONFIG_PATH` control where OpenClaw reads config
 - **macOS quarantine**: Mac scripts run `xattr -rd com.apple.quarantine` to remove Gatekeeper blocks
 - **Config format**: `{"gateway":{"mode":"local","auth":{"token":"uclaw"}},"models":{"mode":"merge","providers":{"xxx":{...}}},"agents":{"defaults":{"model":{"primary":"provider/model"}}}}`
@@ -119,18 +117,18 @@ Pure-Node, zero-dependency `.mjs` modules (use `fetch` + `node:zlib` only). All 
 
 | File | Purpose |
 |------|---------|
-| `check-update.mjs` / `publish-latest.mjs` | Portable self-update: check installed vs latest `OPENCLAW_VERSION`; publish helper. |
-| `portable-cache.mjs` | **启动加速核心**：把"重 IO、可重建"的缓存从 U 盘搬到本机硬盘。算出本机缓存根（win `%LOCALAPPDATA%\U-Claw\<slot>` / mac `~/Library/Caches/U-Claw` / linux `$XDG_CACHE_HOME`，UUID 隔离让换盘符仍复用），输出 `NODE_COMPILE_CACHE` 路径，并把 `data/.openclaw/browser` 做成 junction(win)/symlink(mac) 指向本机盘——浏览器 user-data 的海量随机小写不再砸 U 盘。CLI 打印 `KEY=VALUE` 供启动脚本 source。静默失败：取不到就缓存留 U 盘照常启动。 |
+| `check-update.mjs` / `publish-latest.mjs` | 启动时更新检查已退役（范围约定：不自动追随上游，升级以稳定整包为单位）。`publish-latest.mjs` 仍是发行清单生成器；`check-update.mjs` 只作为它的 `latest.json` 格式参考保留，不再被启动脚本调用。 |
+| `portable-cache.mjs` | **本地缓存唯一解析器**：候选链 systemCacheRoot → HOME cache → os.tmpdir，每个候选做真实可写探测（compile/npm/temp/log/受管浏览器子目录全部建好再写探针），且候选/落点不得在 U 盘或 STATE_DIR 子树内。UUID 写 `STATE_DIR/portable-cache-id`（损坏文件不覆盖），换盘符仍复用同一份本机缓存。CLI 打印 `KEY=VALUE` 供 `portable-cache-env.{bat,sh}` 解析（不 eval）。**绝不回落 U 盘**：全部候选不可用就清缓存变量 + `NODE_DISABLE_COMPILE_CACHE=1` + 可见 stderr 错误并退出（Diagnose 除外——它报告错误后继续）。 |
 | `prewarm.mjs` | gateway 首轮预热：端口就绪后后台静默 GET `/ready`→`/status`→`/models`（带 `x-openclaw-token`），把 config/model 子系统在 runtime 内存里热起来，用户首次点发送不再等。零依赖、短超时、后台 detach。 |
 | `loading.html` | 启动首屏（splash）：双击启动后立刻打开，给即时反馈消除"黑窗假死"。本页每秒 fetch `/ready`，gateway 真就绪后自动 `location.replace` 跳 Dashboard——天然规避"gateway 没起就开 Dashboard 拒连"(issue #46/#48)。端口经 `?port=` 传入。 |
 | `wait-gateway.bat` | Windows 兜底：现由 `loading.html` 首屏轮询并自动跳转；本脚本退居兜底——万一首屏 `file://` fetch 被浏览器拦，仍轮询端口、就绪后开 Dashboard。 |
-| `maintain.sh` | Maintenance/diagnostics script. |
+| `portable-maintenance.mjs` | 维护菜单背后的零依赖动作核心：`settings-url`（读 runtime.json 的 configServerPort，短超时 GET `/api/runtime` 核对 `instanceId=sha256(path.resolve(STATE_DIR))`，foreign/stale 不给 URL）、`logs-path`（走 portable-cache）、`backup`（原生 `backup create --verify --output`）、`restore`（原生 `backup restore <archive> --target <全新空目录>`，绝不覆盖既有 state）。原生备份不含 live `agents/**/sessions/*.jsonl`（官方 volatile/skipped），输出文案与测试都写明；恢复结果只落在新目录，不自动激活（先停 Gateway）。 |
 
 ### 启动加速（吸收自 v2 u-clawx 4.0 的工程经验，2026-06-17）
 
 便携版从 U 盘启动慢，瓶颈在 **U 盘随机小写 IO** + **首屏无反馈** + **首轮冷启动**。移植 4.0 的 4 个可在纯脚本层复刻的手段：
 
-1. **缓存搬本机**（`portable-cache.mjs`）：浏览器 user-data（OpenClaw 硬编码在 `CONFIG_DIR/browser/`，无单独环境变量，故用 junction/symlink 重定向）+ V8 编译缓存（`NODE_COMPILE_CACHE`）落本机 SSD。业务数据（`openclaw.json`、`memory`、账号）仍留 U 盘，便携性不变。UUID 隔离让 D:→E: 换盘符仍命中同一份本机缓存。
+1. **缓存搬本机**（`portable-cache.mjs` + `portable-cache-env.{bat,sh}`）：V8 编译缓存、npm 缓存、temp、日志与受管浏览器 profile 全部落本机 SSD（候选链 + 可写探测，不回落 U 盘）。业务数据（`openclaw.json`、`memory`、账号、钱包）仍留 U 盘，便携性不变。UUID 隔离让 D:→E: 换盘符仍命中同一份本机缓存。
 2. **Node 编译缓存**：`openclaw.mjs` 本就调 `module.enableCompileCache()`，但默认落系统 temp（可能被清）。启动脚本显式把 `NODE_COMPILE_CACHE` 指向本机固定目录，二次启动稳定命中。
 3. **启动首屏**（`loading.html`）：双击即弹，自轮询自跳转。
 4. **首轮预热**（`prewarm.mjs`）：后台唤醒 config/model。

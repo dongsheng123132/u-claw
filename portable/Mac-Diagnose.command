@@ -5,12 +5,32 @@
 # ============================================================
 
 UCLAW_DIR="$(cd "$(dirname "$0")" && pwd)"
-LOG_FILE="$UCLAW_DIR/diagnostic-log.txt"
 
 GREEN='\033[0;32m'
 RED='\033[0;31m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
+
+# 日志目录：优先本机缓存 helper（UCLAW_LOG_DIR）；缺 runtime 或没有可写本机缓存时
+# 退回系统临时目录（绝不写 U 盘），并把缓存错误显示出来——基础诊断必须继续跑。
+ARCH=$(uname -m)
+if [ "$ARCH" = "arm64" ]; then
+    NODE_BIN="$UCLAW_DIR/app/runtime/node-mac-arm64/bin/node"
+else
+    NODE_BIN="$UCLAW_DIR/app/runtime/node-mac-x64/bin/node"
+fi
+LOG_DIR="${TMPDIR:-/tmp}/u-claw-diagnose"
+if [ -f "$NODE_BIN" ]; then
+    if . "$UCLAW_DIR/lib/portable-cache-env.sh" "$UCLAW_DIR/data/.openclaw" "$UCLAW_DIR" "$NODE_BIN"; then
+        LOG_DIR="$UCLAW_LOG_DIR"
+    else
+        echo -e "  ${YELLOW}⚠ 无可写本机缓存目录（见上方错误），诊断日志写入系统临时目录。${NC}"
+    fi
+else
+    echo -e "  ${YELLOW}⚠ 盘内 Node 不存在，诊断日志写入系统临时目录。${NC}"
+fi
+mkdir -p "$LOG_DIR"
+LOG_FILE="$LOG_DIR/diagnostic-log.txt"
 
 clear
 echo ""
@@ -30,14 +50,8 @@ Generated: $(date)
 
 EOF
 
-# 1. Check Node.js
+# 1. Check Node.js（ARCH/NODE_BIN 已在文件头解析，用于接入缓存 helper）
 echo "[1/6] Checking Node.js runtime..."
-ARCH=$(uname -m)
-if [ "$ARCH" = "arm64" ]; then
-    NODE_BIN="$UCLAW_DIR/app/runtime/node-mac-arm64/bin/node"
-else
-    NODE_BIN="$UCLAW_DIR/app/runtime/node-mac-x64/bin/node"
-fi
 
 if [ -f "$NODE_BIN" ]; then
     echo "  [OK] Node.js found" >> "$LOG_FILE"

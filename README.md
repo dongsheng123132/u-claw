@@ -84,7 +84,7 @@ curl -fsSL https://u-claw.org/install.sh | bash
 irm https://u-claw.org/install.ps1 | iex
 ```
 
-自动完成: Node.js 下载 → OpenClaw 安装 → 10 个中国技能 → 模型配置 → 启动脚本生成。全程国内镜像，无需翻墙。
+自动完成: Node.js 下载 → OpenClaw 安装 → 模型配置 → 启动脚本生成。全程国内镜像，无需翻墙。
 
 详见 [`install/README.md`](install/README.md)。
 
@@ -111,19 +111,21 @@ cp -R portable/ /Volumes/你的U盘/U-Claw/   # Mac
 | 功能 | Mac | Windows |
 |------|-----|---------|
 | **免安装运行** | `Mac-Start.command` | `Windows-Start.bat` |
-| **功能菜单** | `Mac-Menu.command` | `Windows-Menu.bat` |
+| **维护菜单** | `Mac-Maintain.command` | `Windows-Maintain.bat` |
 | **安装到电脑** | `Mac-Install.command` | `Windows-Install.bat` |
 | **首次配置** | 首次启动自动打开「配置中心」 | 首次启动自动打开「配置中心」 |
+
+> 维护菜单只做：诊断、查看本机日志、备份、恢复到新目录、原生 CLI、发行页。不再提供第二套网关启动、工厂重置、泛化清理、渠道向导或按端口杀进程。
 
 ### U 盘文件结构
 
 ```
 U-Claw/                          ← 整个拷到 U 盘
 ├── Mac-Start.command             Mac 免安装运行
-├── Mac-Menu.command              Mac 功能菜单
+├── Mac-Maintain.command          Mac 维护菜单
 ├── Mac-Install.command           安装到 Mac
 ├── Windows-Start.bat             Windows 免安装运行
-├── Windows-Menu.bat              Windows 功能菜单
+├── Windows-Maintain.bat          Windows 维护菜单
 ├── Windows-Install.bat           安装到 Windows
 ├── setup.sh                      补齐依赖（开发者用）
 ├── app/                          ← 大依赖（setup.sh 下载，不进 git）
@@ -155,10 +157,10 @@ Linux 可启动 U 盘套件已移出本仓库，在独立仓库 [u-claw-linux](h
 
 | 数据类型 | 存放位置 |
 |---|---|
-| 模型配置、钱包、SQLite 会话、工作区 | U 盘 `data/.openclaw` |
-| Node 编译缓存、受管浏览器用户目录 | 当前电脑本地缓存目录 |
+| 模型配置、钱包、会话、记忆、工作区、备份 | U 盘 `data/` |
+| 编译缓存、npm 缓存、受管浏览器 profile、临时文件、日志 | 当前电脑本地缓存目录 |
 
-浏览器网站登录状态不会自动随盘迁移，换电脑后需要重新登录。部分界面缓存和运行时依赖仍会读写 U 盘。Windows NTFS 与 exFAT 的隔离测试已完成真实对话和重启读回；exFAT 的目录监听会降级为轮询，部分插件技能链接不能创建，启动可能更慢。发布成品仍须单独验收，这不代表所有电脑或 Mac 共盘已通过。
+浏览器网站登录状态落在本机缓存，不随盘迁移，换电脑后需要重新登录。缓存、编译、临时与日志均在宿主机本地硬盘；配置、钱包、会话、记忆、备份与用户文件随 U 盘走。运行时依赖（`app/`）仍从 U 盘读取。Windows NTFS 与 exFAT 的隔离测试已完成真实对话和重启读回；exFAT 的目录监听会降级为轮询，部分插件技能链接不能创建，启动可能更慢。发布成品仍须单独验收，这不代表所有电脑或 Mac 共盘已通过。
 
 ### 支持的 AI 模型
 
@@ -349,7 +351,7 @@ curl -fsSL https://u-claw.org/install.sh | bash
 irm https://u-claw.org/install.ps1 | iex
 ```
 
-Automatically downloads Node.js, installs OpenClaw, configures 10 Chinese-optimized skills, and sets up your AI model. All downloads use China mirrors.
+Automatically downloads Node.js, installs OpenClaw, and sets up your AI model. All downloads use China mirrors.
 
 See [`install/README.md`](install/README.md) for details.
 
@@ -378,19 +380,21 @@ cp -R portable/ /Volumes/YOUR_USB/U-Claw/   # Mac
 | Feature | Mac | Windows |
 |---------|-----|---------|
 | **Run (no install)** | `Mac-Start.command` | `Windows-Start.bat` |
-| **Menu** | `Mac-Menu.command` | `Windows-Menu.bat` |
+| **Maintain** | `Mac-Maintain.command` | `Windows-Maintain.bat` |
 | **Install to PC** | `Mac-Install.command` | `Windows-Install.bat` |
 | **First-time config** | Config Center opens automatically on first start | Config Center opens automatically on first start |
+
+> The Maintain menu only covers: diagnose, local logs, backup, restore to a fresh folder, the native CLI, and the release page. It no longer offers a second gateway launcher, factory reset, generic cleanup, a channel wizard, or kill-by-port.
 
 ### File Structure
 
 ```
 U-Claw/                          ← Copy entire folder to USB
 ├── Mac-Start.command             Mac launcher
-├── Mac-Menu.command              Mac menu
+├── Mac-Maintain.command          Mac maintain menu
 ├── Mac-Install.command           Install to Mac
 ├── Windows-Start.bat             Windows launcher
-├── Windows-Menu.bat              Windows menu
+├── Windows-Maintain.bat          Windows maintain menu
 ├── Windows-Install.bat           Install to Windows
 ├── setup.sh                      Download dependencies (dev use)
 ├── app/                          ← Large deps (downloaded by setup.sh, not in git)

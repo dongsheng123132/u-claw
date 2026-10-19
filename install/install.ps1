@@ -78,7 +78,7 @@ New-Item -ItemType Directory -Force -Path "$DATA_DIR\backups" | Out-Null
 # ============================================================
 # Step 2: Node.js
 # ============================================================
-Write-Host "  [1/6] Install Node.js $NODE_VERSION ..." -ForegroundColor White
+Write-Host "  [1/5] Install Node.js $NODE_VERSION ..." -ForegroundColor White
 
 $NODE_INSTALL_DIR = "$RUNTIME_DIR\node-$PLATFORM"
 $INSTALL_NODE = ""
@@ -164,7 +164,7 @@ Write-Host ""
 # ============================================================
 # Step 3: OpenClaw + QQ plugin (pre-bundled download)
 # ============================================================
-Write-Host "  [2/6] Install OpenClaw + QQ plugin ..." -ForegroundColor White
+Write-Host "  [2/5] Install OpenClaw + QQ plugin ..." -ForegroundColor White
 
 if (Test-Path "$CORE_DIR\node_modules\openclaw") {
     Write-Green "  [OK] OpenClaw already installed, skip"
@@ -252,221 +252,10 @@ if (Test-Path "$CORE_DIR\node_modules\@sliverp\qqbot") {
 }
 
 Write-Host ""
-
 # ============================================================
-# Step 4: China-optimized skills (10 skills)
+# Step 4: Model configuration
 # ============================================================
-Write-Host "  [3/6] Install China skills (10) ..." -ForegroundColor White
-
-$SKILLS_TARGET = "$CORE_DIR\node_modules\openclaw\skills"
-if (-not (Test-Path $SKILLS_TARGET)) { New-Item -ItemType Directory -Force -Path $SKILLS_TARGET | Out-Null }
-
-$skillCount = 0
-
-$skills = @{
-    "bilibili-helper" = @'
----
-name: bilibili-helper
-description: "Bilibili content helper - video title, tags, cover design, category selection"
-metadata: { "openclaw": { "emoji": "TV" } }
----
-
-# Bilibili Content Helper
-
-Optimize video titles, descriptions, tags and covers for better recommendations on Bilibili.
-
-## Title formulas
-
-1. Question: "Why XX? You'll understand after watching"
-2. Tutorial: "XX Tutorial | Step by step from scratch"
-3. Review: "Spent XX yuan on XX, is it worth it?"
-4. Challenge: "Challenge XX days using only XX"
-5. Ranking: "Top 10 XX of the year"
-'@
-
-    "china-search" = @'
----
-name: china-search
-description: "China search engines - Baidu, Sogou, Bing China search"
-metadata: { "openclaw": { "emoji": "search" } }
----
-
-# China Search Engine Helper
-
-Search via Baidu, Sogou, Bing China using curl.
-
-## Commands
-
-```bash
-curl -s -L "https://www.baidu.com/s?wd=keyword" -H "User-Agent: Mozilla/5.0"
-curl -s -L "https://weixin.sogou.com/weixin?query=keyword" -H "User-Agent: Mozilla/5.0"
-curl -s -L "https://cn.bing.com/search?q=keyword" -H "User-Agent: Mozilla/5.0"
-```
-'@
-
-    "china-translate" = @'
----
-name: china-translate
-description: "CN-EN translation - tech docs, UI localization, cultural adaptation"
-metadata: { "openclaw": { "emoji": "globe" } }
----
-
-# CN-EN Translation Helper
-
-Professional Chinese-English bidirectional translation for tech docs and product localization.
-
-## Common terms
-
-| English | Chinese |
-|---------|---------|
-| Deploy | Bu Shu |
-| Repository | Cang Ku |
-| Container | Rong Qi |
-| Middleware | Zhong Jian Jian |
-| Token | Token / Ling Pai |
-| Prompt | Ti Shi Ci |
-'@
-
-    "china-weather" = @'
----
-name: china-weather
-description: "China city weather query - supports Chinese city names, wttr.in API"
-metadata: { "openclaw": { "emoji": "sun" } }
----
-
-# China Weather Query
-
-```bash
-curl -s "wttr.in/Shenzhen?lang=zh"
-curl -s "wttr.in/Beijing?format=j1"
-```
-'@
-
-    "deepseek-helper" = @'
----
-name: deepseek-helper
-description: "DeepSeek API helper - model selection, API guide, pricing info"
-metadata: { "openclaw": { "emoji": "robot" } }
----
-
-# DeepSeek API Helper
-
-## Models
-
-| Model | Use case | Context |
-|-------|----------|---------|
-| deepseek-v4-flash | Daily chat, fast and cheap | 128K |
-| deepseek-v4-pro | Complex reasoning, code | 128K |
-
-> Note: the legacy names `deepseek-chat` / `deepseek-coder` / `deepseek-reasoner` are
-> no longer accepted by api.deepseek.com and return HTTP 400.
-
-- OpenAI-compatible API, base_url: https://api.deepseek.com
-- Direct access in China, API Key: https://platform.deepseek.com
-'@
-
-    "douyin-script" = @'
----
-name: douyin-script
-description: "Douyin/Kuaishou short video script - hook, structure, hashtag strategy"
-metadata: { "openclaw": { "emoji": "video" } }
----
-
-# Douyin/Kuaishou Script Helper
-
-## First 3-second Hook formulas
-
-1. Counter-intuitive: "What you've been doing is actually wrong"
-2. Number shock: "Only 100 yuan but better than 1000 yuan"
-3. Suspense: "Guess what this is for?"
-4. Emotional: "Workers fell silent after watching..."
-5. Result first: "The final result is amazing!"
-
-## Hashtags: large + medium + small topics, 5-8 total
-## Best time: 7-9am, 12-2pm, 6-10pm
-'@
-
-    "wechat-article" = @'
----
-name: wechat-article
-description: "WeChat article writing - structure, formatting, conversion optimization"
-metadata: { "openclaw": { "emoji": "green" } }
----
-
-# WeChat Article Writing Helper
-
-## Formatting rules
-
-- Body font 15-16px, line height 1.75-2x
-- Body color #3f3f3f, accent #007AFF
-- 3-5 lines per paragraph, 1 image per 300 chars
-- Title under 30 chars, first 15 chars must catch attention
-'@
-
-    "weibo-poster" = @'
----
-name: weibo-poster
-description: "Weibo content creation - 140-char optimization, trending topics, images"
-metadata: { "openclaw": { "emoji": "red" } }
----
-
-# Weibo Content Helper
-
-## 140-char tips: Write then trim, one point per post, end with golden quote
-## Images: 1 for highlight / 3 for comparison / 6 for narrative / 9 for grid
-## Timing: Weekday lunch + after work, Weekend morning + evening
-'@
-
-    "xiaohongshu-writer" = @'
----
-name: xiaohongshu-writer
-description: "Xiaohongshu note writer - title optimization, emoji strategy, hashtags"
-metadata: { "openclaw": { "emoji": "book" } }
----
-
-# Xiaohongshu Note Writer
-
-## Title formulas
-
-1. Numbers: "5 ways / 10 types / under 100 yuan"
-2. Contrast: "3K salary vs 30K salary"
-3. Review: "Personally tested, really works!"
-4. Collection: "XX Collection | All in one post"
-
-## Tips: Max 3 lines per paragraph, 1-2 emoji per paragraph, 3-8 hashtags
-'@
-
-    "zhihu-writer" = @'
----
-name: zhihu-writer
-description: "Zhihu answer/article writing - structure, professional tone, citations"
-metadata: { "openclaw": { "emoji": "pen" } }
----
-
-# Zhihu Writing Helper
-
-## Answer structure: Conclusion first -> Point-by-point -> Summary
-## Style: Confident not arrogant, professional but accessible
-## Quality: 500-3000 chars, original, reply to comments, focus on 2-3 topics
-'@
-}
-
-foreach ($skillName in $skills.Keys) {
-    $skillDir = "$SKILLS_TARGET\$skillName"
-    if (-not (Test-Path $skillDir)) {
-        New-Item -ItemType Directory -Force -Path $skillDir | Out-Null
-        [IO.File]::WriteAllText("$skillDir\SKILL.md", $skills[$skillName], (New-Object System.Text.UTF8Encoding $false))
-        $skillCount++
-    }
-}
-
-Write-Green "  [OK] China skills installed (+$skillCount)"
-Write-Host ""
-
-# ============================================================
-# Step 5: Model configuration
-# ============================================================
-Write-Host "  [4/6] Configure AI model ..." -ForegroundColor White
+Write-Host "  [3/5] Configure AI model ..." -ForegroundColor White
 Write-Host ""
 
 $hasConfig = (Test-Path $CONFIG_PATH) -and (Select-String -Path $CONFIG_PATH -Pattern "apiKey" -Quiet -ErrorAction SilentlyContinue)
@@ -586,9 +375,9 @@ if ($hasConfig) {
 Write-Host ""
 
 # ============================================================
-# Step 6: Generate start scripts
+# Step 5: Generate start scripts
 # ============================================================
-Write-Host "  [5/6] Generate start scripts ..." -ForegroundColor White
+Write-Host "  [4/5] Generate start scripts ..." -ForegroundColor White
 
 $startBat = @'
 @echo off
@@ -667,9 +456,9 @@ Write-Green "  [OK] Remote help + uninstall tools generated"
 Write-Host ""
 
 # ============================================================
-# Step 7: Verify
+# Step 6: Verify
 # ============================================================
-Write-Host "  [6/6] Verify installation ..." -ForegroundColor White
+Write-Host "  [5/5] Verify installation ..." -ForegroundColor White
 Write-Host ""
 
 try {
@@ -690,9 +479,6 @@ if (Test-Path "$CORE_DIR\node_modules\@sliverp\qqbot") {
 } else {
     Write-Yellow "  [WARN] QQ plugin (not required)"
 }
-
-$installedSkills = (Get-ChildItem -Directory $SKILLS_TARGET -ErrorAction SilentlyContinue).Count
-Write-Green "  [OK] China skills ($installedSkills)"
 
 if (Test-Path $CONFIG_PATH) {
     Write-Green "  [OK] Config file"

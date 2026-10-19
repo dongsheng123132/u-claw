@@ -40,6 +40,14 @@ if errorlevel 1 (
     exit /b 1
 )
 
+REM Local cache/temp/log dirs via the shared resolver; no local cache = stop.
+call "%UCLAW_DIR%lib\portable-cache-env.bat" "%OPENCLAW_STATE_DIR%" "%UCLAW_DIR%"
+if errorlevel 1 (
+    echo   [ERROR] No writable local cache directory on this PC.
+    pause
+    exit /b 1
+)
+
 echo.
 echo   ========================================
 echo     U-Claw Interactive CLI

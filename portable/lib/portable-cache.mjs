@@ -1,40 +1,39 @@
-// portable-cache.mjs — 把"重 IO、可重建"的缓存从 U 盘搬到本机硬盘
+// portable-cache.mjs — 唯一的本机缓存/临时/日志目录解析器（本批唯一真相源）
 //
 // 背景（U 盘启动慢的最大根因）：
-//   - OpenClaw 的浏览器 user-data 落在 OPENCLAW_STATE_DIR/browser/<profile>/user-data，
-//     即 U 盘 data/.openclaw/ 下。Chromium 会对它做海量随机小写，慢 U 盘上极致拖累。
-//   - Node 的 V8 编译缓存（module.enableCompileCache）默认落系统 temp，可能被清而每次重编译。
+//   - OpenClaw 的浏览器 user-data、V8 编译缓存、npm 缓存、临时文件、启动日志若落在 U 盘，
+//     慢盘上的海量随机小写会把启动与会话拖到不可用。
+//   - 旧版在首选本机根不可写时"回落到 U 盘"——本批删除该语义：无本机可写位置 = 明确失败，
+//     由调用 helper 的入口（Start/CLI/Doctor）中止，绝不静默把缓存写回 U 盘。
 //
-// 方案（移植自 v2 u-clawx 4.0 的 portable-session-data.ts 思路）：
-//   把这两类"可重建、不需便携"的缓存重定向到本机硬盘的固定位置：
-//     Windows: %LOCALAPPDATA%\U-Claw\...
-//     macOS:   ~/Library/Caches/U-Claw/...
-//     Linux:   $XDG_CACHE_HOME/U-Claw 或 ~/.cache/U-Claw
-//   业务数据（openclaw.json、memory、账号）仍留在 U 盘 data/，便携性不变。
+// 候选顺序（依次尝试，前一个不合格就换下一个）：
+//   1) 系统用户缓存根（win %LOCALAPPDATA% / mac ~/Library/Caches / linux $XDG_CACHE_HOME）
+//   2) 本机 HOME 下的用户缓存目录（与 1 重复时自动去重）
+//   3) 系统 temp（os.tmpdir()）
+// 每个候选都要同时满足：
+//   - realpath 后不在 usbRoot / stateDir 子树内（含其子目录同样检查）
+//   - slot 根 + 全部子目录（compile/npm/tmp/logs/browser）真实 mkdir + 逐个写探测通过
+// 任一子项失败 → 清掉本轮建出的目录，换下一个候选。
 //
-// 浏览器 user-data 的重定向手法：
-//   U-Claw 对固定版本 OpenClaw 打入受管浏览器目录补丁，读取
-//   OPENCLAW_MANAGED_BROWSER_DIR；因此只将 Chromium profile 放本机盘。STATE_DIR
-//   （SQLite 会话、设备身份、授权）始终留在 U 盘，不能与浏览器一起搬走。
+// UUID 隔离：缓存子目录名 = sha256("portable-id:<UUID>") 前 16 hex。UUID 存在 U 盘 STATE_DIR
+// 的 portable-cache-id 里（仅首次小量写入；已存在但损坏的文件不覆盖，退回路径身份），
+// 因此同一支盘从 D: 插到 E: 仍命中同一份本机缓存。
 //
-// UUID 隔离（移植自 4.0）：
-//   缓存子目录名 = sha256("portable-id:<UUID>") 前 16 hex。UUID 存在 U 盘 STATE_DIR 里，
-//   所以同一支 U 盘从 D: 插到 E: 仍命中同一份本机缓存，不必重新热身。
-//
-// 设计原则：本机盘优先；本机缓存不可写时才回退到 U 盘，绝不阻断启动。
-//
-// CLI 用法（供 .bat / .command source）：
+// CLI 用法（供 portable-cache-env.{bat,sh} 解析，不 eval 输出，逐行 KEY=VALUE）：
 //   node portable-cache.mjs <STATE_DIR> <USB_ROOT>
-// 输出（每行 KEY=VALUE，路径已 mkdir）：
-//   UCLAW_COMPILE_CACHE_DIR=...
-//   UCLAW_BROWSER_USER_DATA_DIR=...
-//   UCLAW_CACHE_ROOT=...
+// 可注入候选（仅测试用，避免真机系统回退干扰断言）：
+//   环境变量 UCLAW_CACHE_CANDIDATES（path.delimiter 分隔的候选基目录列表）
+// 输出（成功时每行 KEY=VALUE，目录已 mkdir + 写探测通过）：
+//   UCLAW_CACHE_ROOT / UCLAW_COMPILE_CACHE_DIR / UCLAW_NPM_CACHE_DIR / UCLAW_TEMP_DIR /
+//   UCLAW_LOG_DIR / UCLAW_MANAGED_BROWSER_DIR / UCLAW_BROWSER_USER_DATA_DIR /
+//   UCLAW_LOCAL_CACHE_AVAILABLE=1
+// 失败：stdout 只打 UCLAW_LOCAL_CACHE_AVAILABLE=0，stderr 打警告，exit 1。
 
 import { createHash, randomUUID } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, mkdirSync, readFileSync, realpathSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
+import { basename, dirname, join, resolve, sep } from 'node:path';
 import { homedir, tmpdir } from 'node:os';
-import { execFileSync } from 'node:child_process';
+import { pathToFileURL } from 'node:url';
 
 const CACHE_ID_FILE = 'portable-cache-id';
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -50,63 +49,173 @@ function systemCacheRoot(platform = process.platform, env = process.env) {
   return env.XDG_CACHE_HOME?.trim() || join(homedir() || tmpdir(), '.cache');
 }
 
-// 读/建 U 盘上的稳定 UUID，使缓存身份与盘符解耦。
-function readOrCreateCacheId(stateDir) {
-  if (!stateDir) return null;
-  const idPath = join(stateDir, CACHE_ID_FILE);
-  try {
-    if (existsSync(idPath)) {
-      const existing = readFileSync(idPath, 'utf8').trim();
-      if (UUID_RE.test(existing)) return existing.toLowerCase();
+// 候选基目录（顺序即优先级）：系统缓存根 → HOME 缓存 → 系统 temp。
+function defaultCandidateBases(platform, env) {
+  const bases = [];
+  const seen = new Set();
+  const push = (p) => {
+    if (!p) return;
+    const k = platform === 'win32' ? String(p).toLowerCase() : String(p);
+    if (seen.has(k)) return;
+    seen.add(k);
+    bases.push(p);
+  };
+  push(systemCacheRoot(platform, env));
+  const home = homedir();
+  if (home) {
+    if (platform === 'win32') push(join(home, 'AppData', 'Local'));
+    else if (platform === 'darwin') push(join(home, 'Library', 'Caches'));
+    else push(env.XDG_CACHE_HOME?.trim() || join(home, '.cache'));
+  }
+  push(join(tmpdir(), 'u-claw-cache'));
+  return bases;
+}
+
+// realpath 化（不存在的尾段逐级拼回）：把 junction/符号链接/.. 都折进真实路径再比边界。
+function realPathOf(p) {
+  const target = resolve(p);
+  const tail = [];
+  let cur = target;
+  for (;;) {
+    try {
+      const real = realpathSync(cur);
+      return tail.length ? join(real, ...tail) : real;
+    } catch {
+      const parent = dirname(cur);
+      if (parent === cur) return target;
+      tail.unshift(basename(cur));
+      cur = parent;
     }
-    const next = randomUUID();
-    mkdirSync(stateDir, { recursive: true });
-    writeFileSync(idPath, `${next}\n`, { encoding: 'utf8', mode: 0o600 });
-    return next;
+  }
+}
+
+function normalizeForCompare(p, platform) {
+  const s = String(p);
+  return platform === 'win32' ? s.toLowerCase() : s;
+}
+
+// child（及自身）是否位于 root 子树内。
+function isWithin(childReal, rootReal, platform) {
+  if (!childReal || !rootReal) return false;
+  const c = normalizeForCompare(childReal, platform);
+  const r = normalizeForCompare(rootReal, platform);
+  return c === r || c.startsWith(r.endsWith(sep) ? r : r + sep);
+}
+
+// 只读取，不写入：已存在但损坏的 UUID 文件保持原样（不覆盖）。
+function readCacheIdIfExists(stateDir) {
+  if (!stateDir) return { state: 'missing', id: null };
+  try {
+    const idPath = join(stateDir, CACHE_ID_FILE);
+    if (!existsSync(idPath)) return { state: 'missing', id: null };
+    const existing = readFileSync(idPath, 'utf8').trim();
+    if (UUID_RE.test(existing)) return { state: 'valid', id: existing.toLowerCase() };
+    return { state: 'corrupt', id: null };
   } catch {
+    return { state: 'missing', id: null };
+  }
+}
+
+// 在候选基目录下建 slot 根 + 全部子目录，并逐目录写探测；任一失败即回滚并返回 null。
+function prepareSlotRoot(base, slot, platform) {
+  const root = join(base, 'U-Claw', slot);
+  const sub = {
+    compileCacheDir: join(root, 'node-compile-cache'),
+    npmCacheDir: join(root, 'npm-cache'),
+    tempDir: join(root, 'tmp'),
+    logDir: join(root, 'logs'),
+    managedBrowserDir: join(root, 'managed-browser'),
+    browserUserDataDir: join(root, 'managed-browser', 'openclaw', 'user-data'),
+  };
+  try {
+    mkdirSync(root, { recursive: true });
+    for (const d of Object.values(sub)) mkdirSync(d, { recursive: true });
+    for (const d of [root, ...Object.values(sub)]) {
+      const probe = join(d, `.uclaw-wprobe-${process.pid}`);
+      writeFileSync(probe, '');
+      unlinkSync(probe);
+    }
+    return { root, ...sub };
+  } catch {
+    try { rmSync(root, { recursive: true, force: true }); } catch { /* 尽力回滚 */ }
     return null;
   }
 }
 
-// 解析本机缓存目录集合。stateDir 缺失/不可写时回退到 U 盘内目录。
+/**
+ * 解析本机缓存目录集合。
+ * options.candidates 可注入候选基目录（测试用；不传则按平台默认顺序）。
+ * 找不到可写本机候选 → 返回 root 为空 + localCacheAvailable:false，且不在 stateDir/usbRoot
+ * 创建任何目录、不写 UUID。
+ */
 export function resolvePortableCache({
   stateDir,
   usbRoot,
   platform = process.platform,
   env = process.env,
+  candidates,
 } = {}) {
-  const cacheId = readOrCreateCacheId(stateDir);
-  // 有 UUID 用 UUID，否则退而用 U 盘路径做身份（仍稳定，只是换盘符会换目录）
-  const identity = cacheId ? `portable-id:${cacheId}` : String(usbRoot || stateDir || 'u-claw').toLowerCase();
+  const idInfo = readCacheIdIfExists(stateDir);
+  // UUID 只在内存里参与 slot 计算，确认本机可用后才落盘（损坏文件永不覆盖）。
+  const uuid = idInfo.state === 'valid' ? idInfo.id : (idInfo.state === 'missing' ? randomUUID() : null);
+  const identity = uuid
+    ? `portable-id:${uuid}`
+    : String(usbRoot || stateDir || 'u-claw').toLowerCase();
   const slot = createHash('sha256').update(identity).digest('hex').slice(0, 16);
 
-  let root;
-  let localCacheAvailable = true;
-  try {
-    root = join(systemCacheRoot(platform, env), 'U-Claw', slot);
-    mkdirSync(root, { recursive: true });
-  } catch {
-    // 本机缓存根不可写 → 整体回退到 U 盘内（保证不报错，只是没加速）
-    localCacheAvailable = false;
-    root = stateDir ? join(stateDir, 'cache') : join(tmpdir(), 'u-claw-cache', slot);
-    try { mkdirSync(root, { recursive: true }); } catch { /* 实在不行就让调用方拿到路径自己兜底 */ }
+  const realUsb = usbRoot ? realPathOf(usbRoot) : null;
+  const realState = stateDir ? realPathOf(stateDir) : null;
+
+  const bases = Array.isArray(candidates) && candidates.length
+    ? candidates.filter(Boolean)
+    : defaultCandidateBases(platform, env);
+
+  for (const base of bases) {
+    const realBase = realPathOf(base);
+    // 候选基目录（及其真实落点）不得在 U 盘或 stateDir 子树内。
+    if (isWithin(realBase, realUsb, platform) || isWithin(realBase, realState, platform)) continue;
+    const prepared = prepareSlotRoot(base, slot, platform);
+    if (!prepared) continue;
+    if (isWithin(realPathOf(prepared.root), realUsb, platform)
+        || isWithin(realPathOf(prepared.root), realState, platform)) {
+      try { rmSync(prepared.root, { recursive: true, force: true }); } catch { /* 尽力回滚 */ }
+      continue;
+    }
+    // 本机确认可用后，才把"仅首次"的 UUID 小量写入 stateDir（损坏的旧文件不覆盖）。
+    if (idInfo.state === 'missing' && uuid && stateDir) {
+      try {
+        if (!existsSync(stateDir)) mkdirSync(stateDir, { recursive: true });
+        writeFileSync(join(stateDir, CACHE_ID_FILE), `${uuid}\n`, { encoding: 'utf8', mode: 0o600 });
+      } catch { /* 写失败只是换盘符时缓存不复用，不阻断 */ }
+    }
+    return { ...prepared, localCacheAvailable: true, cacheId: uuid };
   }
 
-  const compileCacheDir = join(root, 'node-compile-cache');
-  // If the host cache cannot be created, leave the variable empty. OpenClaw
-  // then uses its normal portable STATE_DIR/browser location; never invent a
-  // second state location or inherit a caller-supplied local browser root.
-  const managedBrowserDir = localCacheAvailable ? join(root, 'managed-browser') : '';
-  const browserUserDataDir = managedBrowserDir ? join(managedBrowserDir, 'openclaw', 'user-data') : '';
-  for (const d of [compileCacheDir, managedBrowserDir, browserUserDataDir].filter(Boolean)) {
-    try { mkdirSync(d, { recursive: true }); } catch { /* 静默 */ }
-  }
-
-  return { root, compileCacheDir, managedBrowserDir, browserUserDataDir, localCacheAvailable, cacheId };
+  // 无可用本机候选：不建任何目录、不写 USB、不回落。
+  return {
+    root: '',
+    compileCacheDir: '',
+    npmCacheDir: '',
+    tempDir: '',
+    logDir: '',
+    managedBrowserDir: '',
+    browserUserDataDir: '',
+    localCacheAvailable: false,
+    cacheId: idInfo.state === 'valid' ? idInfo.id : null,
+    reason: 'no-writable-local-candidate',
+  };
 }
 
-// CLI：打印 KEY=VALUE，供启动脚本逐行 set / export。
-import { pathToFileURL } from 'node:url';
+const OUTPUT_KEYS = Object.freeze({
+  root: 'UCLAW_CACHE_ROOT',
+  compileCacheDir: 'UCLAW_COMPILE_CACHE_DIR',
+  npmCacheDir: 'UCLAW_NPM_CACHE_DIR',
+  tempDir: 'UCLAW_TEMP_DIR',
+  logDir: 'UCLAW_LOG_DIR',
+  managedBrowserDir: 'UCLAW_MANAGED_BROWSER_DIR',
+  browserUserDataDir: 'UCLAW_BROWSER_USER_DATA_DIR',
+});
+
 const isMain = (() => {
   try { return !!process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href; }
   catch { return false; }
@@ -115,18 +224,28 @@ const isMain = (() => {
 if (isMain) {
   const stateDir = process.argv[2] || process.env.OPENCLAW_STATE_DIR;
   const usbRoot = process.argv[3] || process.env.UCLAW_DIR;
+  const injected = (process.env.UCLAW_CACHE_CANDIDATES || '')
+    .split(process.platform === 'win32' ? ';' : ':')
+    .map((s) => s.trim())
+    .filter(Boolean);
   try {
-    const c = resolvePortableCache({ stateDir, usbRoot });
+    const c = resolvePortableCache({
+      stateDir,
+      usbRoot,
+      candidates: injected.length ? injected : undefined,
+    });
+    if (!c.localCacheAvailable) {
+      process.stdout.write('UCLAW_LOCAL_CACHE_AVAILABLE=0\n');
+      process.stderr.write('[portable-cache] no writable local cache directory; refusing to fall back to the portable drive\n');
+      process.exit(1);
+    }
     process.stdout.write(
-      `UCLAW_CACHE_ROOT=${c.root}\n` +
-      `UCLAW_COMPILE_CACHE_DIR=${c.compileCacheDir}\n` +
-      `UCLAW_MANAGED_BROWSER_DIR=${c.managedBrowserDir}\n` +
-      `UCLAW_BROWSER_USER_DATA_DIR=${c.browserUserDataDir}\n` +
-      `UCLAW_LOCAL_CACHE_AVAILABLE=${c.localCacheAvailable ? '1' : '0'}\n`,
+      Object.entries(OUTPUT_KEYS).map(([k, key]) => `${key}=${c[k]}`).join('\n') + '\n'
+      + 'UCLAW_LOCAL_CACHE_AVAILABLE=1\n',
     );
     process.exit(0);
   } catch (err) {
-    // 静默失败：不输出任何 KEY，启动脚本会按"未设置"继续（缓存留 U 盘）
+    process.stdout.write('UCLAW_LOCAL_CACHE_AVAILABLE=0\n');
     process.stderr.write(`[portable-cache] ${err && err.message}\n`);
     process.exit(1);
   }
