@@ -1,8 +1,8 @@
 name: Track OpenClaw upstream
-# Discovery only. Updating the pin, native dependencies and patches requires acceptance.
+# 2026-10-19 已禁用自动追更（范围约定：不自动追随上游，升级以经过验证的稳定整包为单位）。
+# 本工作流只保留手动 workflow_dispatch 做一次「看一眼上游到哪了」，不再定时跑、不 bump、不发版。
+# 真要升级 OpenClaw：手动改 OPENCLAW_VERSION + 重取原生依赖 + 重打补丁 + 干净机 NTFS 验收后，整包发布。
 on:
-  schedule:
-    - cron: '0 1 * * *'
   workflow_dispatch:
 permissions:
   contents: read
@@ -22,5 +22,5 @@ jobs:
           latest=$(npm view openclaw version --registry=https://registry.npmjs.org --fetch-timeout=30000)
           echo "Bundled OpenClaw: $pinned; upstream: $latest" >> "$GITHUB_STEP_SUMMARY"
           if [ "$pinned" != "$latest" ]; then
-            echo "::warning::New OpenClaw $latest requires Node, native dependency, patch, and physical NTFS acceptance before release."
+            echo "::warning::New OpenClaw $latest is available, but this repo no longer auto-tracks. Upgrade is a manual, verified full-bundle release — never a pin bump alone."
           fi
