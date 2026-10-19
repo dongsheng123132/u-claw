@@ -42,6 +42,17 @@ try {
         & $node --test 'tests/*.test.mjs'
         if ($LASTEXITCODE -ne 0) { throw 'Source and built-runtime tests failed' }
     } finally { $env:UCLAW_RUNTIME_CORE=$previousTestCore }
+    # setup.ps1 resolves the local cache through the real runtime path, which creates
+    # data/.openclaw/portable-cache-id. That is build-time state, not user data: a
+    # release must ship without data/. Drop it only when the tree holds nothing else --
+    # any other file is a genuine leak and must fail the build.
+    $stageData=Join-Path $stage 'data'
+    if (Test-Path -LiteralPath $stageData) {
+        $allowed=@((Join-Path $stageData '.openclaw'), (Join-Path $stageData '.openclaw/portable-cache-id'))
+        $unexpected=@(Get-ChildItem -LiteralPath $stageData -Recurse -Force | Where-Object { $allowed -notcontains $_.FullName })
+        if ($unexpected.Count) { throw ("Staged data/ contains unexpected files: " + (($unexpected | ForEach-Object FullName) -join ', ')) }
+        Remove-Item -LiteralPath $stageData -Recurse -Force
+    }
     $pin=(Get-Content -LiteralPath 'OPENCLAW_VERSION' -Raw).Trim()
     $info=@{tag=$tag;sourceRevision=$revision;openclaw=$pin;node=(& $node --version);platform='win32-x64';runtimeLockSha256=(Get-FileHash -LiteralPath (Join-Path $stage 'runtime-package-lock.json')).Hash.ToLowerInvariant();picoclaw=@{version=$picoManifest.version;binarySha256=$picoHash;binarySize=(Get-Item -LiteralPath $picoExe).Length;manifestSha256=$picoManifest.binary_sha256}}
     $info | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $stage 'BUILD-INFO.json') -Encoding utf8
