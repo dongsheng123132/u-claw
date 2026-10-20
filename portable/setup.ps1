@@ -43,49 +43,6 @@ if (Test-Path -LiteralPath $nodeExe) {
     if (-not $resolved.StartsWith([IO.Path]::GetTempPath(), [StringComparison]::OrdinalIgnoreCase)) { throw 'Unsafe temporary path' }
     Remove-Item -LiteralPath $resolved -Recurse -Force
 }
-# ── PicoClaw（Lite 内核）供应商冻结二进制 ─────────────────────────────────────
-# 第三方 MIT（sipeed/picoclaw），只 windows-x64 验证过。版本/SHA 来自内嵌 manifest
-# portable/picoclaw-runtime.json（自托管 release zip 没有远程 SHASUMS256.txt，SHA 以 manifest 为准）。
-# 解压**前**先校验归档 SHA-256，再拷到 app/picoclaw。布局无关：递归定位 picoclaw.exe、
-# 把它的父目录整体拷过去（扁平或带顶层目录都行）。**不进**下方 L71-74 的 OpenClaw patch 循环。
-$picoManifestPath = Join-Path $PSScriptRoot 'picoclaw-runtime.json'
-$picoManifest = Get-Content -LiteralPath $picoManifestPath -Raw | ConvertFrom-Json
-$picoVersion = $picoManifest.version
-$picoAssetUrl = $picoManifest.asset_url
-if ([string]$picoManifest.sha256 -cnotmatch '^[0-9a-fA-F]{64}$' -or [string]$picoManifest.binary_sha256 -cnotmatch '^[0-9a-fA-F]{64}$') { throw 'Invalid PicoClaw SHA-256 manifest fields' }
-$picoSha256 = ([string]$picoManifest.sha256).ToLowerInvariant()
-$picoBinarySha256 = ([string]$picoManifest.binary_sha256).ToLowerInvariant()
-$picoInstallDir = Join-Path $PSScriptRoot 'app/picoclaw'
-$picoExe = Join-Path $picoInstallDir 'picoclaw.exe'
-if ($picoManifest.platform -ne 'windows-x64') {
-    Write-Warning "PicoClaw $picoVersion 仅支持 windows-x64，当前平台跳过安装（Lite 不可用，不影响 Full）。"
-} elseif (Test-Path -LiteralPath $picoExe) {
-    # Verify the frozen executable bytes without executing third-party code.
-    if ((Get-Sha256 $picoExe) -ne $picoBinarySha256) {
-        throw "Stale PicoClaw binary at $picoExe. Extract the full release in a new folder; do not mix app folders."
-    }
-} else {
-    $picoTmp = Join-Path ([IO.Path]::GetTempPath()) ('uclaw-picoclaw-' + [guid]::NewGuid())
-    New-Item -ItemType Directory -Path $picoTmp -Force | Out-Null
-    $picoArchive = Join-Path $picoTmp 'picoclaw.zip'
-    Download $picoAssetUrl $picoArchive
-    if ((Get-Sha256 $picoArchive) -ne $picoSha256) { throw "PicoClaw $picoVersion archive checksum mismatch" }
-    # Keep the downloaded zip outside its new, empty extraction directory.
-    $picoExtract = Join-Path $picoTmp 'extracted'
-    New-Item -ItemType Directory -Path $picoExtract | Out-Null
-    Expand-Archive -LiteralPath $picoArchive -DestinationPath $picoExtract
-    $found = @(Get-ChildItem -LiteralPath $picoExtract -Recurse -Filter 'picoclaw.exe' -File)
-    if ($found.Count -ne 1) { throw 'PicoClaw archive must contain exactly one picoclaw.exe' }
-    if ((Get-Sha256 $found[0].FullName) -ne $picoBinarySha256) { throw 'PicoClaw executable checksum mismatch' }
-    $srcDir = $found[0].DirectoryName
-    if (-not (Test-Path -LiteralPath (Join-Path $srcDir 'LICENSE') -PathType Leaf)) { throw 'PicoClaw LICENSE missing' }
-    New-Item -ItemType Directory -Path $picoInstallDir -Force | Out-Null
-    Copy-Item -LiteralPath $found[0].FullName -Destination $picoExe
-    Copy-Item -LiteralPath (Join-Path $srcDir 'LICENSE') -Destination (Join-Path $picoInstallDir 'LICENSE')
-    $resolved = (Resolve-Path -LiteralPath $picoTmp).Path
-    if (-not $resolved.StartsWith([IO.Path]::GetTempPath(), [StringComparison]::OrdinalIgnoreCase)) { throw 'Unsafe temporary path' }
-    Remove-Item -LiteralPath $resolved -Recurse -Force
-}
 $package = Join-Path $coreDir 'node_modules/openclaw/package.json'
 if (Test-Path -LiteralPath $package) {
     if ((Get-Content -LiteralPath $package -Raw | ConvertFrom-Json).version -ne $pin) { throw 'Old OpenClaw runtime. Extract the full release in a new folder.' }

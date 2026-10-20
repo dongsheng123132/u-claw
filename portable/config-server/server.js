@@ -15,30 +15,7 @@ const OPENCLAW_STATE_DIR = process.env.OPENCLAW_STATE_DIR || path.join(OPENCLAW_
 const OPENCLAW_CONFIG_PATH = process.env.OPENCLAW_CONFIG_PATH || path.join(OPENCLAW_STATE_DIR, 'openclaw.json');
 const OPENCLAW_MJS = path.join(__dirname, '../app/core/node_modules/openclaw/openclaw.mjs');
 const CONFIG_PATH = OPENCLAW_CONFIG_PATH;
-// PicoClaw (Lite) 数据域：data/picoclaw/（与 .openclaw 分离）。钱包路由统一从这里注入双写目标。
-// OPENCLAW_HOME 沙箱隔离（测试/多实例）：env 指哪 picoHome 就落哪，绝不默认写仓库源码 data/。
-const PICOCLAW_HOME = path.join(OPENCLAW_HOME, 'picoclaw');
 const RUNTIME_PATH = path.join(OPENCLAW_STATE_DIR, 'runtime.json');
-
-// 钱包路由统一注入的依赖：configPath（OpenClaw 消费者落点）、store（钱包状态
-// uclaw-device.json 的落点）、picoHome（Lite 消费者落点）。三者全部由 env 推导——
-// 测试把 OPENCLAW_HOME / OPENCLAW_STATE_DIR 指进临时目录后，钱包数据域整体落沙箱，
-// 绝不默认写仓库源码 data/。walletClient() 只 import 一次（模块级缓存），每次路由
-// 调用重新构造 deps（env 不变，成本可忽略）。
-let walletClientModule = null;
-async function walletClient() {
-  if (!walletClientModule) {
-    walletClientModule = await import('../lib/wallet-client.mjs');
-  }
-  return {
-    mod: walletClientModule,
-    deps: {
-      configPath: CONFIG_PATH,
-      picoHome: PICOCLAW_HOME,
-      store: walletClientModule.createFileWalletStore(path.join(OPENCLAW_STATE_DIR, 'uclaw-device.json')),
-    },
-  };
-}
 
 // OpenClaw 2026.8.1 会把配置文件里的敏感值改写成掩码；模型 Key 只能保存为
 // SecretRef，明文仅通过 secrets CLI 的 stdin 进入本机 secret store。
@@ -405,54 +382,6 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // ── 内核模式切换（Lite/Full） ───────────────────────────────────────────────
-  // 只决定启动器下次起哪个内核（lite=秒开 PicoClaw CLI；openclaw=完整网关）。
-  // **与钱包解耦**：绝不被钱包逻辑读取，钱包 applyKey/removeKey 无条件双写两核。
-  // 写完返回 restartRequired:true，由前端提示用户重启生效——本路由不杀进程、不自动重启。
-
-  // API: 读当前内核模式（读失败按默认 lite，不抛）
-  if (req.url === '/api/core-mode' && req.method === 'GET') {
-    (async () => {
-      try {
-        const { readCoreMode } = await import('../lib/core-mode.mjs');
-        const mode = readCoreMode(OPENCLAW_STATE_DIR);
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ ok: true, mode, liteSupported: process.platform === 'win32' && process.arch === 'x64', runningMode: process.env.UCLAW_RUNNING_CORE === 'lite' ? 'lite' : process.env.UCLAW_RUNNING_CORE === 'openclaw' ? 'openclaw' : null }));
-      } catch (err) {
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ ok: false, error: err.message, mode: 'lite' }));
-      }
-    })();
-    return;
-  }
-
-  // API: 写内核模式（只收两个枚举值，非法直接拒）
-  if (req.url === '/api/core-mode' && req.method === 'POST') {
-    let body = '';
-    req.on('data', chunk => body += chunk);
-    req.on('end', () => {
-      (async () => {
-        try {
-          const data = body ? JSON.parse(body) : {};
-          const { isValidCoreMode, writeCoreMode, CORE_MODE_LITE, CORE_MODE_OPENCLAW } = await import('../lib/core-mode.mjs');
-          const mode = data && data.mode;
-          if (mode !== CORE_MODE_LITE && mode !== CORE_MODE_OPENCLAW) {
-            res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ ok: false, error: `core-mode 只能是 "lite" 或 "openclaw"，收到: ${JSON.stringify(mode)}` }));
-            return;
-          }
-          writeCoreMode(OPENCLAW_STATE_DIR, mode);
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ ok: true, mode, restartRequired: true }));
-        } catch (err) {
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ ok: false, error: err.message }));
-        }
-      })();
-    });
-    return;
-  }
-
   // ── 虾盘云 · 设备钱包 ───────────────────────────────────────────────────
   // 六个接口全部只在被调用时才碰网络（claim/rotate/adopt 内部才发 fetch）——绝不能挂在
   // 服务器启动或任何计时器上，否则等于变相恢复本仓 CLAUDE.md 删掉的自动开户
@@ -463,10 +392,10 @@ const server = http.createServer((req, res) => {
   if (req.url === '/api/wallet/status' && req.method === 'GET') {
     (async () => {
       try {
-        const { mod, deps } = await walletClient();
-        const result = await mod.getStatus(deps);
+        const { getStatus, payBaseUrl } = await import('../lib/wallet-client.mjs');
+        const result = await getStatus();
         if (result.hasWallet && result.apiKey) {
-          result.rechargeUrl = mod.payBaseUrl() + '/recharge?key=' + encodeURIComponent(result.apiKey);
+          result.rechargeUrl = payBaseUrl() + '/recharge?key=' + encodeURIComponent(result.apiKey);
         }
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify(result));
@@ -482,8 +411,8 @@ const server = http.createServer((req, res) => {
   if (req.url === '/api/wallet/claim' && req.method === 'POST') {
     (async () => {
       try {
-        const { mod, deps } = await walletClient();
-        const result = await mod.claimWallet(deps);
+        const { claimWallet } = await import('../lib/wallet-client.mjs');
+        const result = await claimWallet();
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify(result));
       } catch (err) {
@@ -498,8 +427,8 @@ const server = http.createServer((req, res) => {
   if (req.url === '/api/wallet/balance' && req.method === 'GET') {
     (async () => {
       try {
-        const { mod, deps } = await walletClient();
-        const result = await mod.getBalance(deps);
+        const { getBalance } = await import('../lib/wallet-client.mjs');
+        const result = await getBalance();
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify(result));
       } catch (err) {
@@ -514,8 +443,8 @@ const server = http.createServer((req, res) => {
   if (req.url === '/api/wallet/rotate' && req.method === 'POST') {
     (async () => {
       try {
-        const { mod, deps } = await walletClient();
-        const result = await mod.rotateWallet(deps);
+        const { rotateWallet } = await import('../lib/wallet-client.mjs');
+        const result = await rotateWallet();
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify(result));
       } catch (err) {
@@ -534,8 +463,8 @@ const server = http.createServer((req, res) => {
       (async () => {
         try {
           const data = body ? JSON.parse(body) : {};
-          const { mod, deps } = await walletClient();
-          const result = await mod.adoptWallet(data.key, deps);
+          const { adoptWallet } = await import('../lib/wallet-client.mjs');
+          const result = await adoptWallet(data.key);
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify(result));
         } catch (err) {
@@ -551,8 +480,8 @@ const server = http.createServer((req, res) => {
   if (req.url === '/api/wallet/reset-local' && req.method === 'POST') {
     (async () => {
       try {
-        const { mod, deps } = await walletClient();
-        const result = await mod.resetLocalWallet(deps);
+        const { resetLocalWallet } = await import('../lib/wallet-client.mjs');
+        const result = await resetLocalWallet();
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify(result));
       } catch (err) {

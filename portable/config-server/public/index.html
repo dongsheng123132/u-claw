@@ -160,13 +160,6 @@ details#advancedModelsBox[open] summary { border-bottom: 1px solid #333; margin-
 .skill-item .info h4 { color: #fff; font-size: 0.9em; }
 .skill-item .info p { color: #888; font-size: 0.78em; }
 .skill-item .status { font-size: 0.8em; color: #4caf50; }
-.kernel-mode { margin: 14px 0; padding: 12px 14px; border: 1px solid #333; border-radius: 12px; background: #1a1a1a; }
-.km-label { font-size: 0.85em; color: #aaa; margin-bottom: 8px; }
-.km-options { display: flex; gap: 10px; }
-.km-opt { flex: 1; padding: 10px 12px; border: 1px solid #333; border-radius: 10px; background: #222; color: #e0e0e0; cursor: pointer; font-size: 0.95em; }
-.km-opt.active { border-color: #4caf50; background: #1f2a1f; color: #fff; }
-.km-hint { font-size: 0.78em; color: #888; margin-top: 8px; min-height: 1em; }
-.km-hint.warn { color: #ffb74d; }
 </style>
 </head>
 <body>
@@ -178,16 +171,6 @@ details#advancedModelsBox[open] summary { border-bottom: 1px solid #333; margin-
     <div class="status-bar">
         <div class="dot" id="statusDot"></div>
         <div class="status-text" id="statusText">检测中...</div>
-    </div>
-
-    <!-- Kernel mode (Lite/Full) — 只决定下次启动起哪个内核，需重启生效 -->
-    <div class="kernel-mode" id="kernelModeBox" style="display:none;">
-        <div class="km-label">内核模式</div>
-        <div class="km-options">
-            <button class="km-opt" id="kmLite" onclick="setCoreMode('lite')">⚡ Lite（轻量 · 秒级启动）</button>
-            <button class="km-opt" id="kmOpenclaw" onclick="setCoreMode('openclaw')">🖥 Full（完整）</button>
-        </div>
-        <div class="km-hint" id="kmHint"></div>
     </div>
 
     <!-- Steps -->
@@ -224,7 +207,7 @@ details#advancedModelsBox[open] summary { border-bottom: 1px solid #333; margin-
                 <span id="walletBalanceText">余额 —</span>
                 <button class="btn-mini" id="walletRefreshBtn" onclick="walletRefreshBalance()">刷新余额</button>
             </div>
-            <p class="hint" id="walletHint">生成密钥后，可在这里充值使用云模型。你的密钥就是你的钱包，请自行截图/复制备份——重装、换电脑都要靠它找回余额。密钥明文保存在这个 U 盘上（Lite 的 data/picoclaw/.security.yml 等位置），能读盘的人都能读到，不是加密保险箱；U 盘丢失后请用「换一把」撤销旧密钥。没有钱包也完全不影响使用：Full 可直接用上方选择模型并填写自己的 API Key。</p>
+            <p class="hint" id="walletHint">生成密钥后，可在这里充值使用云模型。你的密钥就是你的钱包，请自行截图/复制备份——重装、换电脑都要靠它找回余额。没有钱包也完全不影响使用，可以直接用上方选择模型并填写自己的 API Key。</p>
 
             <div class="btn-row" id="walletClaimRow" style="justify-content:flex-start;">
                 <button class="btn btn-primary" id="walletClaimBtn" onclick="walletClaim()">🔑 生成钱包密钥</button>
@@ -776,39 +759,7 @@ function gatewayUrl() {
 }
 
 // --- Check gateway status ---
-// Lite 运行时没有 gateway：状态显示「Lite 运行中」，不轮询、不一直报 Gateway 离线。
-var _kernelState = { mode: 'lite', liteSupported: true, runningMode: null };
-function applyKernelUI(state) {
-    _kernelState = state || _kernelState;
-    var lite = _kernelState.mode === 'lite';
-    var runningLite = _kernelState.runningMode === 'lite';
-    // Lite 隐藏仅 OpenClaw 有的模型向导；钱包区始终可见（Lite 的入口就是钱包 + CLI 对话）。
-    var wizard = document.getElementById('advancedModelsBox');
-    if (wizard) wizard.style.display = lite ? 'none' : '';
-    var walletBox = document.getElementById('optionalWallet');
-    if (walletBox && lite) walletBox.open = true;
-    var kmHint = document.getElementById('kmHint');
-    if (kmHint && !_kernelState.liteSupported && lite) {
-        kmHint.className = 'km-hint warn';
-        kmHint.textContent = 'Lite 不支持当前平台（macOS 只有 Full）。下次启动会运行 Full。';
-    }
-    var dot = document.getElementById('statusDot');
-    var text = document.getElementById('statusText');
-    if (!dot || !text) return;
-    if (runningLite) {
-        dot.className = 'dot on';
-        text.textContent = 'Lite 运行中（PicoClaw CLI，本窗口即对话）· 无 Dashboard';
-        return;
-    }
-    if (lite && _kernelState.runningMode !== 'openclaw') {
-        // 尚未启动任一内核（比如等待配置）：不要谎报 Gateway 离线是故障。
-        dot.className = 'dot off';
-        text.textContent = '内核尚未启动 · 配置好钱包后再次运行 Start 即可进入 Lite 对话';
-    }
-}
 async function checkGateway() {
-    // Lite 运行中不轮询 gateway（Lite 没有 gateway，避免永远显示离线）。
-    if (_kernelState.runningMode === 'lite') return;
     var dot = document.getElementById('statusDot');
     var text = document.getElementById('statusText');
     var port = await findGatewayPort();
@@ -816,11 +767,10 @@ async function checkGateway() {
         dot.className = 'dot on';
         text.innerHTML = 'Gateway 运行中 (端口 ' + port + ') · <a href="' + gatewayUrl() + '" target="_blank">打开 Dashboard →</a>';
         document.getElementById('gatewayUrl').textContent = 'http://127.0.0.1:' + port;
-    } else if (_kernelState.mode !== 'lite') {
+    } else {
         dot.className = 'dot off';
         text.innerHTML = 'Gateway 未启动 · 请先运行 Windows-Start.bat 或 Mac-Start.command';
     }
-    // mode=lite 但未在运行：由 applyKernelUI 给出如实文案，不报 Gateway 离线。
 }
 
 // --- Load existing config ---
@@ -899,7 +849,9 @@ async function loadConfig() {
 
 // 先加载目录渲染云端卡片，最后回填已存配置。
 loadCatalog().then(loadConfig);
-// gateway 轮询由 loadCoreMode() 启动（Lite 运行时根本不轮询，避免永久“离线”假象）。
+
+checkGateway();
+setInterval(checkGateway, 10000);
 
 // --- 虾盘云 · 设备钱包 -------------------------------------------------------
 // 六个按钮各自对应 config-server 的 /api/wallet/* 路由，路由内部才会真正联网
@@ -1107,76 +1059,7 @@ async function walletResetLocal() {
     }
 }
 
-// ── 内核模式切换（Lite/Full）── 只是**下次启动**选项，不等于当前运行内核。
-async function loadCoreMode() {
-    var box = document.getElementById('kernelModeBox');
-    if (!box) return;
-    try {
-        var res = await fetch('/api/core-mode', { cache: 'no-store' });
-        var data = await res.json();
-        var mode = (data && data.mode === 'openclaw') ? 'openclaw' : 'lite';
-        box.style.display = '';
-        renderCoreMode(mode, data || {});
-        applyKernelUI({
-            mode: mode,
-            liteSupported: data.liteSupported !== false,
-            runningMode: data.runningMode || null,
-        });
-        // 初次加载就把运行态状态文案定好，再启动轮询（Lite 运行时不轮询）。
-        if (data.runningMode === 'lite') {
-            applyKernelUI(_kernelState);
-        } else {
-            checkGateway();
-            setInterval(checkGateway, 10000);
-        }
-    } catch (_) {
-        box.style.display = 'none';
-    }
-}
-
-function renderCoreMode(mode, data) {
-    data = data || {};
-    var lite = document.getElementById('kmLite');
-    var full = document.getElementById('kmOpenclaw');
-    if (lite) lite.classList.toggle('active', mode === 'lite');
-    if (full) full.classList.toggle('active', mode === 'openclaw');
-    var hint = document.getElementById('kmHint');
-    if (!hint) return;
-    hint.className = 'km-hint';
-    hint.textContent = '';
-    if (data.liteSupported === false && mode === 'lite') {
-        hint.className = 'km-hint warn';
-        hint.textContent = '当前平台不支持 Lite（macOS 仅 Full）。切换为 Full 或在 Windows 上使用。';
-    }
-    if (data.runningMode === 'lite' || data.runningMode === 'openclaw') {
-        hint.textContent += (hint.textContent ? ' ' : '') + '当前运行：' + (data.runningMode === 'lite' ? 'Lite' : 'Full') + '。';
-    }
-}
-
-async function setCoreMode(mode) {
-    try {
-        var res = await fetch('/api/core-mode', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ mode: mode }),
-        });
-        var data = await res.json();
-        if (!data.ok) { showToast(data.error || '切换失败', true); return; }
-        _kernelState.mode = mode;
-        renderCoreMode(mode, _kernelState);
-        applyKernelUI(_kernelState);
-        var hint = document.getElementById('kmHint');
-        if (hint) {
-            hint.className = 'km-hint warn';
-            hint.textContent = '下次启动：' + (mode === 'lite' ? 'Lite（轻量）' : 'Full（完整）') + '，重启 U-Claw 后生效。钱包密钥两档通用，无需重填。';
-        }
-    } catch (e) {
-        showToast('切换失败: ' + e.message, true);
-    }
-}
-
 walletLoadStatus();
-loadCoreMode();
 </script>
 </body>
 </html>

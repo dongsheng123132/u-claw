@@ -25,17 +25,6 @@ try {
     $node=Join-Path $stage 'app/runtime/node-win-x64/node.exe'
     & $node (Join-Path $stage 'lib/runtime-preflight.mjs') $stage
     if ($LASTEXITCODE -ne 0) { throw 'Runtime preflight failed' }
-    # PicoClaw (Lite kernel) staged-evidence: verify against the same manifest the setup
-    # used -- hash comparison only, third-party code is never executed here.
-    $picoManifestPath=Join-Path $stage 'picoclaw-runtime.json'
-    if (-not (Test-Path -LiteralPath $picoManifestPath)) { throw 'picoclaw-runtime.json missing from staged runtime' }
-    $picoManifest=Get-Content -LiteralPath $picoManifestPath -Raw | ConvertFrom-Json
-    $picoExe=Join-Path $stage 'app/picoclaw/picoclaw.exe'
-    if (-not (Test-Path -LiteralPath $picoExe)) { throw 'Staged PicoClaw binary missing (app/picoclaw/picoclaw.exe)' }
-    $picoHash=(Get-FileHash -LiteralPath $picoExe -Algorithm SHA256).Hash.ToLowerInvariant()
-    if ($picoHash -ne $picoManifest.binary_sha256) { throw 'Staged PicoClaw binary hash does not match picoclaw-runtime.json.binary_sha256' }
-    if ((Get-Item -LiteralPath $picoExe).Length -ne $picoManifest.binary_size) { throw 'Staged PicoClaw binary size does not match picoclaw-runtime.json.binary_size' }
-    Get-ChildItem -LiteralPath $stage -Recurse -Filter 'picoclaw*.zip' | ForEach-Object { throw 'PicoClaw zip must not be copied into the staged runtime' }
     $previousTestCore=$env:UCLAW_RUNTIME_CORE
     try {
         $env:UCLAW_RUNTIME_CORE=Join-Path $stage 'app/core'
@@ -54,7 +43,7 @@ try {
         Remove-Item -LiteralPath $stageData -Recurse -Force
     }
     $pin=(Get-Content -LiteralPath 'OPENCLAW_VERSION' -Raw).Trim()
-    $info=@{tag=$tag;sourceRevision=$revision;openclaw=$pin;node=(& $node --version);platform='win32-x64';runtimeLockSha256=(Get-FileHash -LiteralPath (Join-Path $stage 'runtime-package-lock.json')).Hash.ToLowerInvariant();picoclaw=@{version=$picoManifest.version;binarySha256=$picoHash;binarySize=(Get-Item -LiteralPath $picoExe).Length;manifestSha256=$picoManifest.binary_sha256}}
+    $info=@{tag=$tag;sourceRevision=$revision;openclaw=$pin;node=(& $node --version);platform='win32-x64';runtimeLockSha256=(Get-FileHash -LiteralPath (Join-Path $stage 'runtime-package-lock.json')).Hash.ToLowerInvariant()}
     $info | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $stage 'BUILD-INFO.json') -Encoding utf8
     Copy-Item -LiteralPath "docs/release-notes/$tag.md" -Destination (Join-Path $stage 'RELEASE-NOTES.md')
     $zip=Join-Path $output "$name.zip"

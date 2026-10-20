@@ -160,10 +160,6 @@ Linux 可启动 U 盘套件已移出本仓库，在独立仓库 [u-claw-linux](h
 | 模型配置、钱包、会话、记忆、工作区、备份 | U 盘 `data/` |
 | 编译缓存、npm 缓存、受管浏览器 profile、临时文件、日志 | 当前电脑本地缓存目录 |
 
-**两档内核**：Windows x64 默认 **Lite**（PicoClaw CLI，轻量、秒级启动，多数“问/写/整理”场景够用）；需要 Dashboard / 插件 / 渠道等高级能力时在配置中心切 **Full**（OpenClaw），重启后生效。macOS 只运行 Full。钱包在两档之间共享同一把 key，无需重填。
-
-**钱包密钥安全如实说明**：钱包 key 明文保存在 U 盘上（`data/.openclaw/uclaw-device.json`、OpenClaw provider、Lite 的 `data/picoclaw/.security.yml` 三处），**能读这个 U 盘的人都能读到**，不是加密保险箱。U 盘丢失后请用钱包「换一把」撤销旧 key。备份恢复走 OpenClaw 原生备份，不含 `data/picoclaw`，恢复到新目录后需重新启用钱包。
-
 浏览器网站登录状态落在本机缓存，不随盘迁移，换电脑后需要重新登录。缓存、编译、临时与日志均在宿主机本地硬盘；配置、钱包、会话、记忆、备份与用户文件随 U 盘走。运行时依赖（`app/`）仍从 U 盘读取。Windows NTFS 与 exFAT 的隔离测试已完成真实对话和重启读回；exFAT 的目录监听会降级为轮询，部分插件技能链接不能创建，启动可能更慢。发布成品仍须单独验收，这不代表所有电脑或 Mac 共盘已通过。
 
 ### 支持的 AI 模型

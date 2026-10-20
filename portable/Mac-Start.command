@@ -228,25 +228,10 @@ fi
 
 # The WeChat plugin is not staged at startup; Config Center no longer offers WeChat or channel setup.
 
-# ---- 6b. 内核模式（Lite/Full）----
-# PicoClaw 目前仅验证过 Windows x64。Mac 携盘 core-mode=lite 时如实提示「Lite 未支持」，
-# 并回退 Full，不假报成功（绝不伪造 Lite 启动）。在 preflight 之前提示，避免在 Mac 上
-# 先走完 OpenClaw 校验才被告知 Lite 不可用。
-PICO_MODE="$("$NODE_BIN" "$UCLAW_DIR/lib/core-mode.mjs" get "$STATE_DIR" 2>/dev/null)"
-if [ "$PICO_MODE" = "lite" ]; then
-    echo -e "  ${YELLOW}Lite (PicoClaw) is not supported on macOS yet.${NC}"
-    echo -e "  Falling back to Full (OpenClaw). Switch kernel mode to Full in Config Center,"
-    echo -e "  or use this USB on Windows to run Lite."
-fi
-
 if ! "$NODE_BIN" "$UCLAW_DIR/lib/runtime-preflight.mjs" "$UCLAW_DIR"; then
     echo "请在新的文件夹运行 setup.sh，勿混用 Windows 与 Mac 的 app/core。"
     exit 1
 fi
-
-# macOS only ever runs Full (OpenClaw). Report the actually-running kernel so the
-# Config Center can label it truthfully (Lite is never faked on Mac).
-export UCLAW_RUNNING_CORE=openclaw
 
 # ---- 7b. Update check on startup is retired ----
 # No stale-manifest reads, no OSS requests. Upgrades ship as a verified stable

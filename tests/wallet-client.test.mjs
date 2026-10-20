@@ -29,7 +29,6 @@ import {
   createMemoryWalletStore,
   CLOUD_PROVIDER_ID,
 } from '../portable/lib/wallet-client.mjs';
-import { writePicoclawWalletConfig } from '../portable/lib/picoclaw-config.mjs';
 
 // applyKey() 在没有显式传 configPath 时会落到 defaultConfigPath()（真实 portable/data/.openclaw/
 // openclaw.json）。这里给所有「没有专门测配置写入」的用例一个共享临时 configPath，
@@ -324,41 +323,6 @@ test('resetLocalWallet 绝不发起任何网络请求（只清本地 + 清实际
 
     const onDisk = JSON.parse(readFileSync(configPath, 'utf8'));
     assert.ok(!(CLOUD_PROVIDER_ID in (onDisk.models?.providers || {})), '实际消费者（provider 配置）必须被清掉');
-  });
-});
-
-// 双清红线：OpenClaw 清完、PicoClaw 清不掉时，绝不继续清钱包状态（否则留下
-// 「钱包以为没了、盘上还有孤儿 key」的最坏状态）。失败必须可重试。
-test('resetLocalWallet: PicoClaw 侧清失败 → 返回失败、钱包状态原样保留、可重试成功', async () => {
-  await withTempDir(async (dir) => {
-    const configPath = join(dir, 'openclaw.json');
-    writeFileSync(configPath, JSON.stringify({ models: { providers: { [CLOUD_PROVIDER_ID]: { apiKey: 'sk-both' } } } }));
-
-    // PicoClaw 侧放一个合法 key；picoHome 里 .security.yml 是一个**目录**（读必失败），
-    // 模拟第二侧清不掉（IO 层阻断，且 Windows 上权限位不可靠所以不用 chmod）。
-    const picoHomeBlocked = join(dir, 'pico-blocked');
-    mkdirSync(join(picoHomeBlocked, '.security.yml'), { recursive: true });
-    writePicoclawWalletConfig({ picoHome: join(dir, 'pico-seed'), apiKey: 'sk-both' });
-
-    const store = createMemoryWalletStore({ apiKey: 'sk-both', walletId: 'wal_1' });
-    const r1 = await resetLocalWallet({ store, configPath, picoHome: picoHomeBlocked });
-    assert.equal(r1.ok, false, '第二侧失败必须如实报失败');
-    assert.match(r1.error, /未清除钱包状态|可重试/);
-
-    // 钱包状态必须原封不动（绝不吞错后清 state）
-    const saved = await store.get();
-    assert.equal(saved.apiKey, 'sk-both', '双清未全成功时钱包状态必须保留');
-    assert.equal(saved.walletId, 'wal_1');
-
-    // OpenClaw 侧可能已被清掉（顺序执行），但重试必须能走完整个双清
-    const r2 = await resetLocalWallet({ store, configPath, picoHome: join(dir, 'pico-seed') });
-    assert.equal(r2.ok, true, '排除障碍后重试应成功');
-    const after = await store.get();
-    assert.equal(after.apiKey, '', '重试成功后钱包状态才被清');
-    // 重试成功后 seed 侧 key 也被清掉（双清完成）
-    const secAfter = readFileSync(join(dir, 'pico-seed', '.security.yml'), 'utf8');
-    assert.ok(!secAfter.includes('sk-both'), '重试成功后 Lite 侧 key 应被清掉');
-    assert.ok(!JSON.parse(readFileSync(configPath, 'utf8')).models.providers[CLOUD_PROVIDER_ID]);
   });
 });
 

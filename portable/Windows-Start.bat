@@ -53,26 +53,20 @@ echo.
 
 set "PATH=%NODE_DIR%;%NODE_DIR%\node_modules\.bin;%PATH%"
 
-REM Read kernel mode (lite/full). Default lite. The helper validates the enum and
-REM only ever returns "lite" or "openclaw" -- raw file content is never trusted.
-set "CORE_MODE=lite"
-for /f "usebackq tokens=*" %%m in (`""%NODE_BIN%" "%UCLAW_DIR%lib\core-mode.mjs" get "%STATE_DIR%" 2^>nul"`) do set "CORE_MODE=%%m"
-if not "%CORE_MODE%"=="openclaw" set "CORE_MODE=lite"
-
 REM Validate before creating or migrating user state.
-REM Lite (PicoClaw) does not need OpenClaw installed -- pass --lite so preflight skips
-REM the OpenClaw version/platform check (a clean USB with only PicoClaw would be wrongly rejected).
-if "%CORE_MODE%"=="lite" (
-    call "%UCLAW_DIR%lib\windows-runtime-env.bat" "%UCLAW_DIR%." "%NODE_BIN%" --lite
-) else (
-    call "%UCLAW_DIR%lib\windows-runtime-env.bat" "%UCLAW_DIR%." "%NODE_BIN%"
-)
+call "%UCLAW_DIR%lib\windows-runtime-env.bat" "%UCLAW_DIR%." "%NODE_BIN%"
 if errorlevel 1 (
     pause
     exit /b 1
 )
 
-REM Strip host-machine provider credential variables before starting any kernel.
+REM Init data directories
+if not exist "%DATA_DIR%" mkdir "%DATA_DIR%"
+if not exist "%STATE_DIR%" mkdir "%STATE_DIR%"
+if not exist "%DATA_DIR%\memory" mkdir "%DATA_DIR%\memory"
+if not exist "%DATA_DIR%\backups" mkdir "%DATA_DIR%\backups"
+
+REM Strip host-machine provider credential variables before starting the gateway.
 REM If the PC happens to have DASHSCOPE_API_KEY etc. set, OpenClaw treats that
 REM provider as configured, tries to install its plugin during startup migration,
 REM and the plugin install needs a node_modules junction that exFAT cannot create
@@ -87,10 +81,23 @@ if defined UCLAW_STRIP_ENV (
     echo   Stripped host provider env vars: %UCLAW_STRIP_ENV%
 )
 
+REM Default config (migrate legacy if present, otherwise create)
+if not exist "%STATE_DIR%\openclaw.json" (
+    if exist "%DATA_DIR%\config.json" (
+        echo   Migrating legacy config...
+        copy "%DATA_DIR%\config.json" "%STATE_DIR%\openclaw.json" >nul
+        echo   Config migrated
+    ) else (
+        echo   First run - creating default config...
+        (echo {"gateway":{"mode":"local","auth":{"token":"uclaw"}},"update":{"checkOnStart":false,"auto":{"enabled":false}}})>"%STATE_DIR%\openclaw.json"
+        echo   Config created
+    )
+    echo.
+)
+
 REM Startup cache acceleration via the shared resolver helper (lib\portable-cache-env.bat).
 REM Session/identity/state stay portable on USB; compile/npm/temp/log/browser dirs are local.
 REM The helper clears any inherited browser root itself; no local cache = hard stop.
-REM Shared chain: runs BEFORE the Lite/Full branch (Lite uses the same cache contract).
 set "OPENCLAW_MANAGED_BROWSER_DIR="
 call "%UCLAW_DIR%lib\portable-cache-env.bat" "%STATE_DIR%" "%UCLAW_DIR%"
 if errorlevel 1 (
@@ -106,9 +113,6 @@ REM a second double-click otherwise picks another port and writes the same USB s
 REM PowerShell's parent is FOR /F's temporary cmd.exe; its grandparent is the cmd.exe
 REM hosting this .bat and remains alive until the gateway exits.
 REM Keep the lock with USB state, never in a reusable host cache shared by cloned drives.
-REM Shared chain: both Lite and Full are single-instance. In Lite mode the running
-REM kernel is the PicoClaw CLI (no web dashboard), so a second click must NOT open
-REM a fake Dashboard URL -- it just reports the running instance and exits.
 set "INSTANCE_ROOT=%STATE_DIR%"
 set "UCLAW_LAUNCHER_PID="
 for /f "usebackq tokens=*" %%p in (`powershell -NoProfile -Command "$p=Get-CimInstance Win32_Process -Filter ('ProcessId=' + $PID); $q=Get-CimInstance Win32_Process -Filter ('ProcessId=' + $p.ParentProcessId); $q.ParentProcessId" 2^>nul`) do set "UCLAW_LAUNCHER_PID=%%p"
@@ -125,34 +129,12 @@ if "%INSTANCE_STATUS%"=="busy" goto :reuse_existing_instance
 goto :instance_check_done
 :reuse_existing_instance
 echo   U-Claw is already running; reusing the existing instance.
-REM Only Full (OpenClaw) has a dashboard to focus. In Lite mode there is no
-REM dashboard URL to open -- do not fake one (CORE_MODE is read before this point).
-if "%CORE_MODE%"=="openclaw" if defined INSTANCE_PORT start "" http://127.0.0.1:%INSTANCE_PORT%/#token=uclaw
+if defined INSTANCE_PORT start "" http://127.0.0.1:%INSTANCE_PORT%/#token=uclaw
 if not defined INSTANCE_PORT echo   The existing instance is still starting. Please wait a moment.
 exit /b 0
 :instance_check_done
 
-REM Default config (migrate legacy if present, otherwise create).
-REM Full (OpenClaw) needs openclaw.json before the gateway starts; Lite keeps its
-REM own data domain (data/picoclaw) and does not read this file.
-if not exist "%STATE_DIR%\openclaw.json" (
-    if exist "%DATA_DIR%\config.json" (
-        echo   Migrating legacy config...
-        copy "%DATA_DIR%\config.json" "%STATE_DIR%\openclaw.json" >nul
-        echo   Config migrated
-    ) else (
-        echo   First run - creating default config...
-        (echo {"gateway":{"mode":"local","auth":{"token":"uclaw"}},"update":{"checkOnStart":false,"auto":{"enabled":false}}})>"%STATE_DIR%\openclaw.json"
-        echo   Config created
-    )
-    echo.
-)
-
-REM Lite skips session migration and dependency installation.
-if "%CORE_MODE%"=="lite" goto :shared_config_start
-
 REM Upgrade copied legacy sessions before Config Center or Gateway writes state.
-REM OpenClaw-specific: Lite does not use OpenClaw sessions.
 "%NODE_BIN%" "%UCLAW_DIR%lib\upgrade-session-schema.mjs" "%UCLAW_DIR%."
 if errorlevel 1 (
     pause
@@ -200,8 +182,6 @@ REM Upgrades ship as a verified stable bundle; users open the release page manua
 
 REM The WeChat plugin is not staged at startup; Config Center no longer offers WeChat or channel setup.
 
-:shared_config_start
-set "UCLAW_RUNNING_CORE=%CORE_MODE%"
 REM Start Config Server in background
 echo   Starting Config Center on port 18788...
 set "CONFIG_SERVER=%UCLAW_DIR%config-server"
@@ -224,9 +204,6 @@ if exist "%RUNTIME_JSON%" (
     for /f "usebackq tokens=*" %%p in (`powershell -NoProfile -Command "try { (Get-Content -Raw '%RUNTIME_JSON%' | ConvertFrom-Json).configServerPort } catch {}" 2^>nul`) do set "CONFIG_PORT=%%p"
 )
 echo   Config Center port: %CONFIG_PORT%
-
-REM Kernel branch: Lite (PicoClaw CLI) skips all OpenClaw-specific steps below.
-if "%CORE_MODE%"=="lite" goto :start_lite
 
 REM Find available gateway port after Config Center has bound its port.
 REM NOTE: this loop deliberately avoids a parenthesized IF block. cmd.exe expands
@@ -326,62 +303,3 @@ if not "%GW_EXIT%"=="0" if not "%GW_EXIT%"=="-1073741510" (
 )
 echo   OpenClaw stopped.
 pause
-goto :eof
-
-REM =====================================================================
-REM Lite kernel (PicoClaw CLI): fast, lightweight, covers most "ask/write/organize"
-REM scenarios. Fully separate from the Full branch above: it does NOT run OpenClaw's
-REM loading.html / gateway / prewarm / check-model-configured / wait-model-config /
-REM clean-stale-lock / provider-guard. The wallet goes through the same Config Center
-REM (already started before this branch); its key is stored in plaintext in
-REM data/picoclaw/.security.yml, readable by anyone who can read the USB drive.
-:start_lite
-echo.
-echo   ========================================
-echo   U-Claw Lite (PicoClaw)  starting...
-echo   ========================================
-echo.
-
-set "PICOCLAW_HOME=%DATA_DIR%\picoclaw"
-set "PICOCLAW_CONFIG=%PICOCLAW_HOME%\config.json"
-set "PICOCLAW_BINARY=%APP_DIR%\picoclaw\picoclaw.exe"
-set "PICOCLAW_AGENTS_DEFAULTS_WORKSPACE=%PICOCLAW_HOME%\workspace"
-set "PICO_TMP=%PICOCLAW_HOME%\tmp"
-if not exist "%PICOCLAW_AGENTS_DEFAULTS_WORKSPACE%" mkdir "%PICOCLAW_AGENTS_DEFAULTS_WORKSPACE%"
-if not exist "%PICO_TMP%" mkdir "%PICO_TMP%"
-
-REM Lite publishes no gateway port; duplicate clicks only report the existing CLI.
-echo   Lite uses this terminal for chat. There is no Dashboard.
-if not exist "%PICOCLAW_BINARY%" (
-    echo   [ERROR] PicoClaw is missing. Run setup.bat or choose Full in Config Center.
-    if not defined UCLAW_HEADLESS start "" "http://127.0.0.1:%CONFIG_PORT%/"
-    goto :lite_failed
-)
-
-REM Inspect the effective key, not just security-file existence. No network claim.
-set "UCLAW_PICO_WALLET_KEY=0"
-for /f "usebackq tokens=1,* delims==" %%a in (`""%NODE_BIN%" "%UCLAW_DIR%lib\picoclaw-config.mjs" has-key "%PICOCLAW_HOME%""`) do (
-    if "%%a"=="UCLAW_PICO_WALLET_KEY" set "UCLAW_PICO_WALLET_KEY=%%b"
-)
-if "%UCLAW_PICO_WALLET_KEY%"=="1" goto :lite_ready
-echo   Generate or enable a wallet key in Config Center. Waiting up to 10 minutes.
-if not defined UCLAW_HEADLESS start "" "http://127.0.0.1:%CONFIG_PORT%/"
-"%NODE_BIN%" "%UCLAW_DIR%lib\wait-picoclaw-key.mjs" "%PICOCLAW_HOME%"
-if errorlevel 1 goto :lite_failed
-:lite_ready
-cd /d "%PICOCLAW_AGENTS_DEFAULTS_WORKSPACE%"
-echo   Starting PicoClaw agent. Keep this window open.
-REM Portable TEMP/TMP apply only to PicoClaw; all Node helpers keep local temp.
-setlocal
-set "TEMP=%PICO_TMP%"
-set "TMP=%PICO_TMP%"
-"%PICOCLAW_BINARY%" agent
-endlocal & set "PICO_EXIT=%errorlevel%"
-if defined UCLAW_LAUNCHER_PID "%NODE_BIN%" "%UCLAW_DIR%lib\portable-instance-lock.mjs" release "%INSTANCE_ROOT%" "%STATE_DIR%" "%UCLAW_LAUNCHER_PID%" >nul 2>&1
-echo   U-Claw Lite stopped with code %PICO_EXIT%.
-if not defined UCLAW_HEADLESS pause
-exit /b %PICO_EXIT%
-:lite_failed
-if defined UCLAW_LAUNCHER_PID "%NODE_BIN%" "%UCLAW_DIR%lib\portable-instance-lock.mjs" release "%INSTANCE_ROOT%" "%STATE_DIR%" "%UCLAW_LAUNCHER_PID%" >nul 2>&1
-if not defined UCLAW_HEADLESS pause
-exit /b 1

@@ -40,22 +40,8 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { readConfigSafe, saveConfigMerged } from './merge-config.mjs';
 import { fetchWithFailover } from './uclaw-cloud-endpoints.mjs';
-import { writePicoclawWalletConfig, removePicoclawWalletKey, hasPicoclawWalletKey, readPicoclawWalletKey } from './picoclaw-config.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
-// PicoClaw (Lite) 数据域默认从 configPath 推导：
-//   configPath 在 `.openclaw/` 里（生产布局 data/.openclaw/openclaw.json）→ 兄弟目录 data/picoclaw；
-//   其它布局（如测试临时目录 stateDir/openclaw.json）→ 同目录下的 picoclaw/。
-// 这样所有注入临时 configPath 的调用方（含全部测试）自动得到隔离的临时 picoHome，
-// 绝不共享 os.tmpdir 下的固定路径，也不需要显式 opt-in。显式传 picoHome 仍可覆盖。
-export function picoHomeFromConfigPath(configPath) {
-  const configDir = path.dirname(configPath);
-  if (path.basename(configDir) === '.openclaw') {
-    return path.join(configDir, '..', 'picoclaw');
-  }
-  return path.join(configDir, 'picoclaw');
-}
 
 const NETWORK_TIMEOUT_MS = 20_000;
 const PENDING_ROTATE = 'rotate';
@@ -102,7 +88,6 @@ export function defaultStorePath() {
 export function defaultConfigPath() {
   return path.join(__dirname, '..', 'data', '.openclaw', 'openclaw.json');
 }
-
 
 /** 基于文件的钱包存储。get()/set() 会自然抛出 IO / JSON 错误——调用方负责按 C1 兜住。 */
 export function createFileWalletStore(storePath) {
@@ -262,27 +247,14 @@ function buildProviderEntry(apiKey, apiBase) {
 }
 
 /**
- * 把一把新 key 写进两核（C5 汇流点）：
- *   1) OpenClaw：openclaw.json 的 uclaw-cloud provider；
- *   2) PicoClaw (Lite)：data/picoclaw/{config.json,.security.yml}，**无条件双写**——
- *      哪怕当前 core-mode 是 Full 也照写，保证切 Lite 后不 stale（core-mode 与钱包解耦）。
- *      picoHome 默认从 configPath 推导（configPath 上级目录的 picoclaw/），测试的临时
- *      configPath 自动得到隔离的临时 picoHome，绝不静默写仓库真实 data/。
+ * 把一把新 key 写进 openclaw.json 的 uclaw-cloud provider（+ 默认设为主模型）。
  *
  * 复用 merge-config.mjs 的合并写入 + 原子落盘——绝不自己 writeFileSync，否则会把用户的
  * plugins（比如微信登录写入的 config.plugins.entries）静默冲掉，那正是 issue #58 刚修的 bug。
  *
  * 领取 / rotate / adopt 三条路径都必须调用这一个函数，漏一条就是一个 bug（C5）。
- * 任一侧失败会抛出（部分失败由调用方决定重试），不吞错。
  */
 export function applyKey(configPath, apiKey, opts = {}) {
-  const saved = applyKeyToOpenClaw(configPath, apiKey, opts);
-  const picoHome = opts.picoHome || picoHomeFromConfigPath(configPath);
-  const resolvedBase = opts.apiBase || `${apiBaseUrl()}/v1`;
-  writePicoclawWalletConfig({ picoHome, apiKey, apiBase: resolvedBase });
-  return saved;
-}
-function applyKeyToOpenClaw(configPath, apiKey, opts = {}) {
   const existing = readConfigSafe(configPath);
   const models = isPlainObject(existing.models) ? { ...existing.models } : {};
   const providers = isPlainObject(models.providers) ? { ...models.providers } : {};
@@ -321,19 +293,8 @@ function applyKeyToOpenClaw(configPath, apiKey, opts = {}) {
   return saveConfigMerged(configPath, incoming);
 }
 
-/**
- * 从两核同时移除钱包凭据（reset-local 用）：OpenClaw 删 provider + PicoClaw 删 key，
- * **无条件双清**。picoHome 默认从 configPath 推导（同 applyKey）。
- * 任一侧失败会抛出——绝不吞错后继续清钱包状态，否则会留孤儿 key。
- */
-export function removeKey(configPath, opts = {}) {
-  removeKeyFromOpenClaw(configPath);
-  const picoHome = opts.picoHome || picoHomeFromConfigPath(configPath);
-  removePicoclawWalletKey({ picoHome });
-  return undefined;
-}
-
-function removeKeyFromOpenClaw(configPath) {
+/** 移除 uclaw-cloud provider（reset-local 用）。若主模型正指向它，一并清空，避免残留死指针。 */
+export function removeKey(configPath) {
   const existing = readConfigSafe(configPath);
   const models = isPlainObject(existing.models) ? { ...existing.models } : {};
   const providers = isPlainObject(models.providers) ? { ...models.providers } : {};
@@ -358,34 +319,12 @@ function removeKeyFromOpenClaw(configPath) {
 
 function applyKeyToConfig(apiKey, deps) {
   const configPath = deps.configPath || defaultConfigPath();
-  return applyKey(configPath, apiKey, { apiBase: deps.apiBase, setPrimary: deps.setPrimary, picoHome: deps.picoHome });
+  return applyKey(configPath, apiKey, { apiBase: deps.apiBase, setPrimary: deps.setPrimary });
 }
 
 function removeKeyFromConfig(deps) {
   const configPath = deps.configPath || defaultConfigPath();
-  return removeKey(configPath, { picoHome: deps.picoHome });
-}
-
-/**
- * claim 的「已有 key 修复」判定（#66 + 两核版）：钱包已有 key 但任一消费者与它不一致
- * （OpenClaw provider 缺失/key 不同，或 Lite .security.yml 缺失/key 不同）→ 重跑双写。
- * 全部一致时返回 false，不重写磁盘（保留用户自选模型和 provider 参数）。
- * 任何一侧读取失败都按「需要修复」处理，让上层走 applyKey 给出真实成败。
- */
-function consumersNeedRepair(configPath, apiKey, opts = {}) {
-  try {
-    const config = readConfigSafe(configPath);
-    if (config.models?.providers?.[CLOUD_PROVIDER_ID]?.apiKey !== apiKey) return true;
-  } catch {
-    return true;
-  }
-  try {
-    const picoHome = opts.picoHome || picoHomeFromConfigPath(configPath);
-    if (readPicoclawWalletKey({ picoHome }) !== apiKey) return true;
-  } catch {
-    return true;
-  }
-  return false;
+  return removeKey(configPath);
 }
 
 // ---------------------------------------------------------------------------
@@ -436,12 +375,9 @@ async function settlePendingState(state, store, fetchImpl, verify, deps) {
   const res = await devicePost('/device/rotate/commit', { currentKey: from, newKey: pending }, fetchImpl, deps.apiBase);
   if (res.status !== 200) return state;
 
-  // C5：换 key 后同步到两核消费者。先写消费者、成功后才清 pending——
-  // 若先清 pending 再写消费者，双写失败会同时丢掉 pending（下次 rotate 重新 mint）
-  // 和旧 key 的写入路径，留下只有钱包知道的新 key。写失败时 pending 保留，下次续跑重试。
-  applyKeyToConfig(pending, deps);
   const next = { ...state, apiKey: pending, pendingKey: '', pendingKind: '', pendingFrom: '' };
   await store.set(next);
+  applyKeyToConfig(next.apiKey, deps); // C5：换 key 后同步到实际消费者
   return next;
 }
 
@@ -514,12 +450,12 @@ async function doClaim(deps) {
       state = await settlePendingState(state, store, fetchImpl, verify, deps);
     }
     if (state.apiKey) {
-      // #66：钱包可能已落盘，但上一次 applyKey 双写失败（任一核缺 key / key 不一致）。
-      // 重试应修复实际消费者，不再 bind 新钱包；两核都已同步时不重写磁盘，
-      // 保留用户自选模型和 provider 参数。修复失败会抛出，由外层 catch 返回失败。
+      // #66：钱包可能已落盘，但上一次 applyKey 写配置失败。重试应修复实际消费者，
+      // 不再 bind 新钱包；仍写不进去就由外层 catch 返回失败，不能假报成功。
+      // 未收尾的 pending 沿用原处理；已同步时不重写，保留用户自选模型和 provider 参数。
       if (!state.pendingKey) {
-        const configPath = deps.configPath || defaultConfigPath();
-        if (consumersNeedRepair(configPath, state.apiKey, { picoHome: deps.picoHome })) {
+        const config = readConfigSafe(deps.configPath || defaultConfigPath());
+        if (config.models?.providers?.[CLOUD_PROVIDER_ID]?.apiKey !== state.apiKey) {
           applyKeyToConfig(state.apiKey, deps);
         }
       }
@@ -697,9 +633,8 @@ export async function adoptWallet(key, deps = {}) {
 // ---------------------------------------------------------------------------
 
 /**
- * 只清本地五字段 + 清实际消费者（OpenClaw provider + PicoClaw key，双清都成功才动状态），
- * 绝不调服务端删钱包/清余额——旧钱包余额不受影响，旧 key 之后仍可在别的机器上 adopt 回来。
- * 任一消费者清不掉 → 返回失败并**保留**钱包状态，用户可直接重试。
+ * 只清本地五字段 + 清实际消费者（openclaw.json 里的 provider），绝不调服务端删钱包/清余额——
+ * 旧钱包余额不受影响，旧 key 之后仍可在别的机器上 adopt 回来。
  */
 export async function resetLocalWallet(deps = {}) {
   const store = deps.store || defaultStore();
@@ -717,12 +652,14 @@ export async function resetLocalWallet(deps = {}) {
   }
 
   try {
-    // 双清必须**都成功**后才清钱包状态：任一侧失败就保留 state，允许用户重试。
-    // 吞错后清 state 会留下「钱包以为没了、盘上还有孤儿 key」的最坏状态。
-    await removeKeyFromConfig(deps); // OpenClaw provider + PicoClaw key，失败即抛
+    try {
+      removeKeyFromConfig(deps); // 先清实际消费者
+    } catch {
+      // 清 provider 失败不阻断清钱包——本地状态优先清干净，config 那半留给下次 applyKey 修。
+    }
     await store.set({ ...EMPTY_STATE });
     return { ok: true };
   } catch (error) {
-    return { ok: false, error: `清除本机钱包失败（未清除钱包状态，可重试）：${describeError(error)}` };
+    return { ok: false, error: describeError(error) };
   }
 }
