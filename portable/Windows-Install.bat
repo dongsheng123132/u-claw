@@ -1,4 +1,4 @@
-﻿@echo off
+@echo off
 setlocal EnableDelayedExpansion
 chcp 65001 >nul 2>&1
 title U-Claw - Install to Windows
@@ -15,7 +15,7 @@ set "APP_DIR=%UCLAW_DIR%app"
 set "INSTALL_TARGET=%USERPROFILE%\.uclaw"
 set "MIRROR=https://registry.npmmirror.com"
 set "NODE_MIRROR=https://npmmirror.com/mirrors/node"
-set "NODE_VER=v22.22.1"
+set "NODE_VER=v24.16.0"
 
 REM ---- Step 1: Check environment ----
 echo   [1/4] 检查环境...
@@ -161,12 +161,21 @@ if exist "!QQ_DIR!" (
 )
 
 REM ---- Copy extensions (WeChat plugin etc.) ----
+REM OpenClaw loads extensions ONLY from OPENCLAW_STATE_DIR\extensions (single override,
+REM no ~/.openclaw fallback). The generated start.bat points STATE_DIR at
+REM %INSTALL_TARGET%\data\.openclaw, so the plugin MUST be staged there.
+REM zod is copied from the bundled OpenClaw core: the plugin's npm tarball ships without
+REM it and the host node_modules is off the plugin's resolution path, so otherwise the
+REM plugin fails to load with "Cannot find module 'zod'".
+set "WECHAT_DST=%INSTALL_TARGET%\data\.openclaw\extensions\openclaw-weixin"
 if exist "%APP_DIR%\extensions\openclaw-weixin\openclaw.plugin.json" (
     echo   Installing WeChat plugin...
-    xcopy /s /e /q /y "%APP_DIR%\extensions\openclaw-weixin" "%INSTALL_TARGET%\extensions\openclaw-weixin\" >nul
-    REM Also install to ~/.openclaw/extensions/ for Gateway
-    mkdir "%USERPROFILE%\.openclaw\extensions" 2>nul
-    xcopy /s /e /q /y "%APP_DIR%\extensions\openclaw-weixin" "%USERPROFILE%\.openclaw\extensions\openclaw-weixin\" >nul
+    mkdir "%INSTALL_TARGET%\data\.openclaw\extensions" 2>nul
+    xcopy /s /e /q /y "%APP_DIR%\extensions\openclaw-weixin" "%WECHAT_DST%\" >nul
+    if not exist "%WECHAT_DST%\node_modules\zod" if exist "%APP_DIR%\core\node_modules\zod" (
+        mkdir "%WECHAT_DST%\node_modules" 2>nul
+        xcopy /s /e /q /y "%APP_DIR%\core\node_modules\zod" "%WECHAT_DST%\node_modules\zod\" >nul
+    )
     echo   WeChat plugin installed!
 )
 
@@ -174,10 +183,6 @@ REM ---- Default config ----
 if not exist "%INSTALL_TARGET%\data\.openclaw\openclaw.json" (
     (echo {"gateway":{"mode":"local","auth":{"token":"uclaw"}}})>"%INSTALL_TARGET%\data\.openclaw\openclaw.json"
 )
-
-REM ---- Copy HTML pages ----
-if exist "%UCLAW_DIR%Config.html" copy "%UCLAW_DIR%Config.html" "%INSTALL_TARGET%\" >nul
-if exist "%UCLAW_DIR%U-Claw.html" copy "%UCLAW_DIR%U-Claw.html" "%INSTALL_TARGET%\" >nul
 
 REM ---- Create launch script ----
 (

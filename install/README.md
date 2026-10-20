@@ -124,8 +124,6 @@ powershell -ExecutionPolicy Bypass -File install\install.ps1
 ```
 install/     ← 一键在线安装（本模块）
 portable/    ← U 盘便携版
-u-claw-app/  ← Electron 桌面版
-bootable/    ← Linux 可启动 U 盘
 ```
 
 install/ 安装的结果与 portable/ 的 Mac-Install.command 相同，

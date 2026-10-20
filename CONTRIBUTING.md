@@ -8,20 +8,32 @@
 - **提需求** → 用 [Feature 模板](.github/ISSUE_TEMPLATE/feature_request.md)，先说清楚使用场景
 - **写代码** → fork → 改 → 自己跑过 → 提 PR，PR 说明照模板填，不要空白 PR
 - **改文档** → 直接 PR 即可
+- **加功能之前** → 先读下面的[范围](#范围)，过一遍“新功能三问”
 
 ## 项目结构（记住这个心智模型）
 
 > **本仓库 = U 盘骨架**：脚本 + HTML + 小文件
 > **`bash setup.sh` 之后 = U 盘内容**：骨架 + Node.js + OpenClaw
 
-四种发布形态，互相独立，改其中一个不影响其它：
+两种发布形态，互相独立，改其中一个不影响其它：
 
 | 目录 | 形态 | 入口 |
 |------|------|------|
 | `portable/` | 便携 USB | `setup.sh` → `Mac-Start.command` / `Windows-Start.bat` |
-| `u-claw-app/` | Electron 桌面 | `npm run dev` / `npm run build:mac-arm64` |
-| `bootable/` | Linux 可启动 U 盘 | `1-prepare-usb.ps1` → `4-copy-to-usb.ps1` |
 | `install/` | 一键在线安装 | `install.sh` (Mac/Linux) / `install.ps1` (Windows) |
+
+## 范围
+
+> 2026-10-06 按“范围剃刀”定下（PR #79）。改范围先改这一节，再改代码；功能和 PR 都拿下面的边界规则判断。
+
+- **定位**：让听说过龙虾的小白，插上 U 盘双击就用上 OpenClaw——模型和额度一键到位，换台电脑插上接着用。
+- **验收路径**：没碰过命令行的人，在干净的 Windows 电脑上插 U 盘双击，5 分钟内领到虾盘云额度、在 Dashboard 里和龙虾说上话；拔下来插到另一台电脑，1 分钟内用同一个钱包接着用。
+- **边界规则**：配置中心只管“让龙虾开口”——模型、密钥、钱。OpenClaw 自己能做的（聊天渠道、技能、插件、Agent 设置），U-Claw 不再包一层。
+- **永远不做**：代人托管 / 代运行聊天机器人；自建技能或插件市场；多人或团队账号。
+- **现在不做**（有真实用户持续在要再说）：配置中心里同时管理多个模型服务（#61、#23）；cc switch（#63）。
+- **新功能三问**（三个都答得上才提）：现在有真实用户在要吗？能不能用现有核心表达，而不是新开一块？坏了怎么发现、谁来修？
+
+已移出的功能（聊天渠道入口、微信扫码、Config.html 等旧页面、SkillHub、Electron 桌面版、本地模型发现、Linux 可启动盘）可从 tag `archive/pre-scope-razor-2026-10-05` 找回；Linux 可启动盘在独立仓库 [u-claw-linux](https://github.com/dongsheng123132/u-claw-linux) 继续维护。
 
 ## 开发环境
 
@@ -42,7 +54,6 @@ bash Mac-Start.command           # macOS 启动
 - macOS Apple Silicon (ARM64)：✅ 主开发平台
 - macOS Intel：✅ 工作（需先跑 setup.sh 下 node-mac-x64）
 - Windows x64：🚧 持续完善
-- Linux x64 (Bootable USB)：✅ 用 `bootable/`
 
 ## 提 Issue 的好习惯
 
@@ -51,7 +62,7 @@ bash Mac-Start.command           # macOS 启动
 **至少包含这四样**：
 
 1. 操作系统 + 版本（如 macOS 14.5 / Windows 11 23H2）
-2. 使用的形态（portable / install / bootable / u-claw-app）
+2. 使用的形态（portable / install）
 3. **完整的错误日志**（贴文字，不要只截图）
 4. 你试过哪些步骤
 
@@ -67,7 +78,7 @@ bash Mac-Start.command           # macOS 启动
 ### 提交前先想清楚
 
 1. **改动是不是真的有人需要？** 大改动建议先开 issue 讨论。
-2. **改动会不会破坏其它形态？** 比如改 `portable/` 不要影响 `bootable/`。
+2. **改动会不会破坏其它形态？** 比如改 `portable/` 不要影响 `install/`。
 3. **你跑过吗？** PR 模板里要求列出测试方式，不是装饰。
 
 ### 不要做的事
@@ -118,18 +129,6 @@ git push origin fix/install-sh-npm-path
 - Mac 启动脚本要 `chmod +x`，并清理 quarantine 属性
 - Windows 启动脚本要正确处理 `cd /d "%DIR%core"`
 - 配置文件放 `data/.openclaw/openclaw.json`，便携属性靠这个
-
-### `u-claw-app/` (Electron)
-
-- `main.js` 大约 400 行，改前先理解整体流程
-- Node.js 要找 `resources/runtime/node-{platform}-{arch}`，找不到再 fall back 到系统 node
-- 用户配置在 `app.getPath('userData')/.openclaw/`，不要硬编码路径
-
-### `bootable/`
-
-- 4 步 PowerShell 脚本必须**按顺序**跑
-- ISO 下载走清华/阿里/中科大镜像，不要直接用 ubuntu.com
-- `bootable/` 与独立仓库 `dongsheng123132/u-claw-linux` 内容保持同步，改一边记得同步另一边
 
 ### `install/`
 

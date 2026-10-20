@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/readme/hero.svg" alt="U-Claw：随身携带的 AI 工作空间" width="100%" />
+  <img src="assets/readme/hero-image2.png" alt="U-Claw：随身携带的 AI 工作空间" width="100%" />
 </p>
 
 <h1 align="center">U-Claw（虾盘）</h1>
@@ -10,6 +10,7 @@
   <a href="https://github.com/dongsheng123132/u-claw/releases">下载便携版</a> ·
   <a href="https://u-claw.org/tutorial.html">完整教程</a> ·
   <a href="#快速开始制作便携版-u-盘">从源码制作</a> ·
+  <a href="#企业服务">企业服务</a> ·
   <a href="#english">English</a>
 </p>
 
@@ -24,15 +25,21 @@
 
 ## 三步开始
 
+> **仅 Windows 使用时推荐 NTFS。** v2.3.0 加入 Windows exFAT 兼容：自动选择文件系统适配，配置与会话仍留在 U 盘。FAT32 不支持。Mac/Windows 共盘尚待 Mac 实机验收，不能把 Windows 原生运行时直接当作 Mac 运行时。格式化会清空盘内文件，操作前请备份。
+
+> 📺 图文教程：[docs/快速上手.md](docs/快速上手.md)（含真实界面截图，5 步从插 U 盘到开始对话）
+
 1. 从 [Releases](https://github.com/dongsheng123132/u-claw/releases) 下载 Windows 便携版，解压到 U 盘后双击 `Windows-Start.bat`。
 2. 或克隆仓库，在 `portable/` 运行 `bash setup.sh`，下载 Node.js 与 OpenClaw。
 3. 首次启动在本地配置模型 Key；配置只保存在 U 盘的 `data/.openclaw/openclaw.json`。
 
 | 你得到什么 | 为什么重要 |
 | --- | --- |
-| 随身 AI 工作空间 | 换电脑时带走配置、记忆与工具，不在主机残留用户数据。 |
+| 随身 AI 工作空间 | 换电脑时带走配置、记忆、会话与设备授权；仅可重建的浏览器缓存留在主机。 |
 | 本地优先 | 不绑定设备、不打指纹、不上传本地配置。 |
-| 多种使用方式 | 便携 U 盘、在线一键安装、可启动 Linux U 盘各自独立。 |
+| 多种使用方式 | 便携 U 盘、在线一键安装，两种方式各自独立。 |
+
+*平台支持：Windows ✅（免部署完整包）· macOS ✅ —— 详见下方平台支持表。*
 
 > [!TIP]
 > ### 👑 同作者新品：U-King · AI 装机管家
@@ -59,7 +66,7 @@ U-Claw（虾盘）是一个**制作教程 + 全套源代码**，教你把 [OpenC
 
 ### 🧩 模型随便选：国内外大模型都能用
 
-U-Claw 是纯开源工具，**不绑定设备、不打指纹、不上传任何数据**。首次启动会自动打开 Config 页面，选一个模型、填入自己的 API Key 即可一键启动：
+U-Claw 是纯开源工具，**不绑定设备、不打指纹、不上传任何数据**。首次启动会自动打开「配置中心」，选一个模型、填入自己的 API Key（或一键领取虾盘云额度 / 充值）即可开始使用：
 
 - **虾盘云（首选 · 中转站）**：一个 Key 调用 DeepSeek / Claude / GPT / 通义 等国内外全部大模型，无需翻墙。注册并充值：[u-claw.org/cloud.html](https://u-claw.org/cloud.html)
 - **各家官方 Key 也行**：DeepSeek、通义千问、Kimi、智谱 GLM、豆包、MiniMax（国内）/ OpenAI、Claude、Groq（国外）/ 硅基流动、任意 OpenAI 兼容地址（自定义）
@@ -97,6 +104,8 @@ cp -R portable/ /Volumes/你的U盘/U-Claw/   # Mac
 
 **完成！** 插上 U 盘，双击启动脚本就能用。
 
+> 同一支 U 盘同时只会启动一个 U-Claw 实例。重复双击会打开已运行的 Dashboard，不会另起端口或并发写入会话；如需重启，请先退出原启动窗口。
+
 ### U 盘功能一览
 
 | 功能 | Mac | Windows |
@@ -104,7 +113,7 @@ cp -R portable/ /Volumes/你的U盘/U-Claw/   # Mac
 | **免安装运行** | `Mac-Start.command` | `Windows-Start.bat` |
 | **功能菜单** | `Mac-Menu.command` | `Windows-Menu.bat` |
 | **安装到电脑** | `Mac-Install.command` | `Windows-Install.bat` |
-| **首次配置** | `Config.html` | `Config.html` |
+| **首次配置** | 首次启动自动打开「配置中心」 | 首次启动自动打开「配置中心」 |
 
 ### U 盘文件结构
 
@@ -116,7 +125,6 @@ U-Claw/                          ← 整个拷到 U 盘
 ├── Windows-Start.bat             Windows 免安装运行
 ├── Windows-Menu.bat              Windows 功能菜单
 ├── Windows-Install.bat           安装到 Windows
-├── Config.html                   首次配置页面
 ├── setup.sh                      补齐依赖（开发者用）
 ├── app/                          ← 大依赖（setup.sh 下载，不进 git）
 │   ├── core/                        OpenClaw + QQ 插件
@@ -132,14 +140,9 @@ U-Claw/                          ← 整个拷到 U 盘
 
 ### Linux 可启动版
 
-连操作系统都没有？没关系。可启动版可以让任意电脑从 U 盘直接启动 Ubuntu + AI：
+Linux 可启动 U 盘套件已移出本仓库，在独立仓库 [u-claw-linux](https://github.com/dongsheng123132/u-claw-linux) 中维护。
 
-- 本仓库内：[`bootable/`](bootable/) 目录（与其他模块完全独立，互不影响）
-- 独立仓库：[u-claw-linux](https://github.com/dongsheng123132/u-claw-linux)（内容一致，方便单独克隆）
-
-基于 Ventoy + Ubuntu 24.04 LTS + 持久化存储，在 Windows 上运行 4 步 PowerShell 脚本即可制作。详见 [`bootable/README.md`](bootable/README.md)。
-
-> **关于桌面安装版（Electron）**：`u-claw-app/` 的 Electron 桌面版（`.exe` 安装版 / 绿色版 / `.dmg`）**已于 2026-06-19 停止发布并归档**，原因见 [`u-claw-app/DEPRECATED.md`](u-claw-app/DEPRECATED.md)。U-Claw 现在只发布「便携 U 盘版」——这才是产品的本质：插上 U 盘、解压即用。
+> **关于桌面安装版（Electron）**：Electron 桌面版（`.exe` 安装版 / 绿色版 / `.dmg`）**已于 2026-06-19 停止发布，并已从仓库移除**（见 tag `archive/pre-scope-razor-2026-10-05`）。U-Claw 现在只发布「便携 U 盘版」——这才是产品的本质：插上 U 盘、解压即用。
 
 ### 直接下载发行版
 
@@ -148,7 +151,14 @@ U-Claw/                          ← 整个拷到 U 盘
 - `u-claw-portable-windows-vX.Y.Z.zip` — Windows 便携完整版（已预装 Node + OpenClaw，**解压到 U 盘双击 `Windows-Start.bat` 即用**）
 - **Mac**：源码在 [`portable/`](portable/) 目录，`bash setup.sh` 自动下载 Node + OpenClaw（国内镜像约 1 分钟），双击 `Mac-Start.command` 启动
 
-> ⚠️ **U 盘请用 NTFS 格式**（不要 exFAT/FAT32）：Node.js 在 exFAT 上 IO 极慢且不支持符号链接，可能导致启动失败。
+> **仅 Windows 使用时推荐 NTFS。** v2.3.0 加入 Windows exFAT 兼容：自动选择文件系统适配，配置与会话仍留在 U 盘。FAT32 不支持。Mac/Windows 共盘尚待 Mac 实机验收，不能把 Windows 原生运行时直接当作 Mac 运行时。格式化会清空盘内文件，操作前请备份。
+
+| 数据类型 | 存放位置 |
+|---|---|
+| 模型配置、钱包、SQLite 会话、工作区 | U 盘 `data/.openclaw` |
+| Node 编译缓存、受管浏览器用户目录 | 当前电脑本地缓存目录 |
+
+浏览器网站登录状态不会自动随盘迁移，换电脑后需要重新登录。部分界面缓存和运行时依赖仍会读写 U 盘。Windows NTFS 与 exFAT 的隔离测试已完成真实对话和重启读回；exFAT 的目录监听会降级为轮询，部分插件技能链接不能创建，启动可能更慢。发布成品仍须单独验收，这不代表所有电脑或 Mac 共盘已通过。
 
 ### 支持的 AI 模型
 
@@ -167,14 +177,7 @@ U-Claw/                          ← 整个拷到 U 盘
 
 ### 支持的聊天平台
 
-| 平台 | 状态 | 说明 |
-|------|------|------|
-| QQ | ✅ 已预装 | 输入 AppID + Secret 即可 |
-| 飞书 | ✅ 内置 | 企业首选 |
-| Telegram | ✅ 内置 | 海外推荐 |
-| WhatsApp | ✅ 内置 | Baileys 协议 |
-| Discord | ✅ 内置 | — |
-| 微信 | ✅ 社区插件 | iPad 协议 |
+QQ、飞书、Telegram、WhatsApp、Discord 等聊天平台由 OpenClaw 自带的命令接入，**配置中心不提供聊天平台入口**。双击 `OpenClaw-CLI.bat`（Windows）/ `Mac-OpenClaw-CLI.command`（Mac）打开命令行，然后运行 `openclaw channels add`（添加）、`openclaw channels login`（登录 / 扫码）、`openclaw channels status`（查看状态）、`openclaw channels remove`（移除）。已有的 `channels` 配置在配置中心保存模型时会被保留。QQ 插件已随包预装；微信插件暂不可用（上游兼容问题，修复后随更新恢复）。
 
 ### 国内镜像
 
@@ -184,7 +187,6 @@ U-Claw/                          ← 整个拷到 U 盘
 |------|------|
 | npm 包 | `registry.npmmirror.com` |
 | Node.js | `npmmirror.com/mirrors/node` |
-| Electron | `npmmirror.com/mirrors/electron` |
 
 ### 开发 & 贡献
 
@@ -200,10 +202,9 @@ bash Mac-Start.command   # Mac 测试
 |------|------|------|
 | Mac Apple Silicon (M1-M4) | ✅ | 便携版 |
 | Mac Intel (x64) | ✅ | 便携版 |
-| Windows x64 | 🚧 开发中 | 便携版 |
-| Linux x64（可启动 U 盘） | ✅ | [`bootable/`](bootable/) 目录 |
+| Windows x64 | ✅ | 便携版（含免部署完整包） |
 
-欢迎 PR！特别需要：Windows 脚本完善、教程翻译。
+欢迎 PR！特别需要：教程翻译、文档完善。
 
 ### 🦞 寻找技术伙伴
 
@@ -241,30 +242,21 @@ MIT 协议，随便复制分发。
 1. 删除不完整的依赖：`rmdir /s /q portable\app\core\node_modules`（Windows）或 `rm -rf portable/app/core/node_modules`（Mac）
 2. 切换淘宝镜像重新安装：`cd portable/app/core && npm install --registry=https://registry.npmmirror.com`
 
-**Q: 系统已有 Node.js v24，安装失败？**
-Node.js v24 是最新开发版，部分依赖尚不兼容。需要 **v20 或 v22 LTS**。删除已下载的 runtime 目录后重新运行 setup，它会自动下载内置的 Node v22：
-```bash
-# Windows
-rmdir /s /q portable\app\runtime\node-win-x64
-setup.bat
-
-# Mac
-rm -rf portable/app/runtime/node-mac-arm64
-bash setup.sh
-```
+**Q: 电脑已有其他版本的 Node.js，应该用哪个？**
+本版内置并验证的是 **Node.js 24.16.0 + OpenClaw 2026.10.2**。优先使用发行包自带的启动脚本和 Node，不需要更换电脑上的 Node。若运行时缺失，重新解压完整发行包，或从源码运行 `setup.bat` / `setup.sh`；不要单独升级 OpenClaw 后继续沿用旧运行时。
 
 **Q: Mac 上提示 `.toSorted is not a function`？**
-系统旧版 Node.js 被检测到并跳过了内置版本下载，但旧版 Node 不支持 `.toSorted()`（需要 v20+）。删除 runtime 目录让脚本重新下载内置 Node v22：
+系统旧版 Node.js 被检测到并跳过了内置版本下载，但旧版 Node 不支持 `.toSorted()`（需要 v20+）。删除 runtime 目录让脚本重新下载内置 Node v24：
 ```bash
 rm -rf portable/app/runtime/node-mac-arm64
 bash setup.sh
 ```
 
 **Q: 如何同时配置多个 AI 模型并切换？**
-支持同时配置多个 provider！打开 `Config.html` → 在 Providers 区域点击「添加」，逐个填入各模型的 API Key 和地址（如 DeepSeek、Kimi、通义等）→ 保存后，在聊天界面左上角下拉菜单随时切换。配置持久保存在 U 盘上。
+启动 `Windows-Start.bat` / `Mac-Start.command` 后使用配置中心（首次启动自动打开，之后可从启动页进入）。它一次只配置一个模型服务（保存后作为主模型），再次保存会替换原有的模型配置。需要同时保留多个 provider（如 DeepSeek、Kimi、通义等）时，请用 OpenClaw 自带的 `openclaw configure`（双击 `OpenClaw-CLI.bat` / `Mac-OpenClaw-CLI.command` 打开命令行）或直接编辑 `data/.openclaw/openclaw.json`，之后在聊天界面左上角下拉菜单切换；此后不要再在配置中心保存模型，否则会覆盖 `models`。配置持久保存在 U 盘上。
 
 **Q: U 盘安装后无法创建文件 / 写入失败？**
-两种可能：① U 盘侧面有物理写保护开关，拨到解锁位置；② U 盘格式不兼容，建议格式化为 **exFAT**（Mac/Windows/Linux 三端均支持读写）。
+先检查写保护、剩余空间和目录权限。仅在 Windows 使用时推荐 NTFS；exFAT 需要使用带有兼容补丁的完整新版，不能只替换旧版启动脚本。不要把所有写入失败都归因于格式，先运行诊断工具并保存错误信息；需要格式化时请先备份数据。
 
 **Q: 从 Ubuntu 向 U 盘复制时符号链接丢失？**
 `node_modules/.bin/` 下有大量符号链接，FAT32/exFAT 在直接 `cp -R` 时会跳过。用 `rsync -aL` 可将符号链接展开为真实文件：
@@ -279,6 +271,29 @@ cd portable/app/core/node_modules/@sliverp/qqbot
 npm install && npm run build
 ```
 正式 Release 包已修复此问题，建议从 [Releases](https://github.com/dongsheng123132/u-claw/releases) 下载最新版。
+
+<a id="企业服务"></a>
+
+### 💼 企业 AI 落地服务（付费）
+
+U-Claw 免费开源，自己装了用完全够，不用买任何东西。
+
+但如果你要把 AI **落进公司的业务流程**——客服、文档、质检、报价、内部知识库——
+那是另一件事。我是 [贺去病](https://hequbing.com)，独立 AI 产品开发者，做过 50+ 个交付项目，
+方案到上线一个人能兜住。这部分按项目收费：
+
+| 服务 | 你拿到什么 | 价格 |
+| :-- | :-- | :-- |
+| **AI 需求诊断** | 30 分钟通话：哪些环节值得上 AI、哪些是坑、大概多少钱 | **免费** |
+| **AI 方案设计** | 完整方案：技术选型 + 成本估算 + 实施路径 | ¥3,000 起 |
+| **快速 POC** | 2 周内交付能演示的原型，先验证可行再投钱 | ¥8,000 起 |
+| **落地陪跑** | 从方案到上线全程跟，含团队培训 | ¥20,000 起 |
+| **U-Claw 企业定制** | 私有化部署、批量装机、内网版、白标 | 面议 |
+
+**从免费诊断开始，不合适我会直接说不合适** —— 微信 hecare888 ·
+[hefangsheng@gmail.com](mailto:hefangsheng@gmail.com) · [hequbing.com](https://hequbing.com)
+
+---
 
 ### 联系 & 合作
 
@@ -308,6 +323,12 @@ npm install && npm run build
 
 ## English
 
+<p align="center">
+  <a href="https://github.com/dongsheng123132/u-claw/releases">Download</a> ·
+  <a href="https://u-claw.org/tutorial.html">Full tutorial</a> ·
+  <a href="#enterprise-services">Enterprise services</a>
+</p>
+
 ### What is this
 
 U-Claw (aka "虾盘" / "Xia Pan" in Chinese, meaning "Claw Drive") is a **tutorial + complete source code** for building an [OpenClaw](https://github.com/openclaw/openclaw) (open-source AI assistant framework) USB drive — plug it into any computer, double-click, and start using AI.
@@ -334,6 +355,8 @@ See [`install/README.md`](install/README.md) for details.
 
 ### Quick Start: Build a Portable USB
 
+> **Windows-only USB use: NTFS is recommended.** v2.3.0 adds Windows exFAT compatibility while keeping configuration and sessions on the drive. FAT32 is unsupported. Shared-drive operation on macOS still needs real-device acceptance; Windows native dependencies are not a Mac runtime. Formatting erases the drive; back up your files first.
+
 ```bash
 # 1. Clone
 git clone https://github.com/dongsheng123132/u-claw.git
@@ -348,6 +371,8 @@ cp -R portable/ /Volumes/YOUR_USB/U-Claw/   # Mac
 
 **Done!** Plug in the USB, double-click the start script, and you're running AI.
 
+> Only one U-Claw instance runs per USB drive. A second click reopens the existing Dashboard instead of selecting another port or writing sessions concurrently. To restart, exit the original launcher first.
+
 ### USB Features
 
 | Feature | Mac | Windows |
@@ -355,7 +380,7 @@ cp -R portable/ /Volumes/YOUR_USB/U-Claw/   # Mac
 | **Run (no install)** | `Mac-Start.command` | `Windows-Start.bat` |
 | **Menu** | `Mac-Menu.command` | `Windows-Menu.bat` |
 | **Install to PC** | `Mac-Install.command` | `Windows-Install.bat` |
-| **First-time config** | `Config.html` | `Config.html` |
+| **First-time config** | Config Center opens automatically on first start | Config Center opens automatically on first start |
 
 ### File Structure
 
@@ -367,7 +392,6 @@ U-Claw/                          ← Copy entire folder to USB
 ├── Windows-Start.bat             Windows launcher
 ├── Windows-Menu.bat              Windows menu
 ├── Windows-Install.bat           Install to Windows
-├── Config.html                   First-time config page
 ├── setup.sh                      Download dependencies (dev use)
 ├── app/                          ← Large deps (downloaded by setup.sh, not in git)
 │   ├── core/                        OpenClaw + QQ plugin
@@ -383,14 +407,9 @@ U-Claw/                          ← Copy entire folder to USB
 
 ### Linux Bootable USB
 
-No operating system? No problem. Boot any computer from USB into Ubuntu + AI:
+The Linux bootable USB kit has moved out of this repo and is maintained in the standalone [u-claw-linux](https://github.com/dongsheng123132/u-claw-linux) repo.
 
-- In this repo: [`bootable/`](bootable/) directory (fully independent from other modules)
-- Standalone repo: [u-claw-linux](https://github.com/dongsheng123132/u-claw-linux) (same content, easier to clone separately)
-
-Based on Ventoy + Ubuntu 24.04 LTS + persistence. 4-step PowerShell scripts on Windows. See [`bootable/README.md`](bootable/README.md) for details.
-
-> **About the Electron desktop app**: `u-claw-app/` (the `.exe` installer / portable / `.dmg` builds) was **deprecated and is no longer published as of 2026-06-19** — see [`u-claw-app/DEPRECATED.md`](u-claw-app/DEPRECATED.md). U-Claw now ships only the portable USB build, which is the product's essence: plug in the USB and run.
+> **About the Electron desktop app**: the Electron desktop app (the `.exe` installer / portable / `.dmg` builds) was **deprecated and is no longer published as of 2026-06-19, and has been removed from the repo** (see tag `archive/pre-scope-razor-2026-10-05`). U-Claw now ships only the portable USB build, which is the product's essence: plug in the USB and run.
 
 ### Supported AI Models
 
@@ -409,14 +428,7 @@ Based on Ventoy + Ubuntu 24.04 LTS + persistence. 4-step PowerShell scripts on W
 
 ### Supported Chat Platforms
 
-| Platform | Status | Notes |
-|----------|--------|-------|
-| QQ | ✅ Pre-installed | Enter AppID + Secret |
-| Feishu (Lark) | ✅ Built-in | Enterprise favorite |
-| Telegram | ✅ Built-in | International |
-| WhatsApp | ✅ Built-in | Baileys protocol |
-| Discord | ✅ Built-in | — |
-| WeChat | ✅ Community plugin | iPad protocol |
+Chat platforms (QQ, Feishu/Lark, Telegram, WhatsApp, Discord, etc.) are connected with OpenClaw's own commands; **the Config Center has no chat-platform entry**. Double-click `OpenClaw-CLI.bat` (Windows) / `Mac-OpenClaw-CLI.command` (Mac) to open a shell, then run `openclaw channels add` (add), `openclaw channels login` (log in / scan QR), `openclaw channels status` (check status) or `openclaw channels remove` (remove). Existing `channels` entries are preserved when you save a model in the Config Center. The QQ plugin is pre-installed; the WeChat plugin is currently unavailable (upstream compatibility issue, it will return once fixed upstream).
 
 ### China Mirrors
 
@@ -426,7 +438,6 @@ All scripts use China mirrors by default — no VPN needed:
 |----------|--------|
 | npm packages | `registry.npmmirror.com` |
 | Node.js | `npmmirror.com/mirrors/node` |
-| Electron | `npmmirror.com/mirrors/electron` |
 
 ### Development & Contributing
 
@@ -440,12 +451,11 @@ bash Mac-Start.command   # Test on Mac
 
 | Platform | Status | Notes |
 |----------|--------|-------|
-| Mac Apple Silicon (M1-M4) | ✅ | Portable + Desktop |
-| Mac Intel (x64) | ✅ | Portable + Desktop |
-| Windows x64 | 🚧 In progress | Portable + Desktop |
-| Linux x64 (Bootable USB) | ✅ | [`bootable/`](bootable/) directory |
+| Mac Apple Silicon (M1-M4) | ✅ | Portable |
+| Mac Intel (x64) | ✅ | Portable |
+| Windows x64 | ✅ | Portable (full offline bundle) |
 
-PRs welcome! Especially: Windows scripts, documentation.
+PRs welcome! Especially: documentation, tutorials.
 
 ### 🔧 Professional Services / 专业服务
 
@@ -509,30 +519,21 @@ Usually caused by a network interruption during `npm install`, leaving `node_mod
 1. Delete incomplete dependencies: `rmdir /s /q portable\app\core\node_modules` (Windows) or `rm -rf portable/app/core/node_modules` (Mac)
 2. Reinstall using China mirror: `cd portable/app/core && npm install --registry=https://registry.npmmirror.com`
 
-**Q: Already have Node.js v24 and installation fails?**
-Node.js v24 is a dev release — some dependencies aren't compatible yet. You need **v20 or v22 LTS**. Delete the runtime folder to force a fresh download of the bundled Node v22:
-```bash
-# Windows
-rmdir /s /q portable\app\runtime\node-win-x64
-setup.bat
-
-# Mac
-rm -rf portable/app/runtime/node-mac-arm64
-bash setup.sh
-```
+**Q: Which Node.js version should I use?**
+This release bundles and validates **Node.js 24.16.0 with OpenClaw 2026.10.2**. Use the bundled launcher and runtime; you do not need to replace your system Node. If runtime files are missing, extract a fresh full release or run `setup.bat` / `setup.sh` from source. Do not upgrade OpenClaw independently of its runtime requirements.
 
 **Q: Mac shows `.toSorted is not a function`?**
-Your system Node.js was detected and the bundled version was skipped, but the system version is too old (needs v20+). Delete the runtime folder to re-download the bundled Node v22:
+Your system Node.js was detected and the bundled version was skipped, but the system version is too old (needs v20+). Delete the runtime folder to re-download the bundled Node v24:
 ```bash
 rm -rf portable/app/runtime/node-mac-arm64
 bash setup.sh
 ```
 
 **Q: How do I use multiple AI models / providers?**
-Multiple providers are supported! Open `Config.html` → click "Add" in the Providers section → enter API Key and endpoint for each model (DeepSeek, Kimi, Qwen, etc.) → save. Switch between models via the dropdown in the chat interface. Config is saved persistently on the USB drive.
+Launch `Windows-Start.bat` / `Mac-Start.command` and use the Config Center (it opens automatically on first start; afterwards it is reachable from the startup page). It configures one model provider at a time (the saved one becomes the primary model); saving again replaces the previous model config. To keep several providers (DeepSeek, Kimi, Qwen, etc.), use OpenClaw's own `openclaw configure` (double-click `OpenClaw-CLI.bat` / `Mac-OpenClaw-CLI.command` to open a shell) or edit `data/.openclaw/openclaw.json` directly, then switch between models via the dropdown in the chat interface; do not save a model in the Config Center afterwards, or `models` will be overwritten. Config is saved persistently on the USB drive.
 
 **Q: USB drive shows "cannot create file" / write errors?**
-Two possibilities: ① The USB drive has a physical write-protect switch on the side — slide it to unlock; ② Format incompatibility — format the drive as **exFAT** (supported on Mac/Windows/Linux).
+Check write protection, free space, and directory permissions first. NTFS is recommended for Windows-only use; full exFAT compatibility is still being validated. Run diagnostics before assuming the filesystem is the cause, and back up your data before formatting.
 
 **Q: Symlinks missing when copying from Ubuntu to USB?**
 `node_modules/.bin/` contains many symlinks that get skipped during direct `cp -R`. Use `rsync -aL` to expand symlinks into real files:
@@ -547,6 +548,30 @@ cd portable/app/core/node_modules/@sliverp/qqbot
 npm install && npm run build
 ```
 This is fixed in the latest [Release](https://github.com/dongsheng123132/u-claw/releases) — downloading the pre-built release is recommended.
+
+<a id="enterprise-services"></a>
+
+### 💼 Enterprise AI Consulting (paid)
+
+U-Claw is free and MIT-licensed. Installing it for yourself costs nothing and needs nothing from me.
+
+Putting AI **into your company's actual workflow** — support, documents, QA, quoting, internal
+knowledge bases — is a different job. I'm [He Qubing](https://hequbing.com), an independent AI product
+developer with 50+ delivered projects; I can carry a project from scoping to production on my own.
+That part is paid:
+
+| Service | What you get | Price |
+| :-- | :-- | :-- |
+| **AI scoping call** | 30 min: what's worth automating, what will burn you, rough budget | **Free** |
+| **Solution design** | Full plan: stack selection, cost model, rollout path | from ¥3,000 (~$420) |
+| **Rapid POC** | A working demo in 2 weeks — validate before you spend | from ¥8,000 (~$1,100) |
+| **Hands-on delivery** | Scoping through production, including team training | from ¥20,000 (~$2,800) |
+| **U-Claw for teams** | Self-hosted, bulk provisioning, air-gapped, white-label | Let's talk |
+
+**Start with the free call — if it's a bad fit I'll say so** —
+[hefangsheng@gmail.com](mailto:hefangsheng@gmail.com) · [hequbing.com](https://hequbing.com)
+
+---
 
 ### Contact & Partnership
 

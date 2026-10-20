@@ -15,7 +15,7 @@
 
 ### 报告内容建议
 
-- 受影响的模块（portable / install / bootable / u-claw-app）
+- 受影响的模块（portable / install）
 - 受影响的版本或 commit hash
 - 触发条件、攻击面（本地 / 局域网 / 互联网）
 - 复现步骤或 PoC 代码
@@ -27,8 +27,6 @@
 |------|------|------|
 | `portable/` | 当前 main | ✅ 接受报告 |
 | `install/` (`install.sh` / `install.ps1`) | 当前 main | ✅ 接受报告 |
-| `bootable/` (Linux U 盘) | 当前 main | ✅ 接受报告 |
-| `u-claw-app/` Electron | 当前 main | ✅ 接受报告 |
 | 历史 release tag | — | ⚠️ 仅做严重等级评估，不一定回滚补丁 |
 
 我们暂未发布稳定版本号，所有修复直接在 main 分支推送。
@@ -42,11 +40,10 @@
 - 启动脚本（`Mac-Start.command` / `Windows-Start.bat` / `start.sh`）
   在恶意目录名/环境变量下被劫持的可能
 - 一键安装 (`curl | bash` / `irm | iex`) 链路上的 MITM 风险
-- Bootable USB 制作脚本生成的产物在 Linux Live 环境下的提权问题
 
 ### 不在范围内
 
-- 上游依赖（Node.js / OpenClaw / Electron / Ventoy / Ubuntu）的漏洞 —
+- 上游依赖（Node.js / OpenClaw）的漏洞 —
   请直接报给上游项目；我们只跟踪并升级版本。
 - 用户主动把自己的 API Key 写到公开仓库 / 截图泄露，不属于本项目缺陷。
 - 物理接触 USB 后的所有攻击（含偷换 USB、键盘记录等），属于硬件安全场景。

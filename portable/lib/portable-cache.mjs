@@ -13,17 +13,15 @@
 //   业务数据（openclaw.json、memory、账号）仍留在 U 盘 data/，便携性不变。
 //
 // 浏览器 user-data 的重定向手法：
-//   OpenClaw 把浏览器 profile 硬编码在 CONFIG_DIR/browser/（无单独环境变量可改），
-//   只有 OPENCLAW_STATE_DIR 能整体搬走——但那会连 openclaw.json 一起搬，破坏便携。
-//   所以这里用"目录联接/符号链接"：把 U 盘的 data/.openclaw/browser 做成一个
-//   junction(Windows) / symlink(mac/linux)，指向本机硬盘缓存。OpenClaw 照常写
-//   CONFIG_DIR/browser，字节却落在本机盘上。配置仍在 U 盘，便携性不受影响。
+//   U-Claw 对固定版本 OpenClaw 打入受管浏览器目录补丁，读取
+//   OPENCLAW_MANAGED_BROWSER_DIR；因此只将 Chromium profile 放本机盘。STATE_DIR
+//   （SQLite 会话、设备身份、授权）始终留在 U 盘，不能与浏览器一起搬走。
 //
 // UUID 隔离（移植自 4.0）：
 //   缓存子目录名 = sha256("portable-id:<UUID>") 前 16 hex。UUID 存在 U 盘 STATE_DIR 里，
 //   所以同一支 U 盘从 D: 插到 E: 仍命中同一份本机缓存，不必重新热身。
 //
-// 设计原则：静默失败。任何一步出错都回退到"用 U 盘内目录"，绝不阻断启动。
+// 设计原则：本机盘优先；本机缓存不可写时才回退到 U 盘，绝不阻断启动。
 //
 // CLI 用法（供 .bat / .command source）：
 //   node portable-cache.mjs <STATE_DIR> <USB_ROOT>
@@ -33,7 +31,7 @@
 //   UCLAW_CACHE_ROOT=...
 
 import { createHash, randomUUID } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, writeFileSync, lstatSync, readlinkSync, symlinkSync, readdirSync, rmdirSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir, tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
@@ -83,79 +81,28 @@ export function resolvePortableCache({
   const slot = createHash('sha256').update(identity).digest('hex').slice(0, 16);
 
   let root;
+  let localCacheAvailable = true;
   try {
     root = join(systemCacheRoot(platform, env), 'U-Claw', slot);
     mkdirSync(root, { recursive: true });
   } catch {
     // 本机缓存根不可写 → 整体回退到 U 盘内（保证不报错，只是没加速）
+    localCacheAvailable = false;
     root = stateDir ? join(stateDir, 'cache') : join(tmpdir(), 'u-claw-cache', slot);
     try { mkdirSync(root, { recursive: true }); } catch { /* 实在不行就让调用方拿到路径自己兜底 */ }
   }
 
   const compileCacheDir = join(root, 'node-compile-cache');
-  const browserUserDataDir = join(root, 'browser');
-  for (const d of [compileCacheDir, browserUserDataDir]) {
+  // If the host cache cannot be created, leave the variable empty. OpenClaw
+  // then uses its normal portable STATE_DIR/browser location; never invent a
+  // second state location or inherit a caller-supplied local browser root.
+  const managedBrowserDir = localCacheAvailable ? join(root, 'managed-browser') : '';
+  const browserUserDataDir = managedBrowserDir ? join(managedBrowserDir, 'openclaw', 'user-data') : '';
+  for (const d of [compileCacheDir, managedBrowserDir, browserUserDataDir].filter(Boolean)) {
     try { mkdirSync(d, { recursive: true }); } catch { /* 静默 */ }
   }
 
-  // 把 U 盘的 .openclaw/browser 链到本机缓存。失败就不链——OpenClaw 退回原地写 U 盘，只是没加速。
-  let browserLinked = false;
-  if (stateDir) {
-    browserLinked = linkBrowserDir(join(stateDir, 'browser'), browserUserDataDir, platform);
-  }
-
-  return { root, compileCacheDir, browserUserDataDir, browserLinked, cacheId };
-}
-
-// 判断一个路径是否"已是指向 target 的链接"。
-function isLinkTo(linkPath, target) {
-  try {
-    const st = lstatSync(linkPath);
-    if (!st.isSymbolicLink()) {
-      // Windows junction 在 lstat 下 isDirectory()=true、isSymbolicLink()=false，
-      // 用 readlink 兜底判断：能 readlink 成功且指向 target 就算已链。
-      try {
-        const resolved = readlinkSync(linkPath);
-        return resolved && target && resolved.replace(/[\\/]+$/, '') === target.replace(/[\\/]+$/, '');
-      } catch {
-        return false;
-      }
-    }
-    const resolved = readlinkSync(linkPath);
-    return resolved.replace(/[\\/]+$/, '') === target.replace(/[\\/]+$/, '');
-  } catch {
-    return false; // 不存在
-  }
-}
-
-// 把 linkPath（U 盘 .openclaw/browser）做成指向 target（本机缓存/browser）的链接。
-// 返回 true=已链好。已存在真实目录且非空则不动（保住用户既有 profile，宁可慢也不丢数据）。
-function linkBrowserDir(linkPath, target, platform) {
-  try {
-    if (existsSync(linkPath)) {
-      if (isLinkTo(linkPath, target)) return true; // 之前已链好
-      // 是真实目录：若为空可以安全替换成链接；非空则保守不动。
-      let entries = [];
-      try { entries = readdirSync(linkPath); } catch { return false; }
-      if (entries.length > 0) return false; // 有既有 profile，不冒险，留在 U 盘
-      // 空目录：删掉再链
-      try { rmdirCompat(linkPath); } catch { return false; }
-    }
-    if (platform === 'win32') {
-      // mklink /J 目录联接：无需管理员权限，行为最接近"同一目录"
-      execFileSync('cmd', ['/c', 'mklink', '/J', linkPath, target], { stdio: 'ignore' });
-    } else {
-      symlinkSync(target, linkPath, 'dir');
-    }
-    return isLinkTo(linkPath, target);
-  } catch {
-    return false;
-  }
-}
-
-function rmdirCompat(dir) {
-  // 只删空目录，避免误删用户数据
-  rmdirSync(dir);
+  return { root, compileCacheDir, managedBrowserDir, browserUserDataDir, localCacheAvailable, cacheId };
 }
 
 // CLI：打印 KEY=VALUE，供启动脚本逐行 set / export。
@@ -173,8 +120,9 @@ if (isMain) {
     process.stdout.write(
       `UCLAW_CACHE_ROOT=${c.root}\n` +
       `UCLAW_COMPILE_CACHE_DIR=${c.compileCacheDir}\n` +
+      `UCLAW_MANAGED_BROWSER_DIR=${c.managedBrowserDir}\n` +
       `UCLAW_BROWSER_USER_DATA_DIR=${c.browserUserDataDir}\n` +
-      `UCLAW_BROWSER_LINKED=${c.browserLinked ? '1' : '0'}\n`,
+      `UCLAW_LOCAL_CACHE_AVAILABLE=${c.localCacheAvailable ? '1' : '0'}\n`,
     );
     process.exit(0);
   } catch (err) {

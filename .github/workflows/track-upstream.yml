@@ -1,161 +1,26 @@
 name: Track OpenClaw upstream
-
-# 自动跟踪 OpenClaw 上游更新（借鉴 agentkernel/openclaw-desktop 的 pin 思路，
-# 但补上了它没做的最后一步：定时检测 + 自动 bump + 自动打 tag → 自动发版）。
-#
-# 工作原理：
-#   1. 每天 cron 跑 `npm view openclaw version` 拿上游 npm 最新版
-#   2. 和仓库里的 OPENCLAW_VERSION（pin）比对
-#   3. 上游更新了 → 改 OPENCLAW_VERSION（根 + portable/）、bump 壳版本 patch、
-#      commit、push 新 tag v<壳版本>
-#   4. push tag 触发 release.yml → 自动构建 Win/Mac 便携版+桌面版并发布 Release
-#
-# 设计原则：
-#   - 幂等：上游没新版就什么都不做，安静退出
-#   - 可手动：workflow_dispatch 支持手动触发、强制指定上游版本、dry-run 只看不改
-#   - 单一可信源：OPENCLAW_VERSION 是上游 pin，u-claw-app/package.json 是壳版本
-
+# Discovery only. Updating the pin, native dependencies and patches requires acceptance.
 on:
   schedule:
-    # 每天 UTC 01:00（北京时间 09:00）检查一次
     - cron: '0 1 * * *'
   workflow_dispatch:
-    inputs:
-      force_version:
-        description: '强制使用的上游 OpenClaw 版本（留空=用 npm latest）'
-        required: false
-        default: ''
-      dry_run:
-        description: '只检测不改动（true/false）'
-        required: false
-        default: 'false'
-
 permissions:
-  contents: write
-
+  contents: read
 jobs:
-  track:
-    name: Check upstream & auto-bump
+  check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          # 需要完整历史才能正确打 tag / 读已有 tag
-          fetch-depth: 0
-          # 半自动模式（默认）：用 GITHUB_TOKEN push tag。GitHub 防递归机制下
-          # 自动推的 tag 不会触发 release.yml，所以需到 Actions 手动点一次 Run release。
-          # 想升级成全自动：去仓库 Settings → Secrets 加一个 RELEASE_PAT（个人访问令牌，
-          # repo 权限），本行会自动优先用它 push，tag 即可自动触发发版。
-          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
-
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
-
-      - name: Resolve upstream OpenClaw version
-        id: upstream
+          node-version: 24.16.0
+      - name: Report upstream version without publishing
+        shell: bash
         run: |
-          force="${{ github.event.inputs.force_version }}"
-          if [ -n "$force" ]; then
-            latest="${force#v}"
-            echo "强制指定上游版本: $latest"
-          else
-            latest="$(npm view openclaw version --registry=https://registry.npmmirror.com 2>/dev/null | tr -d '[:space:]')"
-            # npmmirror 偶尔缓存陈旧，官方源兜底取较大值
-            official="$(npm view openclaw version 2>/dev/null | tr -d '[:space:]')"
-            if [ -n "$official" ] && [ "$official" != "$latest" ]; then
-              # 取版本号较大的那个（npmmirror 缓存滞后时用官方源）
-              latest="$(printf '%s\n%s\n' "$latest" "$official" | sort -V | tail -1)"
-            fi
-            echo "npm latest openclaw: $latest"
+          set -euo pipefail
+          pinned=$(tr -d '[:space:]' < OPENCLAW_VERSION)
+          latest=$(npm view openclaw version --registry=https://registry.npmjs.org --fetch-timeout=30000)
+          echo "Bundled OpenClaw: $pinned; upstream: $latest" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$pinned" != "$latest" ]; then
+            echo "::warning::New OpenClaw $latest requires Node, native dependency, patch, and physical NTFS acceptance before release."
           fi
-          if [ -z "$latest" ]; then
-            echo "::error::无法获取上游 openclaw 版本（npm view 失败）"
-            exit 1
-          fi
-          echo "latest=$latest" >> "$GITHUB_OUTPUT"
-
-      - name: Read current pin
-        id: current
-        run: |
-          pinned="$(tr -d '[:space:]' < OPENCLAW_VERSION)"
-          shell_ver="$(node -p "require('./u-claw-app/package.json').version")"
-          echo "pinned=$pinned" >> "$GITHUB_OUTPUT"
-          echo "shell_ver=$shell_ver" >> "$GITHUB_OUTPUT"
-          echo "当前 pin: $pinned | 壳版本: $shell_ver"
-
-      - name: Decide whether to bump
-        id: decide
-        run: |
-          latest="${{ steps.upstream.outputs.latest }}"
-          pinned="${{ steps.current.outputs.pinned }}"
-          if [ "$latest" = "$pinned" ]; then
-            echo "✅ 已是最新（pin=$pinned），无需发版。"
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          # 只在 latest 严格 > pinned 时发版（避免上游撤版导致回退）
-          newer="$(printf '%s\n%s\n' "$pinned" "$latest" | sort -V | tail -1)"
-          if [ "$newer" != "$latest" ]; then
-            echo "⚠️ npm latest ($latest) 不比当前 pin ($pinned) 新，跳过。"
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          echo "🆕 发现上游新版: $pinned → $latest"
-          echo "changed=true" >> "$GITHUB_OUTPUT"
-
-      - name: Compute next shell version (patch bump)
-        if: steps.decide.outputs.changed == 'true'
-        id: nextver
-        run: |
-          cur="${{ steps.current.outputs.shell_ver }}"
-          IFS='.' read -r MA MI PA <<< "$cur"
-          PA=$((PA + 1))
-          next="${MA}.${MI}.${PA}"
-          echo "壳版本 bump: $cur → $next"
-          echo "next=$next" >> "$GITHUB_OUTPUT"
-
-      - name: Apply changes (pin + version files)
-        if: steps.decide.outputs.changed == 'true' && github.event.inputs.dry_run != 'true'
-        run: |
-          latest="${{ steps.upstream.outputs.latest }}"
-          next="${{ steps.nextver.outputs.next }}"
-
-          # 1) 更新上游 pin（根 + portable/ 两份保持一致）
-          printf '%s\n' "$latest" > OPENCLAW_VERSION
-          printf '%s\n' "$latest" > portable/OPENCLAW_VERSION
-
-          # 2) bump 壳版本（package.json）。release.yml 仍会从 tag 同步，
-          #    这里写一份让 main 分支也保持一致。
-          node -e "const f='u-claw-app/package.json';const p=require('./'+f);p.version='$next';require('fs').writeFileSync(f, JSON.stringify(p,null,2)+'\n')"
-
-          echo "已写入: OPENCLAW_VERSION=$latest, 壳版本=$next"
-
-      - name: Commit, tag & push
-        if: steps.decide.outputs.changed == 'true' && github.event.inputs.dry_run != 'true'
-        run: |
-          latest="${{ steps.upstream.outputs.latest }}"
-          next="${{ steps.nextver.outputs.next }}"
-
-          git config user.name  "u-claw-bot"
-          git config user.email "bot@u-claw.org"
-
-          git add OPENCLAW_VERSION portable/OPENCLAW_VERSION u-claw-app/package.json
-          git commit -m "chore(upstream): 跟随 OpenClaw $latest，发布 v$next
-
-          自动跟踪上游：OpenClaw npm latest 升到 $latest，
-          自动 bump 壳版本到 $next 并打 tag 触发发版。"
-
-          git push origin HEAD:main
-
-          # 打 tag 触发 release.yml
-          git tag "v$next"
-          git push origin "v$next"
-
-          echo "✅ 已推送 v$next，release.yml 将自动构建并发布。"
-
-      - name: Dry-run summary
-        if: steps.decide.outputs.changed == 'true' && github.event.inputs.dry_run == 'true'
-        run: |
-          echo "🔍 DRY RUN — 不改动。"
-          echo "若执行将：OPENCLAW_VERSION ${{ steps.current.outputs.pinned }} → ${{ steps.upstream.outputs.latest }}，发布 v${{ steps.nextver.outputs.next }}"

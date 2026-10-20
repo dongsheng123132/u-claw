@@ -2,5 +2,9 @@
   "gateway": {
     "mode": "local",
     "auth": { "token": "uclaw" }
+  },
+  "update": {
+    "checkOnStart": false,
+    "auto": { "enabled": false }
   }
 }

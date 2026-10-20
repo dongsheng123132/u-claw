@@ -25,7 +25,7 @@ RUNTIME_DIR="$UCLAW_DIR/runtime"
 CORE_DIR="$UCLAW_DIR/core"
 DATA_DIR="$UCLAW_DIR/data"
 CONFIG_PATH="$DATA_DIR/.openclaw/openclaw.json"
-NODE_VERSION="v22.16.0"
+NODE_VERSION="v24.16.0"
 MIRROR="https://registry.npmmirror.com"
 NODE_MIRROR="https://npmmirror.com/mirrors/node"
 
@@ -806,7 +806,7 @@ else
                 NEED_KEY=true
                 ;;
             2)
-                MODEL_NAME="moonshot-v1-auto"
+                MODEL_NAME="kimi-k2.6"
                 BASE_URL="https://api.moonshot.cn/v1"
                 PROVIDER="custom"
                 KEY_LABEL="Moonshot API Key"
@@ -822,7 +822,7 @@ else
                 NEED_KEY=true
                 ;;
             4)
-                MODEL_NAME="glm-4-plus"
+                MODEL_NAME="glm-5"
                 BASE_URL="https://open.bigmodel.cn/api/paas/v4"
                 PROVIDER="custom"
                 KEY_LABEL="智谱 API Key"
@@ -830,37 +830,18 @@ else
                 NEED_KEY=true
                 ;;
             5)
-                echo -e "  Select MiniMax model:"
-                echo -e "  ${GREEN}1)${NC} MiniMax-M3 (recommended)"
-                echo -e "  ${NC}2)${NC} MiniMax-M2.7"
-                read -p "  Enter number [1]: " MINIMAX_MODEL_CHOICE
-                MINIMAX_MODEL_CHOICE=${MINIMAX_MODEL_CHOICE:-1}
-                case $MINIMAX_MODEL_CHOICE in
-                    2) MODEL_NAME="MiniMax-M2.7" ;;
-                    *) MODEL_NAME="MiniMax-M3" ;;
-                esac
-                echo ""
-                echo -e "  Select MiniMax region:"
-                echo -e "  ${GREEN}1)${NC} China"
-                echo -e "  ${NC}2)${NC} Global"
-                read -p "  Enter number [1]: " MINIMAX_REGION_CHOICE
-                MINIMAX_REGION_CHOICE=${MINIMAX_REGION_CHOICE:-1}
-                case $MINIMAX_REGION_CHOICE in
-                    2)
-                        BASE_URL="https://api.minimax.io/v1"
-                        KEY_HINT="Open docs: https://platform.minimax.io/docs"
-                        ;;
-                    *)
-                        BASE_URL="https://api.minimaxi.com/v1"
-                        KEY_HINT="Open docs: https://platform.minimaxi.com/docs"
-                        ;;
-                esac
+                echo "  1) MiniMax-M3.1-Flash (default)    2) MiniMax-M3"
+                read -p "  MiniMax model [1]: " MINIMAX_MODEL_CHOICE
+                MODEL_NAME="MiniMax-M3.1-Flash"
+                if [ "$MINIMAX_MODEL_CHOICE" = "2" ]; then MODEL_NAME="MiniMax-M3"; fi
+                BASE_URL="https://api.minimaxi.com/v1"
                 PROVIDER="custom"
                 KEY_LABEL="MiniMax API Key"
+                KEY_HINT="获取地址: https://platform.minimaxi.com/"
                 NEED_KEY=true
                 ;;
             6)
-                MODEL_NAME="doubao-pro-256k"
+                MODEL_NAME="doubao-seed-1-6-250615"
                 BASE_URL="https://ark.cn-beijing.volces.com/api/v3"
                 PROVIDER="custom"
                 KEY_LABEL="火山引擎 API Key"
@@ -876,7 +857,7 @@ else
                 NEED_KEY=true
                 ;;
             8)
-                MODEL_NAME="claude-sonnet-4-20250514"
+                MODEL_NAME="claude-sonnet-5"
                 BASE_URL=""
                 PROVIDER="anthropic"
                 KEY_LABEL="Anthropic API Key"
@@ -884,7 +865,7 @@ else
                 NEED_KEY=true
                 ;;
             9)
-                MODEL_NAME="gpt-4o"
+                MODEL_NAME="gpt-5.4"
                 BASE_URL=""
                 PROVIDER="openai"
                 KEY_LABEL="OpenAI API Key"
@@ -919,7 +900,7 @@ else
             echo ""
             read -p "  请输入 $KEY_LABEL: " API_KEY
             if [ -z "$API_KEY" ]; then
-                echo -e "  ${YELLOW}⚠ 未输入 API Key，稍后可通过 Config.html 配置${NC}"
+                echo -e "  ${YELLOW}⚠ 未输入 API Key，稍后可编辑 $CONFIG_PATH 配置${NC}"
             fi
         else
             echo -e "  ${CYAN}$KEY_HINT${NC}"
@@ -929,6 +910,13 @@ else
         # 因为合法的 API key 极少包含控制字符。如果用户粘贴了奇怪的内容,至少 JSON 仍然可解析。
         API_KEY_JSON=${API_KEY//\\/\\\\}
         API_KEY_JSON=${API_KEY_JSON//\"/\\\"}
+
+        MODEL_DEFINITION="{ \"id\": \"$MODEL_NAME\" }"
+        if [ "$MODEL_CHOICE" = "5" ]; then
+            MODEL_MAX_TOKENS=8192
+            if [ "$MODEL_NAME" = "MiniMax-M3.1-Flash" ]; then MODEL_MAX_TOKENS=524288; fi
+            MODEL_DEFINITION="{ \"id\": \"$MODEL_NAME\", \"name\": \"$MODEL_NAME\", \"reasoning\": true, \"input\": [\"text\", \"image\", \"video\"], \"contextWindow\": 1000000, \"maxTokens\": $MODEL_MAX_TOKENS }"
+        fi
 
         # 写配置文件
         if [ "$PROVIDER" = "custom" ] && [ -n "$BASE_URL" ]; then
@@ -945,7 +933,7 @@ else
         "baseUrl": "$BASE_URL",
         "apiKey": "$API_KEY_JSON",
         "api": "openai-completions",
-        "models": [{ "id": "$MODEL_NAME" }]
+        "models": [$MODEL_DEFINITION]
       }
     }
   },
@@ -998,7 +986,7 @@ CFGEOF
     else
         # 非交互模式，写默认配置
         echo -e "  ${YELLOW}⚠${NC}  管道模式，跳过模型选择"
-        echo -e "  ${DIM}启动后用 Config.html 配置模型${NC}"
+        echo -e "  ${DIM}稍后编辑 $CONFIG_PATH 配置模型${NC}"
         if [ ! -f "$CONFIG_PATH" ]; then
             cat > "$CONFIG_PATH" << 'CFGEOF'
 {

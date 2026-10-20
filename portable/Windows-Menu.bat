@@ -28,6 +28,12 @@ set "OPENCLAW_MJS=%CORE_DIR%\node_modules\openclaw\openclaw.mjs"
 set "LOG_DIR=%DATA_DIR%\logs"
 set "BACKUP_DIR=%DATA_DIR%\backups"
 
+call "%UCLAW_DIR%lib\windows-runtime-env.bat" "%UCLAW_DIR%." "%NODE_BIN%"
+if errorlevel 1 (
+    pause
+    exit /b 1
+)
+
 if not exist "%STATE_DIR%" mkdir "%STATE_DIR%"
 if not exist "%DATA_DIR%\memory" mkdir "%DATA_DIR%\memory"
 if not exist "%BACKUP_DIR%" mkdir "%BACKUP_DIR%"
@@ -71,10 +77,11 @@ echo   [12] Uninstall
 echo   [13] Check for updates
 echo   [14] Disk cleanup
 echo   [15] Plugin management
+echo   [16] Open CLI terminal (openclaw chat/configure/doctor)
 echo.
 echo   [0] Exit
 echo.
-set /p choice="  Choose [0-15]: "
+set /p choice="  Choose [0-16]: "
 
 if "%choice%"=="1" goto :onboard
 if "%choice%"=="2" goto :dashboard
@@ -91,6 +98,7 @@ if "%choice%"=="12" goto :uninstall
 if "%choice%"=="13" goto :checkupdate
 if "%choice%"=="14" goto :diskcleanup
 if "%choice%"=="15" goto :plugins
+if "%choice%"=="16" goto :clitool
 if "%choice%"=="0" exit /b 0
 echo   Invalid choice
 pause
@@ -123,7 +131,7 @@ if !errorlevel!==0 (
 )
 cd /d "%CORE_DIR%"
 if not exist "%STATE_DIR%\openclaw.json" (
-    (echo {"gateway":{"mode":"local","auth":{"token":"uclaw"}}})>"%STATE_DIR%\openclaw.json"
+    (echo {"gateway":{"mode":"local","auth":{"token":"uclaw"}},"update":{"checkOnStart":false,"auto":{"enabled":false}}})>"%STATE_DIR%\openclaw.json"
 )
 
 REM Read token from config
@@ -170,7 +178,7 @@ echo   === Other Platforms ===
 echo.
 echo   [a] Feishu (Lark)    - Enterprise
 echo   [b] Telegram          - International
-echo   [c] WeChat (plugin)   - iPad protocol
+echo   [c] WeChat (plugin)   - iPad protocol (unavailable)
 echo   [d] Discord
 echo.
 set /p ch_choice="  Choose (a-d, empty to cancel): "
@@ -190,10 +198,9 @@ if "%ch_choice%"=="b" (
 )
 if "%ch_choice%"=="c" (
     echo.
-    echo   Installing WeChat plugin...
-    cd /d "%CORE_DIR%"
-    "%NODE_BIN%" "%OPENCLAW_MJS%" plugins install @icesword760/openclaw-wechat
-    echo   WeChat plugin installed!
+    echo   WeChat plugin is temporarily unavailable:
+    echo   upstream module-loading compatibility issue.
+    echo   Skip setup until upstream publishes a fix.
 )
 if "%ch_choice%"=="d" (
     echo.
@@ -427,7 +434,7 @@ echo   [4/4] Restoring default config...
 if exist "%UCLAW_DIR%default-config.json" (
     copy "%UCLAW_DIR%default-config.json" "%STATE_DIR%\openclaw.json" >nul
 ) else (
-    (echo {"gateway":{"mode":"local","auth":{"token":"uclaw"}}})>"%STATE_DIR%\openclaw.json"
+    (echo {"gateway":{"mode":"local","auth":{"token":"uclaw"}},"update":{"checkOnStart":false,"auto":{"enabled":false}}})>"%STATE_DIR%\openclaw.json"
 )
 echo.
 echo   Factory reset complete! Run Setup wizard [1] to reconfigure.
@@ -626,5 +633,15 @@ if "%plgchoice%"=="c" (
         echo   Cancelled.
     )
 )
+pause
+goto :menu
+
+:clitool
+echo.
+echo   === CLI Terminal ===
+echo.
+echo   Opening a new window with 'openclaw' commands ready to use
+echo   (chat / configure / doctor / gateway status)...
+start "" "%UCLAW_DIR%OpenClaw-CLI.bat"
 pause
 goto :menu
