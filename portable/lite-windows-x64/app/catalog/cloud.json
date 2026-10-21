@@ -1,0 +1,5 @@
+{
+  "api_base_url": "https://api.u-claw.org.cn",
+  "pay_base_url": "https://u-claw.org.cn",
+  "preferred_model": "deepseek-v4-flash"
+}

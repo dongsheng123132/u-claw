@@ -276,13 +276,15 @@ jobs:
           body: |
             ## U-Claw ${{ steps.tag.outputs.tag }}
 
-            - 启动后使用虾盘云，填写自己的 API Key 即可开始聊天
-            - 想用「虾盘云」中转站（一个 Key 调用国内外全部模型、免翻墙）：先到 https://cloud.u-claw.org 注册并创建 Key
+            - 默认使用虾盘云（设备钱包 / 填自己的虾盘云 Key），一键领取、充值
+            - **支持自己的 API Key**：配置页可选 DeepSeek / Kimi / 智谱 GLM / 通义 / 豆包 / MiniMax / OpenAI / Claude / Groq / 硅基流动，或「自定义 · OpenAI 兼容」填任意 API 地址 + 模型 + Key
+            - 想用虾盘云中转站（一个 Key 调用国内外全部模型、免翻墙）：先到 https://cloud.u-claw.org 注册并创建 Key
             - OpenClaw runtime: `${{ steps.openclaw_version.outputs.version }}`
 
             ### 下载
 
             - **Windows 便携完整版（U 盘版）**：`u-claw-portable-windows-*.zip`，已预装 Node.js + OpenClaw。解压到 U 盘后双击 `Windows-Start.bat` 启动。
+              - 包内另附 **`lite-windows-x64/`（虾盘轻量版，约 45MB）**：不依赖 Node/OpenClaw，双击 `虾盘.exe` 即用，可填任意 OpenAI 兼容 Key；适合老电脑、低速 U 盘、只做维护和轻量对话的场景。
             - **macOS 便携版**：源码在 `portable/` 目录，`bash setup.sh` 自动下载 Node.js + OpenClaw，双击 `Mac-Start.command` 启动。
 
             > **U 盘格式**：**NTFS 或 exFAT 均可**。v2.3.0+ 已内置 exFAT 兼容（原子写入 rename 补丁 + Windows 零 inode 探测），exFAT 可在 Windows/Mac 双系统读写；仅 Windows 使用可选 NTFS。

@@ -1,0 +1,21 @@
+{
+  "edition": "U-PicoClaw portable AI + emergency toolkit (Windows x64 lite)",
+  "product": "虾盘 · U 盘精灵",
+  "component": "xiapan-lite-windows-x64",
+  "lite": true,
+  "version": "0.5.5-portable-preview",
+  "built_at": "2026-10-21T14:49:04.7860591Z",
+  "source_commit": "3acca4ed2308e274b34f4898fd67312e1f7f4a33",
+  "source_dirty": false,
+  "pico_version": "0.3.1",
+  "platforms": [
+    "windows/amd64"
+  ],
+  "source_fingerprint": "831bc3bd1b0de0010380512e7c46b6441fede1ee89e76893e63911c2f7ece11c",
+  "customer_data_included": false,
+  "local_model_included": false,
+  "bootable": false,
+  "automatic_program_updates": false,
+  "driver_auto_install": false,
+  "portable_tools": []
+}

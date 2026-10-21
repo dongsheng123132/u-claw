@@ -1,9 +1,10 @@
 <!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>U-Claw 快速上手</title>
 <style>body{margin:0;background:#10141a;color:#e7edf6;font:16px/1.8 system-ui,sans-serif}main{max-width:800px;margin:auto;padding:40px 24px}h1,h2{color:#69dab8}h2{margin-top:36px}code{padding:3px 6px;background:#202c39;border-radius:4px}strong{color:#ffd680}p{max-width:75ch}</style></head><body><main>
-<h1>U-Claw 快速上手</h1><p>OpenClaw 2026.10.2 · Node.js 24.16.0 · 虾盘云默认模型</p>
+<h1>U-Claw 快速上手</h1><p>OpenClaw 2026.10.2 · Node.js 24.16.0 · 虾盘云默认，也可填自己的 Key</p>
 <h2>1. 插入 U 盘并启动</h2><p>Windows 双击 <code>Windows-Start.bat</code>；Mac 双击 <code>Mac-Start.command</code>。启动后直接打开 OpenClaw WebUI。首次在 Mac 使用或换系统时，需要联网运行 setup.sh 准备当前平台依赖。本地安装会保留数据、备份旧程序。</p>
-<h2>2. 打开设备钱包</h2><p>在 WebUI 侧栏点击「设备钱包」，或点击对话顶部「设备钱包 · 充值」。不需要在启动前选择模型。</p>
-<h2>3. 领取或恢复钱包</h2><p>点击「一键领取额度」，或输入已有虾盘云密钥并点击「启用这把密钥」。唯一默认模型 deepseek-v4-flash 会自动配置。</p><p><strong>你的密钥就是你的钱包</strong>。点击「复制密钥」备份；换电脑后使用同一密钥恢复余额。已有密钥会沿用，启动时不会自动领取新钱包。</p>
+<h2>2. 打开设备钱包</h2><p>在 WebUI 侧栏点击「设备钱包」，或点击对话顶部「设备钱包 · 充值」。想用自己的模型：首次启动的配置页里选提供商，或选「自定义 · OpenAI 兼容」填 API 地址、模型和 Key。</p>
+<h2>3. 领取或恢复钱包</h2><p>点击「一键领取额度」，或输入已有虾盘云密钥并点击「启用这把密钥」。默认模型 deepseek-v4-flash 会自动配置。</p><p><strong>你的密钥就是你的钱包</strong>。点击「复制密钥」备份；换电脑后使用同一密钥恢复余额。已有密钥会沿用，启动时不会自动领取新钱包。</p>
 <h2>4. 充值并开始对话</h2><p>点击「一键充值」打开充值页面，完成后点击「查询余额」，再回到对话。充值和钱包管理都发生在 WebUI 内部。</p><p>手动访问时，地址末尾带 <code>#token=uclaw</code>，端口以启动窗口显示的实际值为准。</p><p>微信、飞书、Telegram、QQ 等渠道接入入口已移除。后备配置中心仍可通过 Menu 脚本打开。</p>
+<h2>5. 附带的轻量版（虾盘精灵）</h2><p>Windows 完整包里另附 <code>lite-windows-x64/</code>：虾盘精灵轻量版（约 45MB，不依赖 Node/OpenClaw）。双击 <code>虾盘.exe</code> 即用，支持自填任意 OpenAI 兼容 Key；老电脑、低速 U 盘或只做维护时用它，数据保存在该目录 <code>data/</code>。</p>
 </main></body></html>

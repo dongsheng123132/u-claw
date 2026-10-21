@@ -1,6 +1,6 @@
 {
   "_generated": "本文件由 node lib/sync-models.mjs 从 portable/models.json 生成，勿手改；改 models.json 后重新跑同步脚本。",
-  "updated": "2026-10-13",
+  "updated": "2026-10-21",
   "providers": [
     {
       "id": "uclaw-cloud",
@@ -24,6 +24,242 @@
       "link": "https://u-claw.org/cloud.html",
       "linkLabel": "注册 / 充值 / 获取 API Key",
       "verified": "relay-200"
+    },
+    {
+      "id": "deepseek",
+      "name": "DeepSeek",
+      "tags": [
+        {
+          "cls": "cn",
+          "text": "国内"
+        },
+        {
+          "cls": "cheap",
+          "text": "便宜"
+        }
+      ],
+      "desc": "deepseek-v4-flash / deepseek-v4-pro，超低价格",
+      "base": "https://api.deepseek.com/v1",
+      "models": [
+        "deepseek-v4-flash",
+        "deepseek-v4-pro",
+        "deepseek-v3.2",
+        "deepseek-r1"
+      ],
+      "recommended": "deepseek-v4-flash",
+      "link": "https://platform.deepseek.com/",
+      "linkLabel": "获取 API Key",
+      "verified": "direct-400"
+    },
+    {
+      "id": "minimax",
+      "name": "MiniMax",
+      "tags": [
+        {
+          "cls": "cn",
+          "text": "国内"
+        }
+      ],
+      "desc": "MiniMax-M3，百万级上下文，支持图片/视频输入",
+      "base": "https://api.minimaxi.com/v1",
+      "models": [
+        "MiniMax-M3",
+        "MiniMax-M2.7"
+      ],
+      "recommended": "MiniMax-M3",
+      "link": "https://platform.minimaxi.com/",
+      "linkLabel": "获取 API Key",
+      "verified": "vendor-docs"
+    },
+    {
+      "id": "kimi",
+      "name": "Kimi (月之暗面)",
+      "tags": [
+        {
+          "cls": "cn",
+          "text": "国内"
+        },
+        {
+          "cls": "fast",
+          "text": "快"
+        }
+      ],
+      "desc": "kimi-k2.6，长上下文强",
+      "base": "https://api.moonshot.cn/v1",
+      "models": [
+        "kimi-k2.6",
+        "kimi-k2.5",
+        "moonshot-v1-128k"
+      ],
+      "recommended": "kimi-k2.6",
+      "link": "https://platform.moonshot.cn/",
+      "linkLabel": "获取 API Key",
+      "verified": "vendor-docs"
+    },
+    {
+      "id": "zai",
+      "name": "智谱 GLM",
+      "tags": [
+        {
+          "cls": "cn",
+          "text": "国内"
+        },
+        {
+          "cls": "free",
+          "text": "有免费"
+        }
+      ],
+      "desc": "glm-5（zai provider），免费额度可用",
+      "base": "https://open.bigmodel.cn/api/paas/v4",
+      "models": [
+        "glm-5",
+        "glm-4.7",
+        "glm-4.5-air",
+        "glm-4.5-flash"
+      ],
+      "recommended": "glm-5",
+      "link": "https://open.bigmodel.cn/",
+      "linkLabel": "获取 API Key",
+      "verified": "vendor-docs"
+    },
+    {
+      "id": "qwen",
+      "name": "通义千问",
+      "tags": [
+        {
+          "cls": "cn",
+          "text": "国内"
+        },
+        {
+          "cls": "free",
+          "text": "有免费"
+        }
+      ],
+      "desc": "qwen-plus，阿里云出品",
+      "base": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      "models": [
+        "qwen-plus",
+        "qwen-turbo",
+        "qwen-max"
+      ],
+      "recommended": "qwen-plus",
+      "link": "https://dashscope.console.aliyun.com/",
+      "linkLabel": "获取 API Key",
+      "verified": "relay-200"
+    },
+    {
+      "id": "doubao",
+      "name": "豆包 (字节)",
+      "tags": [
+        {
+          "cls": "cn",
+          "text": "国内"
+        },
+        {
+          "cls": "fast",
+          "text": "快"
+        }
+      ],
+      "desc": "doubao-seed-1.6，字节跳动",
+      "base": "https://ark.cn-beijing.volces.com/api/v3",
+      "models": [
+        "doubao-seed-1-6-250615"
+      ],
+      "recommended": "doubao-seed-1-6-250615",
+      "link": "https://console.volcengine.com/ark",
+      "linkLabel": "获取 API Key",
+      "verified": "unverified"
+    },
+    {
+      "id": "openai",
+      "name": "OpenAI",
+      "tags": [
+        {
+          "cls": "hot",
+          "text": "强"
+        }
+      ],
+      "desc": "GPT-5.4，需翻墙或中转",
+      "base": "https://api.openai.com/v1",
+      "models": [
+        "gpt-5.4",
+        "gpt-5-mini",
+        "gpt-4o"
+      ],
+      "recommended": "gpt-5.4",
+      "link": "https://platform.openai.com/",
+      "linkLabel": "获取 API Key",
+      "verified": "relay-200"
+    },
+    {
+      "id": "anthropic",
+      "name": "Claude",
+      "tags": [
+        {
+          "cls": "hot",
+          "text": "强"
+        }
+      ],
+      "desc": "Claude Sonnet 5，需翻墙或中转",
+      "base": "https://api.anthropic.com/v1",
+      "models": [
+        "claude-sonnet-5",
+        "claude-haiku-4.5",
+        "claude-opus-4.8"
+      ],
+      "recommended": "claude-sonnet-5",
+      "link": "https://console.anthropic.com/",
+      "linkLabel": "获取 API Key",
+      "verified": "relay-200"
+    },
+    {
+      "id": "groq",
+      "name": "Groq",
+      "tags": [
+        {
+          "cls": "fast",
+          "text": "极快"
+        },
+        {
+          "cls": "free",
+          "text": "有免费"
+        }
+      ],
+      "desc": "Llama 3.3 70B，超高速推理",
+      "base": "https://api.groq.com/openai/v1",
+      "models": [
+        "llama-3.3-70b-versatile",
+        "llama-3.1-8b-instant"
+      ],
+      "recommended": "llama-3.3-70b-versatile",
+      "link": "https://console.groq.com/",
+      "linkLabel": "获取 API Key",
+      "verified": "vendor-docs"
+    },
+    {
+      "id": "siliconflow",
+      "name": "硅基流动",
+      "tags": [
+        {
+          "cls": "cn",
+          "text": "国内"
+        },
+        {
+          "cls": "cheap",
+          "text": "便宜"
+        }
+      ],
+      "desc": "多模型聚合，价格低",
+      "base": "https://api.siliconflow.cn/v1",
+      "models": [
+        "deepseek-ai/DeepSeek-V3",
+        "deepseek-ai/DeepSeek-R1",
+        "Qwen/Qwen2.5-72B-Instruct"
+      ],
+      "recommended": "deepseek-ai/DeepSeek-V3",
+      "link": "https://cloud.siliconflow.cn/",
+      "linkLabel": "获取 API Key",
+      "verified": "unverified"
     }
   ]
 }

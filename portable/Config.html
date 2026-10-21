@@ -235,6 +235,66 @@ details#advancedModelsBox[open] summary { border-bottom: 1px solid #333; margin-
                 <p>设备钱包与自有密钥都使用同一个默认模型</p>
                 <a class="buy-link" href="https://u-claw.org/cloud.html" target="_blank" data-action-label="注册 / 充值 / 获取 API Key">→ 注册 / 充值 / 获取 API Key</a>
             </div>
+            <div class="model-card" data-provider="deepseek" data-base="https://api.deepseek.com/v1" data-model="deepseek-v4-flash">
+                <span class="check">✓</span>
+                <h4>DeepSeek <span class="tag cn">国内</span><span class="tag cheap">便宜</span></h4>
+                <p>deepseek-v4-flash / deepseek-v4-pro，超低价格</p>
+                <a class="buy-link" href="https://platform.deepseek.com/" target="_blank">→ 获取 API Key</a>
+            </div>
+            <div class="model-card" data-provider="minimax" data-base="https://api.minimaxi.com/v1" data-model="MiniMax-M3">
+                <span class="check">✓</span>
+                <h4>MiniMax <span class="tag cn">国内</span></h4>
+                <p>MiniMax-M3，百万级上下文，支持图片/视频输入</p>
+                <a class="buy-link" href="https://platform.minimaxi.com/" target="_blank">→ 获取 API Key</a>
+            </div>
+            <div class="model-card" data-provider="kimi" data-base="https://api.moonshot.cn/v1" data-model="kimi-k2.6">
+                <span class="check">✓</span>
+                <h4>Kimi (月之暗面) <span class="tag cn">国内</span><span class="tag fast">快</span></h4>
+                <p>kimi-k2.6，长上下文强</p>
+                <a class="buy-link" href="https://platform.moonshot.cn/" target="_blank">→ 获取 API Key</a>
+            </div>
+            <div class="model-card" data-provider="zai" data-base="https://open.bigmodel.cn/api/paas/v4" data-model="glm-5">
+                <span class="check">✓</span>
+                <h4>智谱 GLM <span class="tag cn">国内</span><span class="tag free">有免费</span></h4>
+                <p>glm-5（zai provider），免费额度可用</p>
+                <a class="buy-link" href="https://open.bigmodel.cn/" target="_blank">→ 获取 API Key</a>
+            </div>
+            <div class="model-card" data-provider="qwen" data-base="https://dashscope.aliyuncs.com/compatible-mode/v1" data-model="qwen-plus">
+                <span class="check">✓</span>
+                <h4>通义千问 <span class="tag cn">国内</span><span class="tag free">有免费</span></h4>
+                <p>qwen-plus，阿里云出品</p>
+                <a class="buy-link" href="https://dashscope.console.aliyun.com/" target="_blank">→ 获取 API Key</a>
+            </div>
+            <div class="model-card" data-provider="doubao" data-base="https://ark.cn-beijing.volces.com/api/v3" data-model="doubao-seed-1-6-250615">
+                <span class="check">✓</span>
+                <h4>豆包 (字节) <span class="tag cn">国内</span><span class="tag fast">快</span></h4>
+                <p>doubao-seed-1.6，字节跳动</p>
+                <a class="buy-link" href="https://console.volcengine.com/ark" target="_blank">→ 获取 API Key</a>
+            </div>
+            <div class="model-card" data-provider="openai" data-base="https://api.openai.com/v1" data-model="gpt-5.4">
+                <span class="check">✓</span>
+                <h4>OpenAI <span class="tag hot">强</span></h4>
+                <p>GPT-5.4，需翻墙或中转</p>
+                <a class="buy-link" href="https://platform.openai.com/" target="_blank">→ 获取 API Key</a>
+            </div>
+            <div class="model-card" data-provider="anthropic" data-base="https://api.anthropic.com/v1" data-model="claude-sonnet-5">
+                <span class="check">✓</span>
+                <h4>Claude <span class="tag hot">强</span></h4>
+                <p>Claude Sonnet 5，需翻墙或中转</p>
+                <a class="buy-link" href="https://console.anthropic.com/" target="_blank">→ 获取 API Key</a>
+            </div>
+            <div class="model-card" data-provider="groq" data-base="https://api.groq.com/openai/v1" data-model="llama-3.3-70b-versatile">
+                <span class="check">✓</span>
+                <h4>Groq <span class="tag fast">极快</span><span class="tag free">有免费</span></h4>
+                <p>Llama 3.3 70B，超高速推理</p>
+                <a class="buy-link" href="https://console.groq.com/" target="_blank">→ 获取 API Key</a>
+            </div>
+            <div class="model-card" data-provider="siliconflow" data-base="https://api.siliconflow.cn/v1" data-model="deepseek-ai/DeepSeek-V3">
+                <span class="check">✓</span>
+                <h4>硅基流动 <span class="tag cn">国内</span><span class="tag cheap">便宜</span></h4>
+                <p>多模型聚合，价格低</p>
+                <a class="buy-link" href="https://cloud.siliconflow.cn/" target="_blank">→ 获取 API Key</a>
+            </div>
             <!-- MODELS:END -->
         </div>
         <div class="btn-row">
@@ -253,7 +313,18 @@ details#advancedModelsBox[open] summary { border-bottom: 1px solid #333; margin-
             <div class="provider-links" id="providerLinks"></div>
         </div>
 
-        <div class="form-group">
+                <div id="customFields" style="display:none;">
+            <div class="form-group">
+                <label>API 地址 (Base URL)</label>
+                <input type="text" id="customBase" placeholder="https://api.example.com/v1" autocomplete="off">
+            </div>
+            <div class="form-group">
+                <label>模型名称</label>
+                <input type="text" id="customModel" placeholder="gpt-4o" autocomplete="off">
+            </div>
+        </div>
+
+<div class="form-group">
             <label>默认模型</label>
             <p id="modelName">deepseek-v4-flash</p>
         </div>
@@ -346,26 +417,60 @@ var savedProviderId = null;
 var SECRET_REF_INPUT_VALUE = '（已加密保存，无需重填）';
 let CATALOG_PROVIDERS = [];
 
+function providerById(id) {
+    for (var i = 0; i < CATALOG_PROVIDERS.length; i++) if (CATALOG_PROVIDERS[i].id === id) return CATALOG_PROVIDERS[i];
+    return null;
+}
+
+function isCustomProvider() { return selectedProvider === 'custom'; }
+
+function selectProvider(p) {
+    selectedProvider = p.id;
+    selectedBase = p.base || '';
+    selectedModel = p.recommended || (p.models && p.models[0]) || '';
+    var grid = document.getElementById('cloudModelGrid');
+    if (grid) {
+        var cards = grid.querySelectorAll('.model-card');
+        for (var i = 0; i < cards.length; i++) cards[i].classList.toggle('selected', cards[i].dataset.provider === p.id);
+    }
+}
+
+function appendTag(parent, tag) {
+    if (!tag || !tag.text) return;
+    var span = document.createElement('span');
+    span.className = 'tag' + (tag.cls ? ' ' + tag.cls : '');
+    span.textContent = tag.text;
+    parent.appendChild(span);
+}
+
 function renderCloudCards() {
     var grid = document.getElementById('cloudModelGrid');
+    if (!grid) return;
     grid.innerHTML = '';
-    CATALOG_PROVIDERS.forEach(function(p) {
+    var list = CATALOG_PROVIDERS.slice();
+    list.push({ id: 'custom', name: '自定义', base: '', recommended: '', desc: '填写任意 OpenAI 兼容 API 地址（OpenRouter、API2D、New API、One API 等）', custom: true });
+    list.forEach(function(p) {
         var card = document.createElement('div');
-        card.className = 'model-card selected';
+        card.className = 'model-card';
         card.dataset.provider = p.id;
-        card.dataset.base = p.base;
-        card.dataset.model = p.recommended;
+        card.dataset.base = p.base || '';
+        card.dataset.model = p.recommended || '';
+        var check = document.createElement('span');
+        check.className = 'check';
+        check.textContent = '✓';
         var title = document.createElement('h4');
-        title.textContent = p.name + ' · ' + p.recommended;
+        title.textContent = p.recommended ? p.name + ' · ' + p.recommended : p.name;
+        (p.tags || []).forEach(function(t) { appendTag(title, t); });
         var desc = document.createElement('p');
-        desc.textContent = p.desc;
+        desc.textContent = p.desc || '';
+        card.appendChild(check);
         card.appendChild(title);
         card.appendChild(desc);
+        card.addEventListener('click', function() { selectProvider(p); });
         grid.appendChild(card);
-        selectedProvider = p.id;
-        selectedBase = p.base;
-        selectedModel = p.recommended;
     });
+    var first = providerById('uclaw-cloud') || CATALOG_PROVIDERS[0];
+    if (first) selectProvider(first);
     document.getElementById('nextStep1').disabled = false;
 }
 
@@ -374,7 +479,7 @@ async function loadCatalog() {
         var res = await fetch('/models-catalog.json', { cache: 'no-store' });
         if (!res.ok) throw new Error('目录加载失败');
         var data = await res.json();
-        CATALOG_PROVIDERS = data.providers.filter(function(p) { return p.id === 'uclaw-cloud'; }).slice(0, 1);
+        CATALOG_PROVIDERS = Array.isArray(data.providers) ? data.providers.slice() : [];
         if (!CATALOG_PROVIDERS.length) throw new Error('目录为空');
     } catch (e) {
         CATALOG_PROVIDERS = [{ id: 'uclaw-cloud', name: '虾盘云', base: selectedBase, recommended: selectedModel, models: [selectedModel], desc: '设备钱包与自有密钥使用同一个默认模型', link: 'https://u-claw.org/cloud.html' }];
@@ -392,17 +497,42 @@ function goStep(n) {
     if (n === 2) setupStep2();
 }
 
+function syncCustomFields() {
+    var box = document.getElementById('customFields');
+    if (!box) return;
+    var custom = isCustomProvider();
+    box.style.display = custom ? '' : 'none';
+    if (custom) {
+        var baseInput = document.getElementById('customBase');
+        var modelInput = document.getElementById('customModel');
+        if (baseInput && !baseInput.value) baseInput.value = selectedBase || '';
+        if (modelInput && !modelInput.value) modelInput.value = selectedModel || '';
+    }
+}
+
 function setupStep2() {
-    document.getElementById('step2desc').textContent = '填写虾盘云 API Key，或返回领取设备钱包';
-    document.getElementById('modelName').textContent = selectedModel;
+    var provider = providerById(selectedProvider);
+    var name = isCustomProvider() ? '自定义' : (provider && provider.name) || selectedProvider;
+    document.getElementById('step2desc').textContent = isCustomProvider()
+        ? '填写自定义 OpenAI 兼容服务：API 地址、模型名称和 API Key'
+        : '填写 ' + name + ' 的 API Key，或返回领取设备钱包';
+    document.getElementById('modelName').textContent = isCustomProvider() ? '（自定义，请在下方填写）' : selectedModel;
+    syncCustomFields();
     var links = document.getElementById('providerLinks');
     links.innerHTML = '';
-    var link = document.createElement('a');
-    link.href = 'https://u-claw.org/cloud.html';
-    link.target = '_blank';
-    link.textContent = '注册 / 充值 / 获取 API Key';
-    link.dataset.actionLabel = link.textContent;
-    links.appendChild(link);
+    if (provider && provider.link) {
+        var link = document.createElement('a');
+        link.href = provider.link;
+        link.target = '_blank';
+        link.textContent = provider.linkLabel || '获取 API Key';
+        link.dataset.actionLabel = link.textContent;
+        links.appendChild(link);
+    } else if (!isCustomProvider()) {
+        var hint = document.createElement('p');
+        hint.className = 'hint';
+        hint.textContent = '去 ' + name + ' 官网申请 API Key 后填入下方；Key 只保存在本盘。';
+        links.appendChild(hint);
+    }
 }
 
 function togglePw(id) {
@@ -427,6 +557,17 @@ function buildConfig(provider, base, model, apiKey) {
 }
 
 async function saveConfig() {
+    var base = selectedBase;
+    var model = selectedModel;
+    if (isCustomProvider()) {
+        base = (document.getElementById('customBase').value || '').trim();
+        model = (document.getElementById('customModel').value || '').trim();
+        if (!base) { showToast('请填写 API 地址（通常以 /v1 结尾）', true); return; }
+        if (!/^https?:\/\//i.test(base)) { showToast('API 地址必须以 http:// 或 https:// 开头', true); return; }
+        if (!model) { showToast('请填写模型名称，例如 gpt-4o', true); return; }
+        selectedBase = base;
+        selectedModel = model;
+    }
     var inputApiKey = document.getElementById('apiKey').value.trim();
     var apiKey = inputApiKey;
     if ((inputApiKey === SECRET_REF_INPUT_VALUE || !inputApiKey) &&
@@ -435,7 +576,7 @@ async function saveConfig() {
         showToast('请重新输入 API Key', true); return;
     }
     if (!apiKey) { showToast('请填写 API Key，或返回领取设备钱包', true); return; }
-    var config = buildConfig(selectedProvider, selectedBase, selectedModel, apiKey);
+    var config = buildConfig(selectedProvider, base, model, apiKey);
     try {
         var res = await fetch('/api/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(config) });
         var result = await res.json();
@@ -484,16 +625,40 @@ async function loadConfig() {
         var res = await fetch('/api/config', { cache: 'no-store' });
         if (!res.ok) return;
         var cfg = await res.json();
-        var p = cfg.models && cfg.models.providers && cfg.models.providers['uclaw-cloud'];
-        savedProviderId = p ? 'uclaw-cloud' : null;
+        var providers = (cfg.models && cfg.models.providers) || {};
+        var ids = Object.keys(providers);
+        var id = ids.indexOf('uclaw-cloud') >= 0 ? 'uclaw-cloud' : (ids[0] || null);
+        savedProviderId = id;
+        var p = id ? providers[id] : null;
         savedProviderApiKey = p && p.apiKey || null;
+        if (p) {
+            var savedModel = (p.models && p.models[0] && p.models[0].id) || '';
+            var known = providerById(id);
+            if (id === 'custom') {
+                selectProvider({ id: 'custom', base: '', recommended: '' });
+                selectedBase = p.baseUrl || '';
+                selectedModel = savedModel;
+            } else if (known) {
+                selectProvider(known);
+                if (p.baseUrl) selectedBase = p.baseUrl;
+                if (savedModel) selectedModel = savedModel;
+            } else {
+                selectedProvider = id;
+                selectedBase = p.baseUrl || '';
+                selectedModel = savedModel;
+            }
+            var baseInput = document.getElementById('customBase');
+            var modelInput = document.getElementById('customModel');
+            if (baseInput && (id === 'custom' || !known) && selectedBase) baseInput.value = selectedBase;
+            if (modelInput && (id === 'custom' || !known) && selectedModel) modelInput.value = selectedModel;
+        }
         fillApiKeyFromSaved(savedProviderApiKey);
-        if (p) selectedBase = p.baseUrl || selectedBase;
     } catch (e) { /* 配置尚不存在时等待用户领取或输入 Key */ }
 }
 
 document.getElementById('nextStep1').addEventListener('click', function() { goStep(2); });
 loadCatalog().then(loadConfig);
+
 // --- Find active gateway port ---
 // v2.2.1: no longer "whoever answers on 18789-18799 must be our gateway". That blind
 // no-cors scan happily latched onto ANY process listening in the range -- on a

@@ -1,0 +1,6 @@
+[
+  {"id":"ventoy","name":"Ventoy 多镜像启动","category":"启动与救援","official_url":"https://www.ventoy.net/cn/","directory":"images/","status":"需另行准备与验证","description":"传统维护盘的启动底座；制作涉及分区与引导，需要独立测试介质。当前盘未制作启动层。"},
+  {"id":"systemrescue","name":"SystemRescue","category":"备份与恢复","official_url":"https://www.system-rescue.org/","directory":"images/","status":"需另行准备与验证","description":"Linux 救援环境，含磁盘与网络维护工具。镜像可先备在盘里，实际启动与操作需另验。"},
+  {"id":"hiren","name":"Hiren’s BootCD PE","category":"Windows 救援","official_url":"https://www.hirensbootcd.org/","directory":"images/","status":"需另行准备与验证","description":"传统 Windows PE 工具集合；需核验镜像、许可证和启动兼容性。"},
+  {"id":"network-driver","name":"离线网络驱动包","category":"断网急救","official_url":"https://support.microsoft.com/windows","directory":"drivers/<系统-架构>/<厂商-型号>/","status":"按电脑硬件准备","description":"先识别硬件 ID，再从整机或网卡厂商官网准备驱动。没有通用驱动能保证适配所有电脑。"}
+]

@@ -451,7 +451,9 @@ test('adoptWallet 之后：applyKey 把新 key 写进 openclaw.json，且原有 
     const onDisk = JSON.parse(readFileSync(configPath, 'utf8'));
     assert.deepEqual(onDisk.plugins, { entries: { 'uclaw-wallet': { enabled: true } } }, 'plugins 必须存活');
     assert.equal(onDisk.models.providers[CLOUD_PROVIDER_ID].apiKey, 'sk-adopted-key-0001');
-    assert.ok(!('someOtherProvider' in onDisk.models.providers), '本版只保留虾盘云 provider');
+    // v2.3.2：钱包换钥是显式动作（主模型切虾盘云），但不再清掉用户自接的第三方 provider。
+    assert.ok('someOtherProvider' in onDisk.models.providers, '第三方 provider 必须存活');
+    assert.equal(onDisk.models.providers.someOtherProvider.baseUrl, 'https://x');
     assert.equal(onDisk.agents.defaults.model.primary, `${CLOUD_PROVIDER_ID}/deepseek-v4-flash`);
   });
 });

@@ -52,3 +52,7 @@ usb-release/toolkit/*.zip
 # ── Environment variables ──
 .env
 .env.*
+
+# ── Bundled Go lite version（虾盘精灵轻量版：随 U 盘发布包一起分发，必须入库） ──
+!portable/lite-windows-x64/虾盘.exe
+!portable/lite-windows-x64/app/runtime/picoclaw/windows-x64/picoclaw.exe

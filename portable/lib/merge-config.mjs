@@ -76,30 +76,74 @@ export function removeChannelConfig(config) {
   return config;
 }
 
-/** 单模型便携版策略，模型保存、设备钱包和启动迁移共同调用。 */
-export function simplifyPortableConfig(config) {
+/** 便携版模型配置收敛：规整虾盘云这条 provider，同时保留用户自接的第三方 provider。 */
+export function simplifyPortableConfig(config, opts = {}) {
   const next = removeChannelConfig(structuredClone(isPlainObject(config) ? config : {}));
   let catalog;
   try { catalog = JSON.parse(fs.readFileSync(new URL('../models.json', import.meta.url), 'utf8')); } catch {}
   const cloud = catalog?.providers?.find((p) => p.id === 'uclaw-cloud');
   const model = cloud?.model || 'deepseek-v4-flash';
   const provider = next.models?.providers?.['uclaw-cloud'];
-  const primary = 'uclaw-cloud/' + model;
-  next.models = { mode: 'replace', providers: provider ? { 'uclaw-cloud': {
-    ...provider,
-    baseUrl: provider.baseUrl || cloud?.baseUrl || 'https://api.u-claw.org/v1',
-    api: 'openai-completions',
-    models: [{ id: model, name: model, reasoning: false, input: ['text'],
-      cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: 128000, maxTokens: 8192 }],
-  } } : {} };
+  const cloudPrimary = 'uclaw-cloud/' + model;
+
+  // v2.3.2 起恢复第三方 / 自定义 OpenAI 兼容：只规整虾盘云这一条 provider
+  // （baseUrl / api / 模型清单），用户自己接的 provider 原样保留。
+  // 删除语义仍由上层「受管字段整体替换」保证——用户删掉的 provider 不会被合并救回来。
+  const providers = isPlainObject(next.models?.providers) ? { ...next.models.providers } : {};
+  if (provider) {
+    providers['uclaw-cloud'] = {
+      ...provider,
+      baseUrl: provider.baseUrl || cloud?.baseUrl || 'https://api.u-claw.org/v1',
+      api: 'openai-completions',
+      models: [{ id: model, name: model, reasoning: false, input: ['text'],
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: 128000, maxTokens: 8192 }],
+    };
+  }
+  next.models = { mode: 'replace', providers };
+
   next.agents = isPlainObject(next.agents) ? next.agents : {};
   next.agents.defaults = isPlainObject(next.agents.defaults) ? next.agents.defaults : {};
+  const currentPrimary = isPlainObject(next.agents.defaults.model) ? next.agents.defaults.model.primary : '';
+  // 钱包领取 / 换钥是显式动作，默认模型切到虾盘云；配置页保存则尊重用户已选的 provider。
+  const keepCurrent = !opts.preferCloudPrimary && primaryHasProvider(providers, currentPrimary);
+  const primary = keepCurrent ? currentPrimary : cloudPrimary;
   next.agents.defaults.model = { primary };
-  next.agents.defaults.models = { [primary]: {} };
+  const modelsMap = isPlainObject(next.agents.defaults.models) ? { ...next.agents.defaults.models } : {};
+  modelsMap[primary] = {};
+  next.agents.defaults.models = modelsMap;
   if (Array.isArray(next.agents.list)) {
     for (const agent of next.agents.list) if (isPlainObject(agent) && agent.model) agent.model = primary;
   }
   return next;
+}
+
+/** primary 形如 "provider/model"：provider 还在、且模型仍在清单里才算有效。 */
+function primaryHasProvider(providers, primary) {
+  if (typeof primary !== 'string' || !primary) return false;
+  const providerId = primary.split('/')[0];
+  const entry = providers[providerId];
+  if (!isPlainObject(entry)) return false;
+  const models = entry.models;
+  if (!Array.isArray(models) || !models.length) return true;
+  const modelId = primary.slice(providerId.length + 1);
+  return models.some((m) => isPlainObject(m) && m.id === modelId);
+}
+
+/** 配置里是否已有可用的模型（provider 存在且带明文 key）——启动时决定要不要用本地钱包补。 */
+export function hasUsableModel(config) {
+  const providers = isPlainObject(config?.models?.providers) ? config.models.providers : {};
+  const primary = config?.agents?.defaults?.model?.primary;
+  const candidates = [];
+  if (typeof primary === 'string' && primary) candidates.push(primary.split('/')[0]);
+  for (const id of Object.keys(providers)) candidates.push(id);
+  return candidates.some((id) => {
+    const entry = providers[id];
+    if (!isPlainObject(entry)) return false;
+    const key = entry.apiKey;
+    // 明文 Key，或已迁移到密钥库后的 secret-ref（{source:'store'|'saved'}）都算有 Key。
+    return (typeof key === 'string' && key !== '') ||
+      (isPlainObject(key) && (key.source === 'store' || key.source === 'saved'));
+  });
 }
 
 function isPlainObject(v) {

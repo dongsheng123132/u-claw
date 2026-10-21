@@ -269,8 +269,9 @@ export function configWithWalletKey(existing, apiKey, opts = {}) {
 
   const incoming = { ...existing, models };
 
-  // 本版仅保留虾盘云默认模型，使用与启动/配置保存相同的收敛策略。
-  return simplifyPortableConfig(mergeConfig(existing, incoming));
+  // v2.3.2：领取 / 换钥是显式动作——默认模型切到虾盘云，但用户自己接的第三方 /
+  // 自定义 provider 保留，不再整份清掉。
+  return simplifyPortableConfig(mergeConfig(existing, incoming), { preferCloudPrimary: true });
 }
 
 export function applyKey(configPath, apiKey, opts = {}) {

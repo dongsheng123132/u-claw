@@ -180,11 +180,13 @@ test('official provider guard: catalog 与快照都不可用时 fail-open，不�
   });
 });
 
-test('配置页只恢复虾盘云密钥与地址，模型仍遵循唯一目录', () => {
+test('配置页恢复已保存 provider 的地址与密钥，并支持自定义 OpenAI 兼容', () => {
   for (const file of ['portable/config-server/public/index.html', 'portable/Config.html']) {
     const page = readFileSync(join(repoRoot, file), 'utf8');
-    assert.match(page, /selectedBase = p\.baseUrl \|\| selectedBase/);
-    assert.match(page, /providers\['uclaw-cloud'\]/);
-    assert.doesNotMatch(page, /customModel|modelSelect|discoverLocalModels/);
+    assert.match(page, /providers\[id\]/);
+    assert.match(page, /id="customBase"/);
+    assert.match(page, /id="customModel"/);
+    assert.match(page, /isCustomProvider/);
+    assert.doesNotMatch(page, /discoverLocalModels/);
   }
 });

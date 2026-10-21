@@ -8,10 +8,10 @@ import {fileURLToPath} from 'node:url';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 const root=fileURLToPath(new URL('..',import.meta.url));
-test('配置页保留钱包和充值，移除聊天平台和其他模型入口',()=>{
+test('配置页保留钱包和充值，不内置聊天平台入口（自定义 OpenAI 兼容入口保留）',()=>{
   for(const file of ['portable/Config.html','portable/config-server/public/index.html']){
     const page=readFileSync(join(root,file),'utf8');
-    assert.doesNotMatch(page,/telegram|feishu|wechat|weixin|qqbot|channel-card|toggleChannel|customModel|discoverLocalModels/i);
+    assert.doesNotMatch(page,/telegram|feishu|wechat|weixin|qqbot|channel-card|toggleChannel|discoverLocalModels/i);
     assert.match(page,/walletRecharge\(/);assert.match(page,/一键充值/);
   }
 });

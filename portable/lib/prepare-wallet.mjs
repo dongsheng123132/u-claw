@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { simplifyPortableConfig, writeConfigAtomic } from './merge-config.mjs';
+import { hasUsableModel, simplifyPortableConfig, writeConfigAtomic } from './merge-config.mjs';
 import { configWithWalletKey } from './wallet-client.mjs';
 import { copyDirSync } from './copy-dir.mjs';
 
@@ -21,7 +21,9 @@ export function prepareWallet(portableRoot, stateDir) {
   }
   let consumerConfig = existing;
   const walletPath = path.join(stateDir, 'uclaw-device.json');
-  if (!existing.models?.providers?.['uclaw-cloud']?.apiKey && fs.existsSync(walletPath)) {
+  // v2.3.2：用户已经配好可用模型（含第三方 / 自定义 Key）时，启动不再用本地钱包覆盖；
+  // 钱包领取 / 换钥仍是显式动作。旧逻辑只看「虾盘云有没有 Key」，会把自定义配置冲掉。
+  if (!hasUsableModel(existing) && fs.existsSync(walletPath)) {
     let wallet;
     try {
       wallet = JSON.parse(fs.readFileSync(walletPath, 'utf8').replace(/^\uFEFF/, ''));

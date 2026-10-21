@@ -76,11 +76,15 @@ U-Claw（虾盘）是一个**制作教程 + 全套源代码**，教你把 [OpenC
 
 > 📖 **[完整教程](https://u-claw.org/tutorial.html)** — 从零开始的手工安装指南、设备钱包、模型配置和充值，小白也能看懂。
 
-### 虾盘云默认模型与设备钱包
+### 模型：虾盘云默认，也能填自己的 Key
 
-本版使用 OpenClaw 2026.10.2 和 Node.js 24.16.0，只保留虾盘云 `deepseek-v4-flash`。钱包接入原生 WebUI，领取或恢复密钥后自动配置默认模型。启动不会自动领钱包；已有钱包可以继续使用和一键充值。配置与钱包状态保存在 U 盘 `data/.openclaw/`。
+本版使用 OpenClaw 2026.10.2 和 Node.js 24.16.0。默认走虾盘云 `deepseek-v4-flash`：钱包接入原生 WebUI，领取或恢复密钥后自动配置默认模型；启动不会自动领钱包，已有钱包可以继续使用和一键充值。想用自己的模型也行——首次启动的配置页可以直接选 DeepSeek / Kimi / 智谱 GLM / 通义 / 豆包 / MiniMax / OpenAI / Claude / Groq / 硅基流动，或选「自定义 · OpenAI 兼容」填 API 地址、模型 ID 和 Key。配置与钱包状态保存在 U 盘 `data/.openclaw/`。
 
 首次在 Mac 运行或同盘更换操作系统时，setup 会联网准备当前平台依赖；Windows 完整包已准备好 Windows 依赖。
+
+### 包内附带的轻量版（虾盘精灵）
+
+Windows 完整包里还附了 `lite-windows-x64/`：虾盘 U 盘精灵的轻量版（约 45MB，不依赖 Node/OpenClaw）。双击 `虾盘.exe` 即用，支持自填任意 OpenAI 兼容 Key，以及系统体检、网络检查、启动项查看等本地维护动作。老电脑、低速 U 盘、只需要轻量对话时用它；完整 OpenClaw 能力仍用 `Windows-Start.bat`。
 
 ### 一键安装（推荐）
 
@@ -227,7 +231,7 @@ U-Claw/                          ← 整个拷到 U 盘
 
 ### 模型与使用入口
 
-唯一默认模型：虾盘云 `deepseek-v4-flash`。使用 OpenClaw WebUI 对话；微信、飞书、Telegram、QQ 等接入入口及额外插件已移除。
+默认模型：虾盘云 `deepseek-v4-flash`；也可以填自己的 Key——配置页选第三方官方 Key，或「自定义 · OpenAI 兼容」填任意 API 地址 + 模型。使用 OpenClaw WebUI 对话；微信、飞书、Telegram、QQ 等接入入口及额外插件已移除。
 
 ### 国内镜像
 
@@ -507,7 +511,9 @@ Based on Ventoy + Ubuntu 24.04 LTS + persistence. 4-step PowerShell scripts on W
 
 ### Model and interface
 
-This edition uses OpenClaw 2026.10.2 with Node.js 24.16.0 and one Xiapan Cloud model, `deepseek-v4-flash`. The native WebUI includes the device wallet and recharge action. Channel connection entries and extra messaging plugins have been removed. The first launch on another operating system prepares its native dependencies through setup.
+This edition uses OpenClaw 2026.10.2 with Node.js 24.16.0 and defaults to the Xiapan Cloud model `deepseek-v4-flash` (device wallet + recharge inside the native WebUI). **Bring your own API key too**: the setup page lists DeepSeek / Kimi / Zhipu GLM / Qwen / Doubao / MiniMax / OpenAI / Claude / Groq / SiliconFlow, plus a "Custom · OpenAI compatible" card for any base URL + model + key. Channel connection entries and extra messaging plugins have been removed. The first launch on another operating system prepares its native dependencies through setup.
+
+A **`lite-windows-x64/`** folder is bundled inside the Windows package: the ~45 MB Go-native Xiapan USB Genie lite build (no Node/OpenClaw needed). Double-click `虾盘.exe`; it supports any OpenAI-compatible key plus local maintenance actions (system check, network check, startup items). Use it on old PCs or slow USB sticks.
 
 ### China Mirrors
 

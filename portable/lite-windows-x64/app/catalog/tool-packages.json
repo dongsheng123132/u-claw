@@ -1,0 +1,200 @@
+[
+  {
+    "id": "windirstat",
+    "name": "WinDirStat",
+    "version": "2.9.0",
+    "platform": "windows/amd64",
+    "executable": "WinDirStat.exe",
+    "category": "磁盘与硬件",
+    "description": "查看文件夹占用，定位大文件",
+    "license": "GPL-2.0",
+    "official_url": "https://github.com/windirstat/windirstat",
+    "portable_note": "设置保存在相邻 WinDirStat.ini；清理需在工具内手动操作。",
+    "archive": {
+      "filename": "WinDirStat.zip",
+      "url": "https://github.com/windirstat/windirstat/releases/download/release/v2.9.0/WinDirStat.zip",
+      "sha256": "0d04d9f716b70502658595956ac3af5192f591c6d2636662eea170655546b891"
+    },
+    "mutable": [
+      "WinDirStat.ini"
+    ],
+    "init_files": {
+      "WinDirStat.ini": ""
+    },
+    "args": [],
+    "source_archive": {
+      "filename": "WinDirStat-2.9.0-source.zip",
+      "url": "https://api.github.com/repos/windirstat/windirstat/zipball/release/v2.9.0",
+      "sha256": "8818e4d402e64466f3e6d7cd5c89301f67048d62b89120044f49be8fb42f072b"
+    },
+    "prefix": "x64/",
+    "license_from_source": [
+      "LICENSE.md"
+    ]
+  },
+  {
+    "id": "peazip",
+    "name": "PeaZip",
+    "version": "11.3.0",
+    "platform": "windows/amd64",
+    "executable": "peazip.exe",
+    "category": "文件与压缩",
+    "description": "压缩、解压和校验归档文件",
+    "license": "LGPL-3.0 / bundled notices",
+    "official_url": "https://peazip.github.io/peazip-portable.html",
+    "portable_note": "官方 Portable 包，配置随 res/conf 保存。",
+    "archive": {
+      "filename": "peazip_portable-11.3.0.WIN64.zip",
+      "url": "https://github.com/peazip/PeaZip/releases/download/11.3.0/peazip_portable-11.3.0.WIN64.zip",
+      "sha256": "3fb15b9852c94ba5ee8d1af5568fad0cad0999854225b4432b9c98b315a4f768"
+    },
+    "mutable": [
+      "res/conf/*"
+    ],
+    "init_files": {},
+    "args": [],
+    "source_archive": {
+      "filename": "peazip-11.3.0.src.zip",
+      "url": "https://github.com/peazip/PeaZip/releases/download/11.3.0/peazip-11.3.0.src.zip",
+      "sha256": "17e85e62a3b526a03347186465ff4a79f8117311e9efe0c432e968bd98e612cb"
+    },
+    "prefix": "peazip_portable-11.3.0.WIN64/"
+  },
+  {
+    "id": "notepadpp",
+    "name": "Notepad++",
+    "version": "8.9.8.1",
+    "platform": "windows/amd64",
+    "executable": "notepad++.exe",
+    "category": "办公与阅读",
+    "description": "编辑文本、日志和代码，支持中文",
+    "license": "GPL-3.0",
+    "official_url": "https://notepad-plus-plus.org/downloads/v8.9.8.1/",
+    "portable_note": "doLocalConf.xml 启用随盘配置，打开独立窗口。",
+    "archive": {
+      "filename": "npp.8.9.8.1.portable.x64.zip",
+      "url": "https://github.com/notepad-plus-plus/notepad-plus-plus/releases/download/v8.9.8.1/npp.8.9.8.1.portable.x64.zip",
+      "sha256": "beddf5548e75c97930d1575ba1c7d113e6e2b33d0a200310e734ca08e225f414"
+    },
+    "mutable": [
+      "config.xml",
+      "session.xml",
+      "shortcuts.xml",
+      "stylers.xml",
+      "langs.xml",
+      "contextMenu.xml",
+      "nativeLang.xml",
+      "userDefineLang.xml",
+      "plugins/config/*"
+    ],
+    "init_files": {},
+    "args": [
+      "-multiInst",
+      "-nosession"
+    ],
+    "source_archive": {
+      "filename": "npp-8.9.8.1-source.zip",
+      "url": "https://api.github.com/repos/notepad-plus-plus/notepad-plus-plus/zipball/v8.9.8.1",
+      "sha256": "e7fee4cd66788476a07b2e8e1d80a30e9d55c4a081699839e553b2253e59a3fd"
+    }
+  },
+  {
+    "id": "sumatrapdf",
+    "name": "SumatraPDF",
+    "version": "3.6.1",
+    "platform": "windows/amd64",
+    "executable": "SumatraPDF-3.6.1-64.exe",
+    "category": "办公与阅读",
+    "description": "轻量阅读 PDF、电子书和漫画",
+    "license": "GPL-3.0 / bundled notices",
+    "official_url": "https://www.sumatrapdfreader.org/download-free-pdf-viewer",
+    "portable_note": "Portable 版，设置保存在程序旁；不注册为默认阅读器。",
+    "archive": {
+      "filename": "SumatraPDF-3.6.1-64.zip",
+      "url": "https://www.sumatrapdfreader.org/dl/rel/3.6.1/SumatraPDF-3.6.1-64.zip",
+      "sha256": "98b33a518d42986856d225064b0cd2d3643ecf78cbf84ab873d26cc51877a544"
+    },
+    "mutable": [
+      "SumatraPDF-settings.txt"
+    ],
+    "init_files": {},
+    "args": [],
+    "source_archive": {
+      "filename": "sumatra-3.6.1-source.zip",
+      "url": "https://api.github.com/repos/sumatrapdfreader/sumatrapdf/zipball/3.6.1rel",
+      "sha256": "4c4bff7372ca5ca3b5c7e9411a15fdad2822d49418fcb6424783c17f73a92f40"
+    },
+    "license_from_source": [
+      "COPYING",
+      "COPYING.BSD",
+      "AUTHORS"
+    ]
+  },
+  {
+    "id": "explorerpp",
+    "name": "Explorer++",
+    "version": "1.4.0",
+    "platform": "windows/amd64",
+    "executable": "Explorer++.exe",
+    "category": "文件与压缩",
+    "description": "多标签文件管理、复制和查找",
+    "license": "GPL-3.0",
+    "official_url": "https://explorerplusplus.com/",
+    "portable_note": "相邻 config.xml 启用便携配置，不替换系统资源管理器。",
+    "archive": {
+      "filename": "explorerpp-1.4.0-x64.zip",
+      "url": "https://github.com/derceg/explorerplusplus/releases/download/version-1.4.0/explorerpp_x64.zip",
+      "sha256": "81ec54586dfef888b886d409afa22e31f22d4f6ba35d52d93074b4ee64b79b0c"
+    },
+    "mutable": [
+      "config.xml"
+    ],
+    "init_files": {
+      "config.xml": "<?xml version=\"1.0\"?><ExplorerPlusPlus><Settings/></ExplorerPlusPlus>"
+    },
+    "args": [],
+    "source_archive": {
+      "filename": "explorerpp-1.4.0-source.zip",
+      "url": "https://api.github.com/repos/derceg/explorerplusplus/zipball/version-1.4.0",
+      "sha256": "dc3691e73757472452f89e42a93f026e51873b07a9a8fee6d7204cf5d00984f2"
+    }
+  },
+  {
+    "id": "everything",
+    "name": "Everything",
+    "version": "1.4.1.1032",
+    "platform": "windows/amd64",
+    "executable": "everything.exe",
+    "category": "文件与压缩",
+    "description": "快速按文件名搜索，支持文件夹索引",
+    "license": "MIT / PCRE notices",
+    "official_url": "https://www.voidtools.com/downloads/",
+    "portable_note": "配置随盘保存；NTFS 全盘索引需要现有服务或管理员权限，不自动安装服务。",
+    "archive": {
+      "filename": "Everything-1.4.1.1032.x64.zip",
+      "url": "https://www.voidtools.com/Everything-1.4.1.1032.x64.zip",
+      "sha256": "698df475ec44e638f66f1b6a32d28fea613cec78d3b6310e6abe53431eeb940c"
+    },
+    "mutable": [
+      "Everything.ini"
+    ],
+    "init_files": {
+      "Everything.ini": "[Everything]\napp_data=0\nrun_in_background=0\n"
+    },
+    "args": [
+      "-instance",
+      "XiapanPortable",
+      "-config",
+      "Everything.ini",
+      "-db",
+      "Everything.db"
+    ],
+    "extra_files": [
+      {
+        "filename": "Everything-License.txt",
+        "url": "https://www.voidtools.com/License.txt",
+        "sha256": "c13d19adcbfd5d07e9512de9df99956a3423399ed1fadc5fd33186697ad8df2f"
+      }
+    ]
+  }
+]

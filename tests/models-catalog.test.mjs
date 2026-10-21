@@ -65,7 +65,7 @@ test('配置中心 index.html 不再内嵌静态卡片区（防止双清单复�
 test('配置中心的 models-catalog.json 与 models.json 一致（生成物不许漂移）', () => {
   const generated = JSON.parse(readFileSync(
     join(PORTABLE, 'config-server', 'public', 'models-catalog.json'), 'utf8'));
-  // 目录 = models.json 全部提供商 + 生成器固定追加的 custom 卡
+  // 目录 = models.json 全部提供商（v2.3.2 起恢复第三方 / 自定义 OpenAI 兼容）。
   assert.equal(generated.providers.length, catalog.providers.length,
     'models-catalog.json 的提供商数与 models.json 不符——跑 node lib/sync-models.mjs');
   catalog.providers.forEach((p, i) => {
@@ -76,9 +76,25 @@ test('配置中心的 models-catalog.json 与 models.json 一致（生成物不�
     assert.equal(g.verified, p.verified, `${p.id}: verified 证据字段丢失`);
     assert.ok(g.models.includes(p.model), `${p.id}: models 列表必须包含主模型 ${p.model}`);
   });
-  assert.equal(generated.providers.length, 1, '便携版只提供虾盘云一个入口');
-  assert.equal(generated.providers[0].id, 'uclaw-cloud');
+  // 虾盘云固定排第一：首页引导（Welcome/U-Claw.html）与设备钱包默认模型都依赖 providers[0]。
+  assert.ok(generated.providers.length >= 2, '目录应包含虾盘云与至少一家第三方提供商');
+  assert.equal(generated.providers[0].id, 'uclaw-cloud', '虾盘云必须排在目录第一位');
   assert.deepEqual(generated.providers[0].models, ['deepseek-v4-flash']);
+});
+
+test('配置页支持自定义 OpenAI 兼容服务（Key 不再只限虾盘云）', () => {
+  for (const page of [join(PORTABLE, 'Config.html'), join(PORTABLE, 'config-server', 'public', 'index.html')]) {
+    const html = readFileSync(page, 'utf8');
+    assert.ok(html.includes('id="customFields"'), page + ': 缺少自定义服务字段区');
+    assert.ok(html.includes('id="customBase"'), page + ': 缺少自定义 API 地址输入框');
+    assert.ok(html.includes('id="customModel"'), page + ': 缺少自定义模型输入框');
+    assert.ok(html.includes('isCustomProvider'), page + ': 缺少自定义 provider 分支');
+    assert.match(html, /list\.push\(\{ id: 'custom'/, page + ': 自定义卡片未加入模型网格');
+    // 页面内联脚本必须能解析——09bc4b8 重写配置页后，语法错误曾经无人拦住。
+    const scripts = [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)];
+    assert.ok(scripts.length > 0, page + ': 找不到内联脚本');
+    scripts.forEach((m, i) => new Script(m[1], { filename: page + '#script' + i }));
+  }
 });
 
 test('安装脚本里出现的模型名都在 models.json 里', () => {

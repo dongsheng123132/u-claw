@@ -152,7 +152,8 @@ test('启动迁移更新可移动路径、保留钱包与非模型字段、先�
     const next = JSON.parse(readFileSync(configPath, 'utf8'));
     assert.deepEqual(JSON.parse(readFileSync(configPath + '.bak', 'utf8')), old);
     assert.equal(next.channels, undefined);
-    assert.deepEqual(Object.keys(next.models.providers), ['uclaw-cloud']);
+    // v2.3.2：启动迁移只收敛虾盘云这条 provider，用户自接的第三方 provider 保留。
+    assert.deepEqual(Object.keys(next.models.providers).sort(), ['old', 'uclaw-cloud']);
     assert.deepEqual(next.models.providers['uclaw-cloud'].models.map((m) => m.id), ['deepseek-v4-flash']);
     assert.equal(next.models.providers['uclaw-cloud'].apiKey, 'test-only-cloud');
     assert.equal(next.agents.defaults.workspace, 'keep-workspace');
