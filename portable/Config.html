@@ -468,6 +468,18 @@ input::placeholder { color: var(--ink-3); }
 .wallet-danger .btn { margin-bottom: 8px; }
 .wallet-danger .danger-label { margin-bottom: 8px; color: var(--danger); font-size: 12px; font-weight: 600; }
 
+/* ---------- 顶部提示条（file:// 离线打开时用） ---------- */
+.notice {
+    display: block;
+    padding: 12px 16px;
+    margin-bottom: 18px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.6;
+}
+.notice-warn { background: #fffaeb; border: 1px solid #fedf89; color: #93370d; }
+
 /* ---------- 目录说明 / 折叠区 ---------- */
 .skills-section h2 { font-size: 18px; }
 .skill-list { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
@@ -522,7 +534,7 @@ details#advancedModelsBox[open] summary { border-bottom: 1px solid var(--line); 
 <div class="container">
     <header class="hero">
         <h1><span class="lobster" aria-hidden="true">🦞</span><span class="title-text">U-Claw 配置中心</span></h1>
-        <p class="subtitle">虾盘云 · 设备钱包 · 一键启动</p>
+        <p class="subtitle">选模型 · 填 Key · 一键启动</p>
     </header>
 
     <!-- Connection status -->
@@ -540,8 +552,8 @@ details#advancedModelsBox[open] summary { border-bottom: 1px solid var(--line); 
 
     <!-- Step 1: Select Model -->
     <div class="section active" id="step1">
-        <h2>使用虾盘云模型</h2>
-        <p class="desc">一键领取设备钱包，或填入已有虾盘云 API Key，即可使用默认模型。</p>
+        <h2>选择模型</h2>
+        <p class="desc">内置 11 家国内外模型，选一家填自己的 Key；也可以选『自定义 · OpenAI 兼容』填任意地址。虾盘云设备钱包可选。</p>
 
         <!-- 虾盘云 · 设备钱包 —— 只在用户点击按钮之后才会联网，绝不在打开这个页面时自动请求。 -->
         <div class="wallet-card" id="walletCard">
@@ -753,7 +765,7 @@ details#advancedModelsBox[open] summary { border-bottom: 1px solid var(--line); 
         <h2>反馈 / 报 Bug</h2>
         <p class="desc">U-Claw 是开源项目。遇到问题欢迎到 GitHub 提 Issue —— 我们不会自动收集或上传你的任何数据。</p>
         <div class="btn-row">
-            <a class="btn btn-primary" href="https://github.com/dongsheng123132/u-claw/issues/new" target="_blank">→ 在 GitHub 提交 Issue</a>
+            <a class="btn btn-secondary" href="https://github.com/dongsheng123132/u-claw/issues/new" target="_blank">→ 在 GitHub 提交 Issue</a>
         </div>
     </div>
 </div>
@@ -772,6 +784,55 @@ var nativeFetch = window.fetch.bind(window);
 </script>
 <script>
 function fetch(resource, options) { return nativeFetch(typeof resource === 'string' && resource.startsWith('/') ? configOrigin + resource : resource, options); }
+
+// --- file:// 双击兜底 -----------------------------------------------------
+// 双击打开时这是 file:// 页面，访问配置服务属于跨域请求，服务端只放行
+// http://127.0.0.1 / http://localhost 来源（不为「任意下载来的 .html 都能读配置」
+// 而放行 Origin: null）。所以这里先探测本机配置服务：
+//   在线 → 直接跳到同源、功能完整的配置中心（页面本体不重复实现一套跨域逻辑）；
+//   离线 → 在页头显示明确提示，不让用户对着一个点了没反应的页面。
+function probeConfigServer(port) {
+    return new Promise(function(resolve) {
+        var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+        var timer = setTimeout(function() {
+            if (controller) controller.abort();
+            resolve(false);
+        }, 1500);
+        nativeFetch('http://127.0.0.1:' + port + '/api/runtime', {
+            mode: 'no-cors', cache: 'no-store',
+            signal: controller ? controller.signal : undefined,
+        }).then(function() {
+            clearTimeout(timer);
+            resolve(true);
+        }).catch(function() {
+            clearTimeout(timer);
+            resolve(false);
+        });
+    });
+}
+
+function showConfigServerNotice() {
+    if (document.getElementById('configServerNotice')) return;
+    var notice = document.createElement('div');
+    notice.className = 'notice notice-warn';
+    notice.id = 'configServerNotice';
+    notice.setAttribute('role', 'alert');
+    notice.textContent = '配置服务未启动：请先双击 Windows-Start.bat（Mac 上是 Mac-Start.command），再打开本页。';
+    var container = document.querySelector('.container');
+    if (container) container.insertBefore(notice, container.firstChild);
+}
+
+async function bootstrapFileProtocol() {
+    if (location.protocol !== 'file:') return;
+    var port = parseInt(new URLSearchParams(location.search).get('configPort'), 10) || 18788;
+    if (await probeConfigServer(port)) {
+        location.replace('http://127.0.0.1:' + port + '/');
+        return;
+    }
+    showConfigServerNotice();
+}
+bootstrapFileProtocol();
+
 // 默认模型由 models-catalog.json 提供，目录中只有一个入口。
 let selectedProvider = 'uclaw-cloud';
 let selectedBase = 'https://api.u-claw.org/v1';

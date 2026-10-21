@@ -468,6 +468,18 @@ input::placeholder { color: var(--ink-3); }
 .wallet-danger .btn { margin-bottom: 8px; }
 .wallet-danger .danger-label { margin-bottom: 8px; color: var(--danger); font-size: 12px; font-weight: 600; }
 
+/* ---------- 顶部提示条（file:// 离线打开时用） ---------- */
+.notice {
+    display: block;
+    padding: 12px 16px;
+    margin-bottom: 18px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.6;
+}
+.notice-warn { background: #fffaeb; border: 1px solid #fedf89; color: #93370d; }
+
 /* ---------- 目录说明 / 折叠区 ---------- */
 .skills-section h2 { font-size: 18px; }
 .skill-list { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
@@ -522,7 +534,7 @@ details#advancedModelsBox[open] summary { border-bottom: 1px solid var(--line); 
 <div class="container">
     <header class="hero">
         <h1><span class="lobster" aria-hidden="true">🦞</span><span class="title-text">U-Claw 配置中心</span></h1>
-        <p class="subtitle">虾盘云 · 设备钱包 · 一键启动</p>
+        <p class="subtitle">选模型 · 填 Key · 一键启动</p>
     </header>
 
     <!-- Connection status -->
@@ -540,8 +552,8 @@ details#advancedModelsBox[open] summary { border-bottom: 1px solid var(--line); 
 
     <!-- Step 1: Select Model -->
     <div class="section active" id="step1">
-        <h2>使用虾盘云模型</h2>
-        <p class="desc">一键领取设备钱包，或填入已有虾盘云 API Key，即可使用默认模型。</p>
+        <h2>选择模型</h2>
+        <p class="desc">内置 11 家国内外模型，选一家填自己的 Key；也可以选『自定义 · OpenAI 兼容』填任意地址。虾盘云设备钱包可选。</p>
 
         <!-- 虾盘云 · 设备钱包 —— 只在用户点击按钮之后才会联网，绝不在打开这个页面时自动请求。 -->
         <div class="wallet-card" id="walletCard">
@@ -684,7 +696,7 @@ details#advancedModelsBox[open] summary { border-bottom: 1px solid var(--line); 
         <h2>反馈 / 报 Bug</h2>
         <p class="desc">U-Claw 是开源项目。遇到问题欢迎到 GitHub 提 Issue —— 我们不会自动收集或上传你的任何数据。</p>
         <div class="btn-row">
-            <a class="btn btn-primary" href="https://github.com/dongsheng123132/u-claw/issues/new" target="_blank">→ 在 GitHub 提交 Issue</a>
+            <a class="btn btn-secondary" href="https://github.com/dongsheng123132/u-claw/issues/new" target="_blank">→ 在 GitHub 提交 Issue</a>
         </div>
     </div>
 </div>
