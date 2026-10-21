@@ -23,6 +23,9 @@
 > [!IMPORTANT]
 > 这不是 U 盘制作工具。这个仓库就是 U 盘的文件骨架：运行一次 `setup.sh` 补齐运行时，再把整个 `portable/` 拷到盘里即可。
 
+> [!TIP]
+> **AI 装电脑，U 盘管随身。** 在 U 盘里直接跑完整 OpenClaw 很耗 IO（实测见 [装电脑还是放 U 盘](#pc-vs-usb)）：长期用建议装电脑版；U 盘版只留给「换台电脑配置跟着走」和「不能装软件的电脑」。
+
 ## 三步开始
 
 > **仅 Windows 使用时推荐 NTFS。** v2.3.0 加入 Windows exFAT 兼容：自动选择文件系统适配，配置与会话仍留在 U 盘。FAT32 不支持。Mac/Windows 共盘尚待 Mac 实机验收，不能把 Windows 原生运行时直接当作 Mac 运行时。格式化会清空盘内文件，操作前请备份。
@@ -87,6 +90,52 @@ irm https://u-claw.org/install.ps1 | iex
 自动完成: Node.js 下载 → OpenClaw 安装 → 10 个中国技能 → 模型配置 → 启动脚本生成。全程国内镜像，无需翻墙。
 
 详见 [`install/README.md`](install/README.md)。
+
+<a id="pc-vs-usb"></a>
+
+### 装电脑还是放 U 盘？先看 IO
+
+**结论：AI 引擎（OpenClaw）装电脑，U 盘负责「随身」。**
+
+U 盘版的价值是「换台电脑，配置、钱包、会话、记忆跟着走」，而不是「把 AI 运行时塞进 U 盘」。完整便携包是约 620 MB、4.4 万个文件；把它放进 U 盘、每次插上启动，都要付出实打实的 IO 成本。同版本、同机器实测（2026-10-21，Windows 11 x64 / i9-12900H / USB 3.0 exFAT U 盘；单机单盘，不同 U 盘主控差异可能很大）：
+
+| 对比项 | 装电脑（同一个包拷到本机 NVMe） | 完整便携包放 U 盘 | U 盘轻壳（方向） |
+| --- | --- | --- | --- |
+| 占盘空间 / 文件数 | 620 MB / 4.4 万 | 620 MB / 4.4 万 | **约 9 MB / 几十个** |
+| 投盘（复制/解压到盘上） | 15 秒 | **实测 56 分钟**（4.4 万个小文件） | 约 7 秒 |
+| 启动到可用 | 首次 168 秒；之后约 67 秒 | 首次 90 秒¹；之后 67~78 秒 | **0.1 秒** |
+| 启动期间读盘 | 约 145 MB² | 约 69 MB¹ | 约 0.1 MB |
+| 启动期间写盘 | 约 412 MB² | 约 7 MB，首启后还要再写约 45 MB UI 资源¹ | 0 MB |
+| 启动后静置 1 分钟 | 背景噪声大，不可比² | 首启 ≈ 61 / 40 MB；之后 < 2 MB | ≈ 0 |
+| 换台电脑再启动 | — | **再冷启动一次**（本机缓存不随盘） | 常驻，秒开 |
+| U 盘格式要求 | — | NTFS 最佳；exFAT 可跑但更慢；FAT32 不支持 | exFAT / FAT32 / NTFS 都行 |
+
+¹ 冷启动「只读 69 MB」偏小：解压刚写完，Windows 文件缓存还热（本机 64 GB 内存）；重启或换台电脑拔插的冷读会明显更大（未测）。exFAT 上还实测到慢 SQLite 事务告警：启动单步 checkpoint 8.5 秒（正常阈值 1 秒）。
+² 本机盘是系统盘，读写计数含其它程序的背景 IO，只作量级参考。
+
+> 注意：启动秒数两边都在一分钟上下——OpenClaw 本身就不轻，这不是 U 盘版的短板。U 盘版真正的代价是**投盘要一小时、每次换电脑都要重新冷启动并读写 U 盘、exFAT 上的慢事务、以及 U 盘损耗**；这些在轻壳上基本不存在（投盘 7 秒、启动 0.1 秒）。
+
+为什么差这么多：
+
+1. **小文件随机 IO 是 U 盘的死穴。** 这只 U 盘实测小文件创建约 43 个/秒（投盘并发时 13 个/秒）、顺序写约 7~13 MB/s；4.4 万个 `node_modules` 小文件投进去实测 56 分钟，同一份东西拷到本机 NVMe 只要 15 秒。
+2. **每次换电脑都要重新冷启动。** `process.bootstrap`（加载 OpenClaw 模块图）是启动的大头；热启动之所以能和本机 SSD 打平，是因为 V8 编译缓存、npm 缓存、日志、临时文件都搬到了本机盘——但换一台电脑，这些缓存不跟着走，冷启动要重来，首次还要再往 U 盘写约 45 MB UI 资源。
+3. **写入磨损与文件系统能力。** 日志、SQLite、索引一直在写；exFAT 没有文件身份（inode）和符号链接，要靠兼容补丁绕，慢且能力受限（实测启动 SQLite 单步 8.5 秒）。U 盘是消耗品，别拿它当系统盘用。
+4. **通配性。** 轻壳是一个几 MB 的原生程序：不装 Node、不建链接，所以 exFAT/FAT32/NTFS、任何盘符、Windows/macOS 都能直接开——这才是真正的「插哪台都能用」。完整包在 exFAT 上能跑但更慢，FAT32 直接不支持。
+
+**我们已经做的优化**（完整便携包仍然有效）：把「可再生成」的东西搬出 U 盘——受管浏览器资料、V8 编译缓存、npm 缓存、临时文件都走本机盘（`lib/portable-cache.mjs`，Windows 在 `%LOCALAPPDATA%\U-Claw`），只有配置、会话、设备身份、钱包留在 U 盘随盘走。即便如此，运行时本体还是要从 U 盘读。
+
+**怎么选：**
+
+| 你的场景 | 建议 |
+| --- | --- |
+| 天天用、要快 | **装电脑版**：`irm https://u-claw.org/install.ps1 \| iex`（macOS / Linux 用 `install.sh`） |
+| 多台电脑之间带着配置和钱包走 | 电脑装 OpenClaw，U 盘只带配置；或等 U 盘轻壳 |
+| 别人的电脑上不能装任何东西 | 完整便携包放 U 盘（它就是为这个场景留的） |
+| 老电脑 / 慢 U 盘 | 别在 U 盘上跑 OpenClaw，装电脑版 |
+
+**U 盘轻壳（`u-claw-lite`，开发中）**：U 盘里只放一个几 MB 的原生程序，提供一个本地页面管钱包、模型设置、会话入口和维护工具；电脑上装好 OpenClaw 后一键拉起。**轻壳不内置 OpenClaw**——所以「实在需要 OpenClaw」时，直接在电脑上装电脑版即可，不必从 U 盘引导。当前是预览阶段（只有 WebUI 与服务端动作，不含 OpenClaw 启动与钱包共享），落地后本仓 U 盘版会以它为主形态。
+
+> 完整便携包不会删除：它是「免安装、可离线、救急」的形态，继续按现有方式发布。
 
 ### 快速开始：制作便携版 U 盘
 
@@ -229,7 +278,7 @@ U-Claw 是一个快速成长的开源项目，目前已有不少商业合作机�
 不需要。安装和运行全程使用国内镜像，国产模型 API 直连。
 
 **Q: U 盘需要多大？**
-4GB+（完整约 2.3GB）。
+4GB+ 就够（v2.3.x 完整包约 620 MB / 4.4 万个文件；早期全量包约 2.3 GB）。
 
 **Q: 能分发吗？**
 MIT 协议，随便复制分发。
@@ -352,6 +401,43 @@ irm https://u-claw.org/install.ps1 | iex
 Automatically downloads Node.js, installs OpenClaw, configures 10 Chinese-optimized skills, and sets up your AI model. All downloads use China mirrors.
 
 See [`install/README.md`](install/README.md) for details.
+
+<a id="pc-vs-usb-en"></a>
+
+### Install on the PC, or run from USB? Mind the I/O
+
+**Short version: run OpenClaw on the computer; use the USB drive for portability.**
+
+The USB build's value is "your config, wallet, sessions and memory travel with the drive", not "the AI runtime lives on the stick". The full portable package is ~620 MB across ~44,000 small files, and putting it on a USB stick has a real I/O cost. Same build, same machine, one stick (2026-10-21, Windows 11 x64 / i9-12900H / USB 3.0 exFAT; controllers differ, your mileage may vary):
+
+| | On the PC (same package on NVMe SSD) | Full portable package on USB | Light USB shell (roadmap) |
+| --- | --- | --- | --- |
+| Disk footprint / files | 620 MB / 44k | 620 MB / 44k | **~9 MB / a few dozen** |
+| Copying it onto the disk | 15 s | **56 min measured** (44k small files) | ~7 s |
+| Startup to usable | 168 s first run; ~67 s after | 90 s first run¹; 67–78 s after | **0.1 s** |
+| Read at startup | ~145 MB² | ~69 MB¹ | ~0.1 MB |
+| Write at startup | ~412 MB² | ~7 MB, plus ~45 MB of UI assets after first run¹ | 0 MB |
+| Idle 60 s after start | background noise² | first run ≈61 / 40 MB; then <2 MB | ≈0 |
+| New computer | — | **cold start again** (host caches do not travel) | resident, instant |
+| Filesystem | — | NTFS best; exFAT works but slower; FAT32 unsupported | exFAT / FAT32 / NTFS all fine |
+
+¹ The 69 MB read is low because Windows' file cache was still warm right after extraction (64 GB RAM); a reboot or a fresh plug on another PC will read more (not measured). We also captured slow SQLite transaction warnings on exFAT: 8.5 s for a single startup checkpoint step (threshold 1 s).
+² C: is the system disk, so its counters include unrelated background I/O; order of magnitude only.
+
+> Note: startup takes about a minute either way — OpenClaw itself is heavy, so that is not the USB build's weak spot. The real cost of running it from USB is the one-hour copy, a cold start on every new machine that reads and writes the stick, slow transactions on exFAT, and stick wear. The light shell removes those costs (7 s copy, 0.1 s start).
+
+Why it costs so much:
+
+1. **Random small-file I/O is the weak spot of USB sticks.** This stick creates ~43 small files/s when idle (13/s while the copy was running) and writes ~7–13 MB/s sequentially; 44k `node_modules` files took 56 minutes to put on it, while the same tree copies to an NVMe SSD in 15 s.
+2. **Every new computer means another cold start.** `process.bootstrap` (loading the OpenClaw module graph) dominates startup; warm restarts match the SSD because the V8 compile cache, npm cache, logs and temp files live on the host disk — but those caches do not travel with the stick, so a different computer starts cold again and writes ~45 MB of UI assets to the stick on first run.
+3. **Write wear and filesystem limits.** Logs, SQLite and caches write constantly; exFAT has no inodes or symlinks, so it needs compatibility patches and stays slower (measured: 8.5 s for a single SQLite startup step). A USB stick is consumable — don't use it as a system disk.
+4. **Compatibility.** A few-MB native shell needs no Node and no links, so it runs on exFAT/FAT32/NTFS, any drive letter, Windows and macOS. That is real "plug into any computer" compatibility, while the full package needs patches on exFAT and refuses FAT32.
+
+What we already do: the managed-browser profile, V8 compile cache, npm cache and temp files live on the host disk (`lib/portable-cache.mjs`, Windows `%LOCALAPPDATA%\U-Claw`); only config, sessions, device identity and wallet stay on the stick.
+
+**Choose:** everyday use → install on the PC (`irm https://u-claw.org/install.ps1 | iex`, or `install.sh` on macOS/Linux). "I cannot install anything on this computer" → full portable package on USB. Slow PC / slow stick → do not run OpenClaw from USB.
+
+**Light USB shell (`u-claw-lite`, in development):** a few-MB native program on the stick that serves a local page for wallet, model setup, session entry and maintenance tools, and launches the PC-installed OpenClaw. It does **not** bundle OpenClaw — so users who really need OpenClaw should install the desktop version on the computer. Status: preview (WebUI and server actions only; OpenClaw launch and wallet sharing are not integrated yet).
 
 ### Quick Start: Build a Portable USB
 
@@ -506,7 +592,7 @@ If you're interested in AI tooling and commercialization, let's talk:
 No. All downloads use China mirrors. Chinese AI model APIs work directly.
 
 **Q: How big should the USB drive be?**
-4GB+ (~2.3GB full).
+4GB+ is enough (~620 MB / 44k files for the v2.3.x package; earlier full builds were ~2.3 GB).
 
 **Q: Can I redistribute?**
 MIT license — copy and share freely.
