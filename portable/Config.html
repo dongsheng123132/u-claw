@@ -762,8 +762,15 @@ details#advancedModelsBox[open] summary { border-bottom: 1px solid var(--line); 
 
 <script>
 // 双击兼容页时，通过本机配置服务调用相同动作。
+// 原生 fetch 必须在这个独立 <script> 里先捕获：下面那个 <script> 里的 `function fetch` 声明
+// 会在该脚本开始执行前就覆盖 window.fetch（函数声明提升）；若和它写在同一个 <script>，
+// `window.fetch.bind(window)` 抓到的就是 shim 自己 —— 每个请求都递归爆栈 RangeError，
+// 目录/钱包/Gateway 状态/保存配置全部失效（v2.3.2 起的真实故障，2026-09 重写时引入）。
+// 回归测试：tests/config-fetch-shim.test.mjs
 var configOrigin = location.protocol === 'file:' ? 'http://127.0.0.1:' + (new URLSearchParams(location.search).get('configPort') || '18788') : '';
 var nativeFetch = window.fetch.bind(window);
+</script>
+<script>
 function fetch(resource, options) { return nativeFetch(typeof resource === 'string' && resource.startsWith('/') ? configOrigin + resource : resource, options); }
 // 默认模型由 models-catalog.json 提供，目录中只有一个入口。
 let selectedProvider = 'uclaw-cloud';
