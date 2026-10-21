@@ -1,10 +1,10 @@
 {
   "schema": 1,
   "version": "0.5.5-portable-preview",
-  "built_at": "2026-10-21T14:49:04.7860591Z",
-  "source_commit": "3acca4ed2308e274b34f4898fd67312e1f7f4a33",
+  "built_at": "2026-10-21T17:00:27.8246227Z",
+  "source_commit": "f518b6345d550bb75d3178fab3834f97d2f3d0ad",
   "fingerprint_algorithm": "sha256-ordinal-path-nul-file-sha256-lf-v1",
-  "source_fingerprint": "831bc3bd1b0de0010380512e7c46b6441fede1ee89e76893e63911c2f7ece11c",
+  "source_fingerprint": "318bac028ce0c9e274a83c86c8aa5424ea345f65157c03778ee2124fe92f2078",
   "source_files": [
     {
       "path": "catalog/cloud.json",
@@ -240,11 +240,11 @@
     },
     {
       "path": "web/index.html",
-      "sha256": "7c9146ec4655b581068f339afcc76f7e23d29ce99f7a4a0585a420819b5498ea"
+      "sha256": "88e831fc3c8cc2355ac9b1cfafc20534165a0389af9d576153294eac54eccd78"
     },
     {
       "path": "web/locales.json",
-      "sha256": "a80120299dee203e82cd706c41e4b1e2e7b366c69dbcdd7a96f64eca2ad860cd"
+      "sha256": "82d1e8e49595acfd93cb8ad69108e3c266f11670db7d0577987a91b0d61ebd7a"
     },
     {
       "path": "web/platform.js",
@@ -256,7 +256,7 @@
     },
     {
       "path": "web/style.css",
-      "sha256": "9bae6e14030852b4ebc6dcf9b39b93d307528077d8ac63b9401f9506f8600588"
+      "sha256": "0ce76b159ee1c2df5e2beea857ec98aa866f6ae8a363e465d65b790a45aed143"
     },
     {
       "path": "web/tools.js",
@@ -267,26 +267,26 @@
   "platforms": {
     "windows/amd64": {
       "path": "dist/windows-x64/虾盘.exe",
-      "sha256": "a3fb3490031f749fef1a661a05c5e703ab1361416e19888a828f858c71757d12",
-      "bytes": 9130496,
+      "sha256": "b536c9e5487aa171337e464935b2b24499631fc4378ae349486cde05b887e420",
+      "bytes": 9145344,
       "version": "0.5.5-portable-preview"
     },
     "darwin/arm64": {
       "path": "dist/macos-arm64/xiapan",
-      "sha256": "db3a4e808dcc5dc8f2c9116045f872ea22ae3222782379afbf6b88520fbc9731",
-      "bytes": 8374770,
+      "sha256": "d0fc19931dcc71bdcd585c7d800cbe8d63b59763dba1dd82f3a6eb15b21769ee",
+      "bytes": 8391282,
       "version": "0.5.5-portable-preview"
     },
     "darwin/amd64": {
       "path": "dist/macos-x64/xiapan",
-      "sha256": "c7dd34d35eb27a2908764c7512a4cc5be0326e7f1a7c75202b3988467b5b777d",
-      "bytes": 9018832,
+      "sha256": "6270b8f66b01b95900cc6707fab23c834974005d0ed21e1c306727dcae50dde8",
+      "bytes": 9031120,
       "version": "0.5.5-portable-preview"
     },
     "linux/amd64": {
       "path": "dist/linux-x64/xiapan",
-      "sha256": "5e2f821d3af218db95d76382190a45c9d8edc64ac5f12970a29c84f746e7a7e3",
-      "bytes": 8847520,
+      "sha256": "852c8dae4fc2690aea93faae60cc268eff905bda05cfc6879c697b38a7a12495",
+      "bytes": 8859808,
       "version": "0.5.5-portable-preview"
     }
   }

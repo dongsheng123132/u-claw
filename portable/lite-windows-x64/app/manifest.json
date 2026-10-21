@@ -4,14 +4,14 @@
   "component": "xiapan-lite-windows-x64",
   "lite": true,
   "version": "0.5.5-portable-preview",
-  "built_at": "2026-10-21T14:49:04.7860591Z",
-  "source_commit": "3acca4ed2308e274b34f4898fd67312e1f7f4a33",
+  "built_at": "2026-10-21T17:00:27.8246227Z",
+  "source_commit": "f518b6345d550bb75d3178fab3834f97d2f3d0ad",
   "source_dirty": false,
   "pico_version": "0.3.1",
   "platforms": [
     "windows/amd64"
   ],
-  "source_fingerprint": "831bc3bd1b0de0010380512e7c46b6441fede1ee89e76893e63911c2f7ece11c",
+  "source_fingerprint": "318bac028ce0c9e274a83c86c8aa5424ea345f65157c03778ee2124fe92f2078",
   "customer_data_included": false,
   "local_model_included": false,
   "bootable": false,
