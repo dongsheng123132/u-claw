@@ -353,6 +353,7 @@ let selectedBase = '';
 let selectedModel = '';
 var savedProviderApiKey = null;
 var savedProviderId = null;
+var savedMiniMaxProvider = null;
 var SECRET_REF_INPUT_VALUE = '（已加密保存，无需重填）';
 
 // --- Model catalog: 渲染云端提供商卡片（每家一卡 + 卡内模型下拉） ---
@@ -439,6 +440,7 @@ function selectCloudCard(card, p) {
         apiKeyInput.value = '';
         savedProviderApiKey = null;
         savedProviderId = null;
+        savedMiniMaxProvider = null;
     }
     document.getElementById('nextStep1').disabled = false;
 }
@@ -473,6 +475,15 @@ function refreshModelSelect(models, placeholder) {
     var sel = document.getElementById('modelSelect');
     if (!sel) return;
     var list = (models && models.length ? models.slice() : [placeholder || selectedModel || '(默认推荐模型)']);
+    // Live discovery must not reintroduce retired MiniMax text choices.
+    // Custom endpoints and explicit saved selections remain available.
+    if (selectedProvider === 'minimax') {
+        list = ['MiniMax-M3.1-Flash', 'MiniMax-M3'].concat(list.filter(function(id) {
+            return !/^(MiniMax-(M\d|Text-)|abab)/i.test(id);
+        }));
+    } else if (selectedProvider === 'uclaw-cloud') {
+        list = list.filter(function(id) { return !/^(MiniMax-(M\d|Text-)|abab)/i.test(id) || id === 'MiniMax-M3'; });
+    }
     // 已存的模型即使不在平台最新列表里也要保留显示——静默替换会让用户在不知情下换模型
     if (selectedModel && !list.includes(selectedModel)) list.unshift(selectedModel);
     sel.innerHTML = list.map(function(m) {
@@ -584,6 +595,10 @@ function togglePw(id) {
 // 旧代码不管什么模型一律写 reasoning:false, contextWindow:128000，明显不对。
 // 定价字段核不准就不填，宁可留 0 也不能瞎填（计费显示错比没有更糟）。
 function buildModelDefinition(provider, model) {
+    if (typeof savedMiniMaxProvider !== 'undefined' && savedMiniMaxProvider && savedProviderId === provider) {
+        var saved = (savedMiniMaxProvider.models || []).find(function(item) { return item.id === model; });
+        if (saved) return saved;
+    }
     var definition = {
         id: model,
         name: model,
@@ -597,6 +612,12 @@ function buildModelDefinition(provider, model) {
     if (provider !== 'minimax') return definition;
 
     var miniMaxProfiles = {
+        'MiniMax-M3.1-Flash': {
+            reasoning: true,
+            input: ['text', 'image', 'video'],
+            contextWindow: 1000000,
+            maxTokens: 524288
+        },
         'MiniMax-M3': {
             reasoning: true,
             input: ['text', 'image', 'video'],
@@ -622,6 +643,14 @@ function buildConfig(provider, base, model, apiKey) {
         api: 'openai-completions',
         models: [buildModelDefinition(provider, model)]
     };
+    if (typeof savedMiniMaxProvider !== 'undefined' && savedMiniMaxProvider &&
+        savedProviderId === provider && savedMiniMaxProvider.baseUrl === providerBase) {
+        var savedModels = (savedMiniMaxProvider.models || []).slice();
+        if (!savedModels.some(function(item) { return item.id === model; })) {
+            savedModels.push(buildModelDefinition(provider, model));
+        }
+        providers[providerName] = Object.assign({}, savedMiniMaxProvider, { apiKey: apiKey, models: savedModels });
+    }
     return Object.assign({}, baseConfig, {
         models: { mode: 'merge', providers: providers },
         agents: { defaults: { model: { primary: providerName + '/' + model } } }
@@ -849,6 +878,11 @@ async function loadConfig() {
                 if (p.apiKey) fillApiKeyFromSaved(p.apiKey);
                 // 回填的模型可能与卡片默认不同，进 step2 时下拉要显示已存值
                 if (modelId) selectedModel = modelId;
+                if (catalogProviderId === 'minimax' || /^MiniMax-/i.test(modelId)) savedMiniMaxProvider = p;
+                if (catalogProviderId === 'custom') {
+                    document.getElementById('customBase').value = p.baseUrl || '';
+                    document.getElementById('customModel').value = modelId;
+                }
             }
         }
     } catch(e) {}

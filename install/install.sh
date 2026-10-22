@@ -830,7 +830,10 @@ else
                 NEED_KEY=true
                 ;;
             5)
-                MODEL_NAME="MiniMax-M3"
+                echo "  1) MiniMax-M3.1-Flash (default)    2) MiniMax-M3"
+                read -p "  MiniMax model [1]: " MINIMAX_MODEL_CHOICE
+                MODEL_NAME="MiniMax-M3.1-Flash"
+                if [ "$MINIMAX_MODEL_CHOICE" = "2" ]; then MODEL_NAME="MiniMax-M3"; fi
                 BASE_URL="https://api.minimaxi.com/v1"
                 PROVIDER="custom"
                 KEY_LABEL="MiniMax API Key"
@@ -908,6 +911,13 @@ else
         API_KEY_JSON=${API_KEY//\\/\\\\}
         API_KEY_JSON=${API_KEY_JSON//\"/\\\"}
 
+        MODEL_DEFINITION="{ \"id\": \"$MODEL_NAME\" }"
+        if [ "$MODEL_CHOICE" = "5" ]; then
+            MODEL_MAX_TOKENS=8192
+            if [ "$MODEL_NAME" = "MiniMax-M3.1-Flash" ]; then MODEL_MAX_TOKENS=524288; fi
+            MODEL_DEFINITION="{ \"id\": \"$MODEL_NAME\", \"name\": \"$MODEL_NAME\", \"reasoning\": true, \"input\": [\"text\", \"image\", \"video\"], \"contextWindow\": 1000000, \"maxTokens\": $MODEL_MAX_TOKENS }"
+        fi
+
         # 写配置文件
         if [ "$PROVIDER" = "custom" ] && [ -n "$BASE_URL" ]; then
             cat > "$CONFIG_PATH" << CFGEOF
@@ -923,7 +933,7 @@ else
         "baseUrl": "$BASE_URL",
         "apiKey": "$API_KEY_JSON",
         "api": "openai-completions",
-        "models": [{ "id": "$MODEL_NAME" }]
+        "models": [$MODEL_DEFINITION]
       }
     }
   },

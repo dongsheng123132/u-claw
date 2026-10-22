@@ -500,12 +500,18 @@ if ($hasConfig) {
         "2"  = @{ model="kimi-k2.6"; baseUrl="https://api.moonshot.cn/v1"; provider="custom"; label="Moonshot API Key"; hint="Get key: https://platform.moonshot.cn/console/api-keys"; needKey=$true }
         "3"  = @{ model="qwen-plus"; baseUrl="https://dashscope.aliyuncs.com/compatible-mode/v1"; provider="custom"; label="Qwen API Key"; hint="Get key: https://dashscope.console.aliyun.com/apiKey (free quota available)"; needKey=$true }
         "4"  = @{ model="glm-5"; baseUrl="https://open.bigmodel.cn/api/paas/v4"; provider="custom"; label="Zhipu API Key"; hint="Get key: https://open.bigmodel.cn/usercenter/apikeys"; needKey=$true }
-        "5"  = @{ model="MiniMax-M3"; baseUrl="https://api.minimaxi.com/v1"; provider="custom"; label="MiniMax API Key"; hint="Get key: https://platform.minimaxi.com/"; needKey=$true }
+        "5"  = @{ model="MiniMax-M3.1-Flash"; baseUrl="https://api.minimaxi.com/v1"; provider="custom"; label="MiniMax API Key"; hint="Get key: https://platform.minimaxi.com/"; needKey=$true }
         "6"  = @{ model="doubao-seed-1-6-250615"; baseUrl="https://ark.cn-beijing.volces.com/api/v3"; provider="custom"; label="Volcengine API Key"; hint="Get key: https://console.volcengine.com/ark"; needKey=$true }
         "7"  = @{ model="deepseek-ai/DeepSeek-V3"; baseUrl="https://api.siliconflow.cn/v1"; provider="custom"; label="SiliconFlow API Key"; hint="Get key: https://cloud.siliconflow.cn/account/ak"; needKey=$true }
         "8"  = @{ model="claude-sonnet-5"; baseUrl=""; provider="anthropic"; label="Anthropic API Key"; hint="Get key: https://console.anthropic.com/settings/keys (VPN required)"; needKey=$true }
         "9"  = @{ model="gpt-5.4"; baseUrl=""; provider="openai"; label="OpenAI API Key"; hint="Get key: https://platform.openai.com/api-keys (VPN required)"; needKey=$true }
         "10" = @{ model="llama3.2"; baseUrl="http://127.0.0.1:11434/v1"; provider="custom"; label=""; hint="Install Ollama first (https://ollama.com), then: ollama run llama3.2"; needKey=$false }
+    }
+
+    if ($choice -eq "5") {
+        Write-Host "  1) MiniMax-M3.1-Flash (default)    2) MiniMax-M3"
+        $minimaxModelChoice = Read-Host "  MiniMax model [1]"
+        if ($minimaxModelChoice -eq "2") { $modelConfigs["5"].model = "MiniMax-M3" }
     }
 
     $cfg = $modelConfigs[$choice]
@@ -533,6 +539,13 @@ if ($hasConfig) {
     # and the gateway fails to start with no obvious cause. (install.sh has had this fix.)
     $apiKeyJson = $apiKey -replace '\\', '\\' -replace '"', '\"'
 
+    $modelDefinition = @{ id = $cfg.model }
+    if ($choice -eq "5") {
+        $maxTokens = if ($cfg.model -eq "MiniMax-M3.1-Flash") { 524288 } else { 8192 }
+        $modelDefinition = @{ id = $cfg.model; name = $cfg.model; reasoning = $true; input = @("text", "image", "video"); contextWindow = 1000000; maxTokens = $maxTokens }
+    }
+    $modelDefinitionJson = $modelDefinition | ConvertTo-Json -Compress
+
     # Write config
     if ($cfg.provider -eq "custom" -and $cfg.baseUrl) {
         $providerName = "custom"
@@ -549,7 +562,7 @@ if ($hasConfig) {
         "baseUrl": "$($cfg.baseUrl)",
         "apiKey": "$apiKeyJson",
         "api": "openai-completions",
-        "models": [{ "id": "$($cfg.model)" }]
+        "models": [$modelDefinitionJson]
       }
     }
   },

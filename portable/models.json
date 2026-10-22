@@ -74,7 +74,7 @@
     {
       "id": "minimax",
       "baseUrl": "https://api.minimaxi.com/v1",
-      "model": "MiniMax-M3",
+      "model": "MiniMax-M3.1-Flash",
       "title": "MiniMax",
       "tags": [
         {
@@ -82,13 +82,13 @@
           "text": "国内"
         }
       ],
-      "desc": "MiniMax-M3，百万级上下文，支持图片/视频输入",
+      "desc": "MiniMax-M3.1-Flash / MiniMax-M3, 1M context with image/video input",
       "link": "https://platform.minimaxi.com/",
       "verified": "vendor-docs",
-      "note": "国内端点是 api.minimaxi.com（多一个 i，非 minimax.chat）；国际站 api.minimax.io 是区域锁定的另一把 Key，国内注册的 Key 打过去会 401，不在此提供卡片，需要走「自定义」。定价未能核实（PR #57 的 0.6/2.4 与 OpenRouter 的 0.23/0.96 对不上），不在此填写，沿用默认 0",
+      "note": "Models: https://platform.minimaxi.com/docs/guides/models-intro. This preset uses the China endpoint. For the global endpoint https://api.minimax.io/v1, use Custom with a matching regional key. Pricing remains unspecified in this catalog.",
       "models": [
-        "MiniMax-M3",
-        "MiniMax-M2.7"
+        "MiniMax-M3.1-Flash",
+        "MiniMax-M3"
       ]
     },
     {

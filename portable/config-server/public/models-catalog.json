@@ -67,13 +67,13 @@
           "text": "国内"
         }
       ],
-      "desc": "MiniMax-M3，百万级上下文，支持图片/视频输入",
+      "desc": "MiniMax-M3.1-Flash / MiniMax-M3, 1M context with image/video input",
       "base": "https://api.minimaxi.com/v1",
       "models": [
-        "MiniMax-M3",
-        "MiniMax-M2.7"
+        "MiniMax-M3.1-Flash",
+        "MiniMax-M3"
       ],
-      "recommended": "MiniMax-M3",
+      "recommended": "MiniMax-M3.1-Flash",
       "link": "https://platform.minimaxi.com/",
       "linkLabel": "获取 API Key",
       "verified": "vendor-docs"

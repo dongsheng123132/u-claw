@@ -57,7 +57,7 @@ test('配置中心的 models-catalog.json 与 models.json 一致（生成物不�
 });
 
 test('安装脚本里出现的模型名都在 models.json 里', () => {
-  const known = new Set(catalog.providers.map((p) => p.model));
+  const known = new Set(catalog.providers.flatMap((p) => [p.model, ...(p.models || [])]));
   // 目录之外仍允许出现的：本地模型
   const allowlist = new Set(['llama3.2']);
   for (const [file, re] of [
