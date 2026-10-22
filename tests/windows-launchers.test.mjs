@@ -286,3 +286,32 @@ test('Electron desktop launcher disables OpenClaw bonjour discovery on Windows o
     'bonjour disable flag should not be in the unconditional env object',
   );
 });
+
+test('Windows launcher clears the package-lifecycle marker only on unstable-identity filesystems', () => {
+  // v2.3.3 bug found on a real exFAT USB stick: OpenClaw's first-run
+  // "package lifecycle" completion publishes files through an atomic rename whose
+  // identity it verifies via inode numbers. exFAT/FAT32 report a changing or
+  // missing inode, the completion fails with EIO, and OpenClaw then refuses to
+  // start ("package lifecycle is incomplete ... filesystem write failed (EIO)").
+  // The launcher must detect that filesystem class and clear the pending marker
+  // (the release installs with --ignore-scripts and verified patches, so the
+  // completion is optional), while leaving NTFS behaviour untouched.
+  const script = readRepoFile('portable', 'Windows-Start.bat');
+  assert.match(script, /lib\\skip-package-lifecycle\.mjs" "%CORE_DIR%"/,
+    'Windows launcher must run the package-lifecycle guard before starting the gateway');
+  assert.match(script, /if "%%a"=="UCLAW_LIFECYCLE" set "UCLAW_LIFECYCLE=%%b"/);
+  assert.match(script, /File system: exFAT\/FAT32 - skipped dependency lifecycle completion\./,
+    'the skip must be surfaced to the user instead of failing silently');
+  const guard = script.indexOf('skip-package-lifecycle.mjs');
+  const gateway = script.indexOf('gateway run --allow-unconfigured');
+  assert.ok(guard > 0 && gateway > guard, 'guard must run before the gateway starts');
+});
+
+test('Linux/macOS launcher clears the package-lifecycle marker on exFAT too', () => {
+  const macStart = readRepoFile('portable', 'Mac-Start.command');
+  assert.match(macStart, /lib\/skip-package-lifecycle\.mjs" "\$CORE_DIR"/);
+  assert.match(macStart, /skipped-unstable-rename-identity/);
+  const guard = macStart.indexOf('skip-package-lifecycle.mjs');
+  const gateway = macStart.indexOf('"$OPENCLAW_MJS" gateway run');
+  assert.ok(guard > 0 && gateway > guard, 'guard must run before the gateway starts');
+});

@@ -294,6 +294,17 @@ REM owning process is gone (or corrupt) are removed; a live instance is left alo
 "%NODE_BIN%" "%UCLAW_DIR%lib\clean-stale-lock.mjs" "%OPENCLAW_CONFIG_PATH%"
 "%NODE_BIN%" "%UCLAW_DIR%lib\official-provider-guard.mjs" "%OPENCLAW_CONFIG_PATH%" 2>nul
 
+REM exFAT/FAT32 cannot complete OpenClaw's one-time package-lifecycle publish
+REM (inode identity is unavailable -> EIO), and OpenClaw then refuses to start
+REM with "package lifecycle is incomplete". This release installs with
+REM --ignore-scripts and applies verified patches, so on such drives the pending
+REM marker is cleared instead. NTFS keeps the full lifecycle completion.
+set "UCLAW_LIFECYCLE="
+for /f "usebackq tokens=1,* delims==" %%a in (`""%NODE_BIN%" "%UCLAW_DIR%lib\skip-package-lifecycle.mjs" "%CORE_DIR%" 2^>nul"`) do (
+    if "%%a"=="UCLAW_LIFECYCLE" set "UCLAW_LIFECYCLE=%%b"
+)
+if "%UCLAW_LIFECYCLE%"=="skipped-unstable-rename-identity" echo   File system: exFAT/FAT32 - skipped dependency lifecycle completion.
+
 cd /d "%CORE_DIR%"
 set "OPENCLAW_MJS=%CORE_DIR%\node_modules\openclaw\openclaw.mjs"
 "%NODE_BIN%" "%OPENCLAW_MJS%" gateway run --allow-unconfigured --port %PORT%

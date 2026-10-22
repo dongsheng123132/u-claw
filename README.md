@@ -219,6 +219,8 @@ U-Claw/                          ← 整个拷到 U 盘
 
 > ⚠️ **完整便携包优先 NTFS，不要 FAT32**：NTFS 走原生路径，最快最稳；exFAT 自 v2.3.0 起会自动启用经版本与 SHA-256 校验的兼容补丁——能正常启动，但目录监听改为轮询、首次启动与重启更慢、个别插件/技能的链接能力受限（Windows + macOS 双系统共用一只盘时用它）；FAT32 不支持。
 >
+> **exFAT/FAT32 首次启动的依赖补全**：v2.3.4 起，启动脚本会探测文件系统的「重命名身份」能力。exFAT/FAT32 没有稳定 inode，OpenClaw 的一次性依赖生命周期补全在这种盘上会写入失败并拒绝启动；脚本会自动跳过这一步并提示 `File system: exFAT/FAT32 - skipped dependency lifecycle completion.`（发行包本身用 `--ignore-scripts` 安装并打了验证补丁，跳过不影响启动）。NTFS 保持完整补全。
+>
 > 两种格式的实测差异（v2.1.20，真机验证）：
 >
 > | | exFAT / FAT32 | NTFS |

@@ -319,6 +319,15 @@ echo ""
 "$NODE_BIN" "$UCLAW_DIR/lib/clean-stale-lock.mjs" "$CONFIG_FILE" || true
 "$NODE_BIN" "$UCLAW_DIR/lib/official-provider-guard.mjs" "$CONFIG_FILE" 2>/dev/null || true
 
+# exFAT/FAT32 无法完成 OpenClaw 的一次性 package-lifecycle 发布（inode 恒为 0，
+# 身份校验失败 -> EIO），OpenClaw 会报 "package lifecycle is incomplete" 拒绝启动。
+# 本发行版用 --ignore-scripts 安装并打好验证补丁，这类盘上直接清掉 pending 标记；
+# NTFS/APFS 保持原有完整补全行为。
+LIFECYCLE_STATUS="$("$NODE_BIN" "$UCLAW_DIR/lib/skip-package-lifecycle.mjs" "$CORE_DIR" 2>/dev/null | sed -n 's/^UCLAW_LIFECYCLE=//p')" || true
+if [ "$LIFECYCLE_STATUS" = "skipped-unstable-rename-identity" ]; then
+  echo -e "  ${YELLOW}File system: exFAT/FAT32 - skipped dependency lifecycle completion.${NC}"
+fi
+
 cd "$CORE_DIR"
 OPENCLAW_MJS="$CORE_DIR/node_modules/openclaw/openclaw.mjs"
 "$NODE_BIN" "$OPENCLAW_MJS" gateway run --allow-unconfigured --port $PORT &
