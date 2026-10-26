@@ -232,13 +232,13 @@
           "text": "有免费"
         }
       ],
-      "desc": "Llama 3.3 70B，超高速推理",
+      "desc": "GPT-OSS 120B，超高速推理",
       "base": "https://api.groq.com/openai/v1",
       "models": [
-        "llama-3.3-70b-versatile",
-        "llama-3.1-8b-instant"
+        "openai/gpt-oss-120b",
+        "openai/gpt-oss-20b"
       ],
-      "recommended": "llama-3.3-70b-versatile",
+      "recommended": "openai/gpt-oss-120b",
       "link": "https://console.groq.com/",
       "linkLabel": "获取 API Key",
       "verified": "vendor-docs"

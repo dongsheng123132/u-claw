@@ -234,7 +234,7 @@
     {
       "id": "groq",
       "baseUrl": "https://api.groq.com/openai/v1",
-      "model": "llama-3.3-70b-versatile",
+      "model": "openai/gpt-oss-120b",
       "title": "Groq",
       "tags": [
         {
@@ -246,13 +246,13 @@
           "text": "有免费"
         }
       ],
-      "desc": "Llama 3.3 70B，超高速推理",
+      "desc": "GPT-OSS 120B，超高速推理",
       "link": "https://console.groq.com/",
       "verified": "vendor-docs",
       "note": "Groq 官方文档仍列为 production model",
       "models": [
-        "llama-3.3-70b-versatile",
-        "llama-3.1-8b-instant"
+        "openai/gpt-oss-120b",
+        "openai/gpt-oss-20b"
       ]
     },
     {
