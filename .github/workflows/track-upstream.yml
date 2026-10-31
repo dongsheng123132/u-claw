@@ -50,7 +50,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '24.16.0'
+          node-version: '24.22.1'
 
       - name: Resolve upstream OpenClaw version
         id: upstream
@@ -157,7 +157,7 @@ jobs:
         if: steps.decide.outputs.changed == 'true'
         run: |
           latest="${{ steps.upstream.outputs.latest }}"
-          for patch in portable/lib/patch-managed-browser-root.mjs portable/lib/patch-device-pairing-retry.mjs portable/lib/patch-control-ui-channels.mjs portable/lib/patch-portable-filesystem.mjs; do
+          for patch in portable/lib/patch-managed-browser-root.mjs portable/lib/patch-device-pairing-retry.mjs portable/lib/patch-portable-filesystem.mjs; do
             expected=$(sed -n "s/^const EXPECTED_VERSION = '\([^']*\)';/\1/p" "$patch")
             if [ "$expected" != "$latest" ]; then
               echo "::error::$patch has not been reviewed for OpenClaw $latest; stopping before changing the pin."

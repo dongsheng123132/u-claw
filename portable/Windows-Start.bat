@@ -294,6 +294,15 @@ REM owning process is gone (or corrupt) are removed; a live instance is left alo
 "%NODE_BIN%" "%UCLAW_DIR%lib\clean-stale-lock.mjs" "%OPENCLAW_CONFIG_PATH%"
 "%NODE_BIN%" "%UCLAW_DIR%lib\official-provider-guard.mjs" "%OPENCLAW_CONFIG_PATH%" 2>nul
 
+REM Upgrade copied legacy agent databases with the official doctor before the
+REM Gateway opens them. A failed migration keeps the backup and stops startup.
+"%NODE_BIN%" "%UCLAW_DIR%lib\upgrade-session-schema.mjs" "%UCLAW_DIR%."
+if errorlevel 1 (
+    echo   Legacy session database upgrade failed. Backup retained under data\backups.
+    pause
+    exit /b 1
+)
+
 REM exFAT/FAT32 cannot complete OpenClaw's one-time package-lifecycle publish
 REM (inode identity is unavailable -> EIO), and OpenClaw then refuses to start
 REM with "package lifecycle is incomplete". This release installs with

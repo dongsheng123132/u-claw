@@ -5,8 +5,10 @@ import { pathToFileURL } from 'node:url';
 export function supportsNode(version) {
   const match = String(version).match(/^v?(\d+)\.(\d+)\.(\d+)/);
   if (!match) return false;
-  const [, major, minor] = match.map(Number);
-  return (major === 24 && minor >= 16) || major > 26 || (major === 26 && minor >= 1);
+  const [, major, minor, patch] = match.map(Number);
+  if (major === 24) return minor > 22 || (minor === 22 && patch >= 1);
+  if (major === 26) return minor > 12 || (minor === 12 && patch >= 1);
+  return major > 26;
 }
 
 export function needsSetup(root, nodeVersion = process.version, platform = `${process.platform}-${process.arch}`) {

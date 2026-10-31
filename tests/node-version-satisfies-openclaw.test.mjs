@@ -114,11 +114,12 @@ test('satisfies() 自身可信（这是本文件其余断言的地基）', () =>
   assert.equal(satisfies('v24.15.0', RANGE), true);
   assert.equal(satisfies('v24.14.9', RANGE), false);
   assert.equal(satisfies('v22.19.0', '>=22.19.0'), true, '老 openclaw 的宽松写法');
-  const latestRange = '>=24.16.0 <25 || >=26.1.0';
-  assert.equal(satisfies('v24.16.0', latestRange), true);
+  const latestRange = '>=24.22.1 <25 || >=26.12.1';
+  assert.equal(satisfies('v24.22.1', latestRange), true);
+  assert.equal(satisfies('v24.22.0', latestRange), false);
   assert.equal(satisfies('v22.22.3', latestRange), false);
   assert.equal(satisfies('v25.0.0', latestRange), false);
-  assert.equal(satisfies('v26.1.0', latestRange), true);
+  assert.equal(satisfies('v26.12.1', latestRange), true);
 });
 
 test('所有脚本 pin 的 Node 版本必须完全一致（防 8 份副本各漂各的）', () => {

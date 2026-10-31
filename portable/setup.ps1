@@ -6,7 +6,7 @@ $coreDir = Join-Path $appDir "core"
 $runtimeDir = Join-Path $appDir "runtime"
 $mirror = "https://registry.npmmirror.com"
 $nodeMirror = "https://npmmirror.com/mirrors/node"
-$nodeVersion = "v24.16.0"
+$nodeVersion = "v24.22.1"
 
 function Ensure-Directory([string]$Path) {
     if (-not (Test-Path -LiteralPath $Path -PathType Container)) {
@@ -126,17 +126,15 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "Managed browser vendor patch failed." }
     & $nodeExe (Join-Path $scriptDir "lib/patch-device-pairing-retry.mjs") $coreDir
     if ($LASTEXITCODE -ne 0) { throw "Pairing retry vendor patch failed." }
-    & $nodeExe (Join-Path $scriptDir "lib/patch-control-ui-channels.mjs") $coreDir
-    if ($LASTEXITCODE -ne 0) { throw "Channels Control UI vendor patch failed." }
     & $nodeExe (Join-Path $scriptDir "lib/patch-portable-filesystem.mjs") $coreDir
     if ($LASTEXITCODE -ne 0) { throw "Portable filesystem vendor patch failed." }
-    & $nodeExe --check (Join-Path $coreDir "node_modules/openclaw/dist/chrome-D7PwFEoa.mjs")
+    & $nodeExe --check (Join-Path $coreDir "node_modules/openclaw/dist/chrome-IDR7c0-o.mjs")
     if ($LASTEXITCODE -ne 0) { throw "Managed browser syntax verification failed." }
     & $nodeExe --check (Join-Path $coreDir "node_modules/@openclaw/fs-safe/dist/replace-file.js")
     if ($LASTEXITCODE -ne 0) { throw "Pairing retry syntax verification failed." }
-    & $nodeExe --check (Join-Path $coreDir "node_modules/openclaw/dist/openclaw-cli-shim-I4WwJOH3.mjs")
+    & $nodeExe --check (Join-Path $coreDir "node_modules/openclaw/dist/openclaw-cli-shim-LRKaYTVB.mjs")
     if ($LASTEXITCODE -ne 0) { throw "Agent CLI shim syntax verification failed." }
-    & $nodeExe --check (Join-Path $coreDir "node_modules/openclaw/dist/diagnostic-stability-bundle-vmtXgIWw.mjs")
+    & $nodeExe --check (Join-Path $coreDir "node_modules/openclaw/dist/diagnostic-stability-bundle-DcoVIIR7.mjs")
     if ($LASTEXITCODE -ne 0) { throw "Stability bundle syntax verification failed." }
     $runtimePlatform = & $nodeExe -p '[process.platform,process.arch].join(String.fromCharCode(45))'
     if ($LASTEXITCODE -ne 0 -or "$runtimePlatform".Trim() -ne "win32-x64") { throw "Runtime platform detection failed: $runtimePlatform" }

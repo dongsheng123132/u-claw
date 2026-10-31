@@ -1,11 +1,11 @@
-// Applies the narrowly-scoped U-Claw vendor patch for OpenClaw 2026.10.2.
+// Applies the narrowly-scoped U-Claw vendor patch for OpenClaw 2026.10.9.
 // This must fail closed: an upstream bundle change is never silently patched.
 import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-const EXPECTED_VERSION = '2026.10.2';
-const EXPECTED_SHA256 = 'c4094fe47e119358c1ed76ca5b15293a6694848cd25d912ed810b1bdf74d5578';
+const EXPECTED_VERSION = '2026.10.9';
+const EXPECTED_SHA256 = '734c028a328f170df098e3d9b22f566fc6a13ec8bc59eacec56db6af5ec47a7e';
 const OLD = 'return path.join(CONFIG_DIR, "browser", profileName, "user-data");';
 const NEXT = 'return path.join(process.env.OPENCLAW_MANAGED_BROWSER_DIR?.trim() || path.join(CONFIG_DIR, "browser"), profileName, "user-data");';
 
@@ -20,7 +20,7 @@ if (packageJson.version !== EXPECTED_VERSION) {
   throw new Error(`Refuse browser patch: expected OpenClaw ${EXPECTED_VERSION}, got ${packageJson.version}`);
 }
 
-const bundlePath = resolve(coreDir, 'node_modules/openclaw/dist/chrome-D7PwFEoa.mjs');
+const bundlePath = resolve(coreDir, 'node_modules/openclaw/dist/chrome-IDR7c0-o.mjs');
 const source = readFileSync(bundlePath, 'utf8');
 // Setup also checks existing installations. Only accept the exact reviewed output.
 if (sha256(source.replace(NEXT, OLD)) === EXPECTED_SHA256 && source.split(NEXT).length - 1 === 1) {

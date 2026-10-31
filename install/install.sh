@@ -3,7 +3,7 @@
 # Usage: curl -fsSL https://u-claw.org/install.sh | bash
 set -euo pipefail
 
-NODE_VERSION="v24.16.0"
+NODE_VERSION="v24.22.1"
 SOURCE_URL="https://codeload.github.com/dongsheng123132/u-claw/tar.gz/refs/heads/main"
 OS="$(uname -s)"
 ARCH="$(uname -m)"

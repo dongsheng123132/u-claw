@@ -1,7 +1,7 @@
 # U-Claw online installation reuses the complete portable installer.
 # Usage: irm https://u-claw.org/install.ps1 | iex
 $ErrorActionPreference = 'Stop'
-$NODE_VERSION = "v24.16.0"
+$NODE_VERSION = "v24.22.1"
 $SourceUrl = 'https://codeload.github.com/dongsheng123132/u-claw/zip/refs/heads/main'
 Set-ExecutionPolicy Bypass -Scope Process -Force -ErrorAction SilentlyContinue
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12

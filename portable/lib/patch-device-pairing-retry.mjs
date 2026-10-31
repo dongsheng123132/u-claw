@@ -1,12 +1,12 @@
 // Adds a narrowly-scoped retry for Windows device-pairing state publication.
-// OpenClaw 2026.10.2 uses fs-safe 0.24.2's shared async/sync rename generator.
+// OpenClaw 2026.10.9 uses fs-safe 0.26.0's shared async/sync rename generator.
 // Reviewed input and reviewed output are the only accepted files.
 import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-const EXPECTED_VERSION = '2026.10.2';
-const EXPECTED_FS_SAFE_VERSION = '0.24.2';
+const EXPECTED_VERSION = '2026.10.9';
+const EXPECTED_FS_SAFE_VERSION = '0.26.0';
 const EXPECTED_SHA256 = 'b02256c407103a8f91c99ea01140f05f5b810c747eddfbec6622522f6ac86d7c';
 const BUNDLE = 'node_modules/@openclaw/fs-safe/dist/replace-file.js';
 const REPLACEMENTS = [

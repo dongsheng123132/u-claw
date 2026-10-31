@@ -61,17 +61,15 @@ test('vendor patch 与 OpenClaw pin 版本一致', () => {
     'patch1 锚定版本必须与 OPENCLAW_VERSION 一致');
   assert.match(pairingPatch, new RegExp(`EXPECTED_VERSION = '${pin.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}'`),
     'patch2 锚定版本必须与 OPENCLAW_VERSION 一致');
-  const uiPatch = read('portable', 'lib', 'patch-control-ui-channels.mjs');
-  assert.ok(uiPatch.includes(`EXPECTED_VERSION = '${pin}'`), 'UI patch 锚定版本必须与 OPENCLAW_VERSION 一致');
   const filesystemPatch = read('portable', 'lib', 'patch-portable-filesystem.mjs');
   assert.ok(filesystemPatch.includes(`EXPECTED_VERSION = '${pin}'`), 'filesystem patch 锚定版本必须与 OPENCLAW_VERSION 一致');
 });
 
-test('filesystem patch is mandatory after UI patch on every install path and before an upstream bump', () => {
+test('filesystem patch is mandatory on every install path and before an upstream bump', () => {
   const helper = 'patch-portable-filesystem.mjs';
   for (const file of ['portable/setup.sh', 'portable/setup.ps1', '.github/workflows/release.yml']) {
     const source = read(file);
-    assert.ok(source.indexOf(helper) > source.indexOf('patch-control-ui-channels.mjs'), `${file}: filesystem patch must run after UI patch`);
+    assert.ok(source.includes(helper), `${file}: filesystem patch must run`);
   }
   const powershell = read('portable/setup.ps1');
   assert.match(powershell, /patch-portable-filesystem\.mjs"\) \$coreDir\s+if \(\$LASTEXITCODE -ne 0\)/, 'Windows must fail when the helper is missing or rejects the vendor input');

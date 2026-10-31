@@ -78,7 +78,7 @@ U-Claw（虾盘）是一个**制作教程 + 全套源代码**，教你把 [OpenC
 
 ### 模型：虾盘云默认，也能填自己的 Key
 
-本版使用 OpenClaw 2026.10.2 和 Node.js 24.16.0。默认走虾盘云 `deepseek-v4-flash`：钱包接入原生 WebUI，领取或恢复密钥后自动配置默认模型；启动不会自动领钱包，已有钱包可以继续使用和一键充值。想用自己的模型也行——首次启动的配置页可以直接选 DeepSeek / Kimi / 智谱 GLM / 通义 / 豆包 / MiniMax / OpenAI / Claude / Groq / 硅基流动，或选「自定义 · OpenAI 兼容」填 API 地址、模型 ID 和 Key。配置与钱包状态保存在 U 盘 `data/.openclaw/`。
+本版使用 OpenClaw 2026.10.9 和 Node.js 24.22.1。默认走虾盘云 `deepseek-v4-flash`：钱包接入原生 WebUI，领取或恢复密钥后自动配置默认模型；启动不会自动领钱包，已有钱包可以继续使用和一键充值。想用自己的模型也行——首次启动的配置页可以直接选 DeepSeek / Kimi / 智谱 GLM / 通义 / 豆包 / MiniMax / OpenAI / Claude / Groq / 硅基流动，或选「自定义 · OpenAI 兼容」填 API 地址、模型 ID 和 Key。配置与钱包状态保存在 U 盘 `data/.openclaw/`。
 
 首次在 Mac 运行或同盘更换操作系统时，setup 会联网准备当前平台依赖；Windows 完整包已准备好 Windows 依赖。
 
@@ -313,7 +313,7 @@ bash setup.sh
 ```
 
 **Q: Mac 上提示 `.toSorted is not a function`？**
-系统旧版 Node.js 被检测到并跳过了内置版本下载，但旧版 Node 不支持 `.toSorted()`（需要 v20+）。重新运行 setup 升级到内置 Node 24.16.0：
+系统旧版 Node.js 被检测到并跳过了内置版本下载，但旧版 Node 不支持 `.toSorted()`（需要 v20+）。重新运行 setup 升级到内置 Node 24.22.1：
 ```bash
 rm -rf portable/app/runtime/node-mac-arm64
 bash setup.sh
@@ -513,7 +513,7 @@ Based on Ventoy + Ubuntu 24.04 LTS + persistence. 4-step PowerShell scripts on W
 
 ### Model and interface
 
-This edition uses OpenClaw 2026.10.2 with Node.js 24.16.0 and defaults to the Xiapan Cloud model `deepseek-v4-flash` (device wallet + recharge inside the native WebUI). **Bring your own API key too**: the setup page lists DeepSeek / Kimi / Zhipu GLM / Qwen / Doubao / MiniMax / OpenAI / Claude / Groq / SiliconFlow, plus a "Custom · OpenAI compatible" card for any base URL + model + key. Channel connection entries and extra messaging plugins have been removed. The first launch on another operating system prepares its native dependencies through setup.
+This edition uses OpenClaw 2026.10.9 with Node.js 24.22.1 and defaults to the Xiapan Cloud model `deepseek-v4-flash` (device wallet + recharge inside the native WebUI). **Bring your own API key too**: the setup page lists DeepSeek / Kimi / Zhipu GLM / Qwen / Doubao / MiniMax / OpenAI / Claude / Groq / SiliconFlow, plus a "Custom · OpenAI compatible" card for any base URL + model + key. The first launch on another operating system prepares its native dependencies through setup.
 
 A **`lite-windows-x64/`** folder is bundled inside the Windows package: the ~45 MB Go-native Xiapan USB Genie lite build (no Node/OpenClaw needed). Double-click `虾盘.exe`; it supports any OpenAI-compatible key plus local maintenance actions (system check, network check, startup items). Use it on old PCs or slow USB sticks.
 

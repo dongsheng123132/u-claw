@@ -39,7 +39,7 @@ jobs:
           # Absolute paths so `cd "$core_dir"` later doesn't break `du`/`find`
           stage_dir="$(pwd)/dist/u-claw-portable-windows-${tag_name}"
           openclaw_version=$(tr -d '[:space:]' < OPENCLAW_VERSION)
-          node_version="v24.16.0"
+          node_version="v24.22.1"
           mirror_node="https://npmmirror.com/mirrors/node"
           mirror_npm="https://registry.npmmirror.com"
 
@@ -96,12 +96,11 @@ jobs:
           # so apply a fail-closed vendor patch that adds a browser-only local root.
           node "$GITHUB_WORKSPACE/portable/lib/patch-managed-browser-root.mjs" "$core_dir"
           node "$GITHUB_WORKSPACE/portable/lib/patch-device-pairing-retry.mjs" "$core_dir"
-          node "$GITHUB_WORKSPACE/portable/lib/patch-control-ui-channels.mjs" "$core_dir"
           node "$GITHUB_WORKSPACE/portable/lib/patch-portable-filesystem.mjs" "$core_dir"
-          node --check "$core_dir/node_modules/openclaw/dist/chrome-D7PwFEoa.mjs"
+          node --check "$core_dir/node_modules/openclaw/dist/chrome-IDR7c0-o.mjs"
           node --check "$core_dir/node_modules/@openclaw/fs-safe/dist/replace-file.js"
-          node --check "$core_dir/node_modules/openclaw/dist/openclaw-cli-shim-I4WwJOH3.mjs"
-          node --check "$core_dir/node_modules/openclaw/dist/diagnostic-stability-bundle-vmtXgIWw.mjs"
+          node --check "$core_dir/node_modules/openclaw/dist/openclaw-cli-shim-LRKaYTVB.mjs"
+          node --check "$core_dir/node_modules/openclaw/dist/diagnostic-stability-bundle-DcoVIIR7.mjs"
           printf '%s\n' 'win32-x64' > "$core_dir/.uclaw-runtime-platform"
           # 回到 repo 根：后续步骤（test suite / normalize / zip）都用相对路径，
           # 这个 step 把 cwd 留在 core/ 的话，"cd dist" 会报 No such file or directory
@@ -162,7 +161,7 @@ jobs:
             echo "::error::产物里找不到内置 Node：$bundled_node"
             exit 1
           fi
-          node_version="v24.16.0"   # 与 Pre-install 步骤保持一致
+          node_version="v24.22.1"   # 与 Pre-install 步骤保持一致
 
           engines=$(node -p "JSON.parse(require('fs').readFileSync('$pkg','utf8')).engines.node")
           openclaw_version=$(node -p "JSON.parse(require('fs').readFileSync('$pkg','utf8')).version")

@@ -18,7 +18,7 @@ const root = fileURLToPath(new URL('..', import.meta.url));
 const officialManifestModule = process.env.OPENCLAW_MANIFEST_MODULE || join(root,
   '.download-cache/smoke-windows/app/core/node_modules/openclaw/dist/manifest-BXjFCp0F.mjs');
 const officialRegistryModule = join(dirname(officialManifestModule), 'registry-854ZO8XT.mjs');
-test('真实 OpenClaw 2026.10.2 manifest parser 接受钱包 dist 资产并拒绝旧根目录布局',
+test('真实 OpenClaw 2026.10.9 manifest parser 接受钱包 dist 资产并拒绝旧根目录布局',
   { skip: !existsSync(officialManifestModule) && 'official runtime is not installed in this source checkout' }, async () => {
     const { r: loadPluginManifest } = await import(pathToFileURL(officialManifestModule).href);
     const source = join(root, 'portable/extensions/uclaw-wallet');

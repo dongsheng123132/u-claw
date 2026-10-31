@@ -6,22 +6,22 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const EXPECTED_VERSION = '2026.10.2';
-const EXPECTED_FS_SAFE_VERSION = '0.24.2';
+const EXPECTED_VERSION = '2026.10.9';
+const EXPECTED_FS_SAFE_VERSION = '0.26.0';
 const SHIM_ORIGINAL = '\tawait writeTextAtomic(executablePath, content, {\n\t\tmode: 448,\n\t\tdirMode: 448,\n\t\tdurable: false,\n\t\ttempPrefix: "openclaw-agent-cli"\n\t});';
 const SHIM_COMPATIBLE = '\tif (process.platform === "win32" && process.env.OPENCLAW_PORTABLE_RENAME_IDENTITY === "verify-content-with-lock") {\n\t\treplaceFileAtomicSync({\n\t\t\tfilePath: executablePath,\n\t\t\tcontent,\n\t\t\tmode: 448,\n\t\t\tdirMode: 448,\n\t\t\tcopyFallbackOnPermissionError: true,\n\t\t\tsyncTempFile: false,\n\t\t\tsyncParentDir: false,\n\t\t\ttempPrefix: "openclaw-agent-cli",\n\t\t\trenameIdentity: "verify-content-with-lock"\n\t\t});\n\t} else {\n\t\tawait writeTextAtomic(executablePath, content, {\n\t\t\tmode: 448,\n\t\t\tdirMode: 448,\n\t\t\tdurable: false,\n\t\t\ttempPrefix: "openclaw-agent-cli"\n\t\t});\n\t}';
 const TARGETS = [
   {
-    bundle: 'node_modules/openclaw/dist/openclaw-cli-shim-I4WwJOH3.mjs',
-    sha256: 'b2cfd55f263e3923fa0639b84dd166490b2ed74573d405bc482bf900cb72f98a',
+    bundle: 'node_modules/openclaw/dist/openclaw-cli-shim-LRKaYTVB.mjs',
+    sha256: '179ff9c3cbf15177bbd436846d991ef356824cf5773e1ace51fa6601d44672e8',
     replacements: [
       ['import fs from "node:fs/promises";', 'import fs from "node:fs/promises";\nimport { replaceFileAtomicSync } from "@openclaw/fs-safe/atomic";'],
       [SHIM_ORIGINAL, SHIM_COMPATIBLE],
     ],
   },
   {
-    bundle: 'node_modules/openclaw/dist/diagnostic-stability-bundle-vmtXgIWw.mjs',
-    sha256: 'a8e8b62d00016687b2326b168b68623294e00a3d1ff272a54555304487285e4d',
+    bundle: 'node_modules/openclaw/dist/diagnostic-stability-bundle-DcoVIIR7.mjs',
+    sha256: '6aad9944caca8a64569d52ee835a1a21b85dd8caf99067ddb384183783a7ff4a',
     replacements: [
       ['\t\t\ttempPrefix: ".openclaw-stability"', '\t\t\ttempPrefix: ".openclaw-stability",\n\t\t\trenameIdentity: process.platform === "win32" && process.env.OPENCLAW_PORTABLE_RENAME_IDENTITY === "verify-content-with-lock" ? "verify-content-with-lock" : "strict"'],
     ],

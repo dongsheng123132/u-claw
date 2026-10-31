@@ -9,8 +9,8 @@ import { patchPortableFilesystem } from '../portable/lib/patch-portable-filesyst
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const core = process.env.UCLAW_TEST_CORE_DIR || path.join(repo, '.download-cache/smoke-windows/app/core');
 const available = fs.existsSync(path.join(core, 'node_modules/openclaw/package.json'));
-const shimName = 'openclaw-cli-shim-I4WwJOH3.mjs';
-const stabilityName = 'diagnostic-stability-bundle-vmtXgIWw.mjs';
+const shimName = 'openclaw-cli-shim-LRKaYTVB.mjs';
+const stabilityName = 'diagnostic-stability-bundle-DcoVIIR7.mjs';
 const dist = path.join(core, 'node_modules/openclaw/dist');
 const guards = ['strict-file-identity.js', 'root-file-final-admission.js'];
 const dataModule = source => `data:text/javascript;base64,${Buffer.from(source).toString('base64')}`;
@@ -112,7 +112,7 @@ test('reviewed shim and stability modules opt in only on Windows with exact veri
       const loaded = importVendorModule(shim, { platform, flag, calls });
       try {
         const api = await loaded.module;
-        await api.r({ stateDir: path.join(f.scratch, `${platform}-${expected}-${flag ?? 'unset'}`), env: {}, platform: 'win32', invocation: { command: 'fixture-node', args: ['fixture-openclaw.mjs'] } });
+        await api.i({ stateDir: path.join(f.scratch, `${platform}-${expected}-${flag ?? 'unset'}`), env: {}, platform: 'win32', invocation: { command: 'fixture-node', args: ['fixture-openclaw.mjs'] } });
         assert.equal(calls.length, 1);
         assert.equal(calls[0].api, expected);
         const call = calls[0];
@@ -138,7 +138,7 @@ test('reviewed shim and stability modules opt in only on Windows with exact veri
       const loaded = importVendorModule(stability, { platform, flag, calls });
       try {
         const api = await loaded.module;
-        const result = api.c({ stateDir: f.scratch, reason: 'fixture.failure', includeEmpty: true, error: new Error('fixture error'), now: new Date('2026-10-13T00:00:00Z') });
+        const result = api.s('fixture.failure', new Error('fixture error'), { stateDir: f.scratch, includeEmpty: true, now: new Date('2026-10-13T00:00:00Z') });
         assert.equal(result.status, 'written', String(result.error));
         assert.equal(calls.length, 1);
         assert.equal(calls[0].options.renameIdentity, expected);

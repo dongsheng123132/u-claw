@@ -6,7 +6,7 @@ set -e
 UCLAW_DIR="$(cd "$(dirname "$0")" && pwd)"
 APP_DIR="$UCLAW_DIR/app"
 INSTALL_TARGET="$HOME/.uclaw"
-NODE_VER="v24.16.0"
+NODE_VER="v24.22.1"
 
 GREEN='\033[0;32m'
 CYAN='\033[0;36m'

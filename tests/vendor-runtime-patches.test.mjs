@@ -17,7 +17,7 @@ test('reviewed vendor patches preserve pairing files through transient rename er
   const fixture = join(scratch, 'core');
   fs.mkdirSync(join(fixture, 'node_modules/openclaw/dist'), { recursive: true });
   fs.copyFileSync(join(core, 'node_modules/openclaw/package.json'), join(fixture, 'node_modules/openclaw/package.json'));
-  fs.copyFileSync(join(core, 'node_modules/openclaw/dist/chrome-D7PwFEoa.mjs'), join(fixture, 'node_modules/openclaw/dist/chrome-D7PwFEoa.mjs'));
+  fs.copyFileSync(join(core, 'node_modules/openclaw/dist/chrome-IDR7c0-o.mjs'), join(fixture, 'node_modules/openclaw/dist/chrome-IDR7c0-o.mjs'));
   copyDirSync(join(core, 'node_modules/@openclaw/fs-safe'), join(fixture, 'node_modules/@openclaw/fs-safe'));
   const runPatch = name => spawnSync(process.execPath, [join(root, 'portable/lib', name), fixture], { encoding: 'utf8', timeout: 10000 });
   for (const patch of ['patch-managed-browser-root.mjs', 'patch-device-pairing-retry.mjs']) {
@@ -61,7 +61,7 @@ test('reviewed vendor patches preserve pairing files through transient rename er
     assert.equal(attempts, 1);
   });
   await t.test('unexpected input is refused without a write', () => {
-    const bundle = join(fixture, 'node_modules/openclaw/dist/chrome-D7PwFEoa.mjs');
+    const bundle = join(fixture, 'node_modules/openclaw/dist/chrome-IDR7c0-o.mjs');
     fs.appendFileSync(bundle, '\n// unreviewed drift\n');
     const before = fs.readFileSync(bundle, 'utf8');
     const result = runPatch('patch-managed-browser-root.mjs');

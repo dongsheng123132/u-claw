@@ -13,7 +13,7 @@ CORE_DIR="$APP_DIR/core"
 RUNTIME_DIR="$APP_DIR/runtime"
 MIRROR="https://registry.npmmirror.com"
 NODE_MIRROR="https://npmmirror.com/mirrors/node"
-NODE_VERSION="v24.16.0"
+NODE_VERSION="v24.22.1"
 ALL_PLATFORMS=false
 [ "${1:-}" = "--all-platforms" ] && ALL_PLATFORMS=true
 
@@ -195,12 +195,11 @@ ACTUAL_VERSION=$("$NODE_BIN" -p 'require(process.argv[1]).version' "$CORE_DIR/no
 # instead of silently producing a partially portable installation.
 "$NODE_BIN" "$SCRIPT_DIR/lib/patch-managed-browser-root.mjs" "$CORE_DIR"
 "$NODE_BIN" "$SCRIPT_DIR/lib/patch-device-pairing-retry.mjs" "$CORE_DIR"
-"$NODE_BIN" "$SCRIPT_DIR/lib/patch-control-ui-channels.mjs" "$CORE_DIR"
 "$NODE_BIN" "$SCRIPT_DIR/lib/patch-portable-filesystem.mjs" "$CORE_DIR"
-"$NODE_BIN" --check "$CORE_DIR/node_modules/openclaw/dist/chrome-D7PwFEoa.mjs"
+"$NODE_BIN" --check "$CORE_DIR/node_modules/openclaw/dist/chrome-IDR7c0-o.mjs"
 "$NODE_BIN" --check "$CORE_DIR/node_modules/@openclaw/fs-safe/dist/replace-file.js"
-"$NODE_BIN" --check "$CORE_DIR/node_modules/openclaw/dist/openclaw-cli-shim-I4WwJOH3.mjs"
-"$NODE_BIN" --check "$CORE_DIR/node_modules/openclaw/dist/diagnostic-stability-bundle-vmtXgIWw.mjs"
+"$NODE_BIN" --check "$CORE_DIR/node_modules/openclaw/dist/openclaw-cli-shim-LRKaYTVB.mjs"
+"$NODE_BIN" --check "$CORE_DIR/node_modules/openclaw/dist/diagnostic-stability-bundle-DcoVIIR7.mjs"
 "$NODE_BIN" --input-type=module - "$CORE_DIR/.uclaw-runtime-platform" <<'WRITE_PLATFORM'
 import { writeFileSync, renameSync } from 'node:fs';
 const target = process.argv[2];

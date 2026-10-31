@@ -319,6 +319,14 @@ echo ""
 "$NODE_BIN" "$UCLAW_DIR/lib/clean-stale-lock.mjs" "$CONFIG_FILE" || true
 "$NODE_BIN" "$UCLAW_DIR/lib/official-provider-guard.mjs" "$CONFIG_FILE" 2>/dev/null || true
 
+# 升级老盘时，先让 OpenClaw 官方 doctor 把 agent 数据库迁到当前 schema；
+# 迁不动就停在启动前并保留备份，绝不带着旧库进 Gateway。
+"$NODE_BIN" "$UCLAW_DIR/lib/upgrade-session-schema.mjs" "$UCLAW_DIR"
+if [ $? -ne 0 ]; then
+  echo -e "  ${RED}旧会话数据库升级失败，已保留备份。请查看 data/logs/session-upgrade.log。${NC}"
+  exit 1
+fi
+
 # exFAT/FAT32 无法完成 OpenClaw 的一次性 package-lifecycle 发布（inode 恒为 0，
 # 身份校验失败 -> EIO），OpenClaw 会报 "package lifecycle is incomplete" 拒绝启动。
 # 本发行版用 --ignore-scripts 安装并打好验证补丁，这类盘上直接清掉 pending 标记；
