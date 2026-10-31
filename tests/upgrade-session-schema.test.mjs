@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {DatabaseSync} from 'node:sqlite';
 import {mkdtemp, mkdir, readFile, rm, writeFile, readdir} from 'node:fs/promises';
+import {existsSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {inspectAgentSchemas,upgradeSessionSchema} from '../portable/lib/upgrade-session-schema.mjs';
@@ -44,6 +45,27 @@ test('migration backs up committed SQLite and config before doctor, then checks 
   });
   assert.equal(result.upgraded,true);
   assert.equal((await inspectAgentSchemas(state))[0].version,25);
+});
+test('legacy JSONL sessions trigger doctor and write a completion marker',async t=>{
+  const root=await mkdtemp(join(tmpdir(),'uclaw-legacy-'));
+  t.after(()=>rm(root,{recursive:true,force:true}));
+  const state=join(root,'data/.openclaw'), sessions=join(state,'agents/main/sessions');
+  await mkdir(sessions,{recursive:true});
+  await writeFile(join(state,'openclaw.json'),'{"gateway":{"mode":"local"}}');
+  await writeFile(join(sessions,'legacy.jsonl'),'{"role":"user"}\n');
+  let calls=0;
+  const result=await upgradeSessionSchema(root,async()=>{
+    calls++;
+    const agent=join(state,'agents/main/agent');
+    await mkdir(agent,{recursive:true});
+    const db=new DatabaseSync(join(agent,'openclaw-agent.sqlite'));
+    db.exec('PRAGMA user_version=25;');db.close();
+    await rm(sessions,{recursive:true,force:true});
+  });
+  assert.equal(calls,1);
+  assert.equal(result.upgraded,true);
+  assert.equal(existsSync(join(state,'.uclaw-schema-v25')),true);
+  assert.deepEqual(await upgradeSessionSchema(root,()=>assert.fail('doctor called again')),{upgraded:false});
 });
 test('failed or incomplete doctor never reports success and retains backup',async t=>{
   const {root}=await fixture(t,19);

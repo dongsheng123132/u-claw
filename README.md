@@ -62,6 +62,14 @@
 > *U-Claw 让 AI 住进 U 盘；U-King 帮你把全套 AI 编程神器装进电脑。*
 > *EN: U-King — one-click installer for Claude Code / Codex / OpenClaw, with one API key for 24+ global models → [u-king.org](https://www.u-king.org)*
 
+> [!TIP]
+> ### 🪶 需要更轻？用虾盘 AI 优盘精灵（独立产品）
+> 老电脑、低速 U 盘、只想秒开聊天和做系统维护？用同作者的 **虾盘 AI 优盘精灵**：Windows 原生、约 44 MB、PicoClaw 内核，不装 Node / OpenClaw，插盘双击 `虾盘.exe` 即用。它和 U-Claw 是两个独立产品：要完整 OpenClaw 能力用 U-Claw，要轻量随身用优盘精灵。
+>
+> **源码与下载：[github.com/dongsheng123132/xiapan-usb](https://github.com/dongsheng123132/xiapan-usb)**
+>
+> *EN: Need something lighter? Use Xiapan AI USB Genie — a standalone ~44 MB native Windows app (PicoClaw, no Node/OpenClaw). U-Claw stays the full OpenClaw option → [xiapan-usb](https://github.com/dongsheng123132/xiapan-usb)*
+
 ---
 
 <a id="中文"></a>
@@ -110,9 +118,9 @@ irm https://u-claw.org/install.ps1 | iex
 
 U 盘版的价值是「换台电脑，配置、钱包、会话、记忆跟着走」，而不是「把 AI 运行时塞进 U 盘」。完整便携包是约 620 MB、4.4 万个文件；把它放进 U 盘、每次插上启动，都要付出实打实的 IO 成本。同版本、同机器实测（2026-10-21，Windows 11 x64 / i9-12900H / USB 3.0 exFAT U 盘；单机单盘，不同 U 盘主控差异可能很大）：
 
-| 对比项 | 装电脑（同一个包拷到本机 NVMe） | 完整便携包放 U 盘 | U 盘轻壳（方向） |
+| 对比项 | 装电脑（同一个包拷到本机 NVMe） | 完整便携包放 U 盘 | AI 优盘精灵（独立产品） |
 | --- | --- | --- | --- |
-| 占盘空间 / 文件数 | 620 MB / 4.4 万 | 620 MB / 4.4 万 | **约 9 MB / 几十个** |
+| 占盘空间 / 文件数 | 620 MB / 4.4 万 | 620 MB / 4.4 万 | **约 44 MB / 几十个** |
 | 投盘（复制/解压到盘上） | 15 秒 | **实测 56 分钟**（4.4 万个小文件） | 约 7 秒 |
 | 启动到可用 | 首次 168 秒；之后约 67 秒 | 首次 90 秒¹；之后 67~78 秒 | **0.1 秒** |
 | 启动期间读盘 | 约 145 MB² | 约 69 MB¹ | 约 0.1 MB |
@@ -144,7 +152,7 @@ U 盘版的价值是「换台电脑，配置、钱包、会话、记忆跟着走
 | 别人的电脑上不能装任何东西 | 完整便携包放 U 盘（它就是为这个场景留的） |
 | 老电脑 / 慢 U 盘 | 别在 U 盘上跑 OpenClaw，装电脑版 |
 
-**U 盘轻壳（`u-claw-lite`，开发中）**：U 盘里只放一个几 MB 的原生程序，提供一个本地页面管钱包、模型设置、会话入口和维护工具；电脑上装好 OpenClaw 后一键拉起。**轻壳不内置 OpenClaw**——所以「实在需要 OpenClaw」时，直接在电脑上装电脑版即可，不必从 U 盘引导。当前是预览阶段（只有 WebUI 与服务端动作，不含 OpenClaw 启动与钱包共享），落地后本仓 U 盘版会以它为主形态。
+**轻量需求看独立产品「虾盘 AI 优盘精灵」**：Windows 原生、约 44 MB、PicoClaw 内核，不装 Node / OpenClaw，插盘双击 `虾盘.exe` 即用。它和 U-Claw 是两个独立产品，各自发版、各自升级；U-Claw 继续专注完整 OpenClaw 能力，不再把轻壳塞回本仓。源码与下载：[dongsheng123132/xiapan-usb](https://github.com/dongsheng123132/xiapan-usb)。
 
 > 完整便携包不会删除：它是「免安装、可离线、救急」的形态，继续按现有方式发布。
 
@@ -420,9 +428,9 @@ See [`install/README.md`](install/README.md) for details.
 
 The USB build's value is "your config, wallet, sessions and memory travel with the drive", not "the AI runtime lives on the stick". The full portable package is ~620 MB across ~44,000 small files, and putting it on a USB stick has a real I/O cost. Same build, same machine, one stick (2026-10-21, Windows 11 x64 / i9-12900H / USB 3.0 exFAT; controllers differ, your mileage may vary):
 
-| | On the PC (same package on NVMe SSD) | Full portable package on USB | Light USB shell (roadmap) |
+| | On the PC (same package on NVMe SSD) | Full portable package on USB | AI USB Genie (separate product) |
 | --- | --- | --- | --- |
-| Disk footprint / files | 620 MB / 44k | 620 MB / 44k | **~9 MB / a few dozen** |
+| Disk footprint / files | 620 MB / 44k | 620 MB / 44k | **~44 MB / a few dozen** |
 | Copying it onto the disk | 15 s | **56 min measured** (44k small files) | ~7 s |
 | Startup to usable | 168 s first run; ~67 s after | 90 s first run¹; 67–78 s after | **0.1 s** |
 | Read at startup | ~145 MB² | ~69 MB¹ | ~0.1 MB |
@@ -447,7 +455,7 @@ What we already do: the managed-browser profile, V8 compile cache, npm cache and
 
 **Choose:** everyday use → install on the PC (`irm https://u-claw.org/install.ps1 | iex`, or `install.sh` on macOS/Linux). "I cannot install anything on this computer" → full portable package on USB. Slow PC / slow stick → do not run OpenClaw from USB.
 
-**Light USB shell (`u-claw-lite`, in development):** a few-MB native program on the stick that serves a local page for wallet, model setup, session entry and maintenance tools, and launches the PC-installed OpenClaw. It does **not** bundle OpenClaw — so users who really need OpenClaw should install the desktop version on the computer. Status: preview (WebUI and server actions only; OpenClaw launch and wallet sharing are not integrated yet).
+**Need something lighter? Use the standalone Xiapan AI USB Genie:** a Windows-native ~44 MB app with a PicoClaw kernel. It does **not** install Node or OpenClaw — plug in the drive and double-click `虾盘.exe`. U-Claw and the Genie are two separate products with separate releases; U-Claw stays focused on the full OpenClaw experience. Source and downloads: [dongsheng123132/xiapan-usb](https://github.com/dongsheng123132/xiapan-usb).
 
 ### Quick Start: Build a Portable USB
 

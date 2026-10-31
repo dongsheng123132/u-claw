@@ -9,6 +9,22 @@ import { randomUUID } from 'node:crypto';
 import { spawn } from 'node:child_process';
 
 const SCHEMA_VERSION = 25; // Contract of the pinned OpenClaw 2026.10.9 runtime.
+const COMPLETE_MARKER = `.uclaw-schema-v${SCHEMA_VERSION}`;
+
+async function hasLegacySessions(state) {
+  const base = join(state, 'agents');
+  if (!existsSync(base)) return false;
+  for (const entry of await readdir(base, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const sessions = join(base, entry.name, 'sessions');
+    if (!existsSync(sessions)) continue;
+    for (const file of await readdir(sessions, { withFileTypes: true })) {
+      if (file.isFile() && (file.name.endsWith('.jsonl') || file.name === 'sessions.json')) return true;
+    }
+  }
+  return false;
+}
+
 export async function inspectAgentSchemas(state) {
   const base = join(state, 'agents');
   if (!existsSync(base)) return [];
@@ -47,8 +63,11 @@ async function runDoctor(root, logFile) {
 
 export async function upgradeSessionSchema(root, doctor = runDoctor) {
   const state = join(root, 'data/.openclaw');
+  const marker = join(state, COMPLETE_MARKER);
+  const legacy = await hasLegacySessions(state);
   const schemas = await inspectAgentSchemas(state);
-  if (!schemas.some(item => item.version < SCHEMA_VERSION)) return { upgraded: false };
+  if (existsSync(marker) && !legacy && !schemas.some(item => item.version < SCHEMA_VERSION)) return { upgraded: false };
+  if (!legacy && !schemas.some(item => item.version < SCHEMA_VERSION)) return { upgraded: false };
   const backupDir = join(root, 'data/backups', 'before-core-2026.10.9-' + randomUUID());
   await mkdir(backupDir, { recursive: true });
   await copyFile(join(state, 'openclaw.json'), join(backupDir, 'openclaw.json'));
@@ -66,7 +85,9 @@ export async function upgradeSessionSchema(root, doctor = runDoctor) {
   await mkdir(logs, { recursive: true });
   console.log(`Upgrading saved sessions for OpenClaw 2026.10.9. This can take several minutes. Backup: ${backupDir}`);
   await doctor(root, join(logs, 'session-upgrade.log'));
-  if ((await inspectAgentSchemas(state)).some(item => item.version < SCHEMA_VERSION)) throw new Error('Session upgrade incomplete. See data/logs/session-upgrade.log; your pre-upgrade backup has been retained.');
+  const remaining = (await inspectAgentSchemas(state)).some(item => item.version < SCHEMA_VERSION);
+  if (remaining || await hasLegacySessions(state)) throw new Error('Session upgrade incomplete. See data/logs/session-upgrade.log; your pre-upgrade backup has been retained.');
+  await writeFile(marker, new Date().toISOString() + '\n', 'utf8');
   return { upgraded: true, backupDir };
 }
 
