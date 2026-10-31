@@ -35,6 +35,8 @@
 2. 或克隆仓库，在 `portable/` 运行 `bash setup.sh`，下载 Node.js 与 OpenClaw。
 3. 启动直接进入 OpenClaw WebUI，在侧栏「设备钱包」领取或恢复虾盘云钱包；默认模型自动配置，可一键充值。
 
+> 想要**独立窗口、无浏览器标签/地址栏**？Windows 双击 `Windows-App.bat`（Edge App 模式）或 `Windows-WebView.bat`（内置 WebView2 壳，需 `app/shell/U-Claw-Shell.exe`）。两种都只是换个窗口，Gateway 和 `data/` 完全共用；默认的 `Windows-Start.bat` 保持打开浏览器。
+
 | 你得到什么 | 为什么重要 |
 | --- | --- |
 | 随身 AI 工作空间 | 换电脑时带走配置、记忆、会话与设备授权；仅可重建的浏览器缓存留在主机。 |
