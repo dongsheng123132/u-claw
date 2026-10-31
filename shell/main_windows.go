@@ -2,7 +2,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"net/url"
 	"os"
@@ -14,17 +13,14 @@ import (
 )
 
 func main() {
-	var targetFlag = flag.String("url", "", "U-Claw Gateway loopback dashboard URL")
-	var cacheFlag = flag.String("user-data-dir", "", "Host-side WebView2 data directory")
-	flag.Parse()
-	if *targetFlag == "" || *cacheFlag == "" {
-		fail("Usage: U-Claw-Shell.exe --url <loopback-url> --user-data-dir <host-cache-directory>")
+	if len(os.Args) != 3 {
+		fail("Usage: U-Claw-Shell.exe <loopback-url> <host-cache-directory>")
 	}
-	target, err := url.Parse(*targetFlag)
+	target, err := url.Parse(os.Args[1])
 	if err != nil || target.Scheme != "http" || target.Hostname() != "127.0.0.1" || target.User != nil {
 		fail("Only the local U-Claw Gateway can be opened.")
 	}
-	cache, err := filepath.Abs(*cacheFlag)
+	cache, err := filepath.Abs(os.Args[2])
 	if err != nil {
 		fail("Invalid host cache directory.")
 	}
