@@ -1,5 +1,13 @@
 @echo off
+setlocal
 chcp 65001 >nul 2>&1
+REM Interactive launches use the independent WebView2 window by default.
+REM open-app.ps1 starts this file with UCLAW_HEADLESS=1 for the backend only.
+if "%UCLAW_HEADLESS%"=="1" goto :backend_start
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0lib\open-app.ps1" -Root "%~dp0." -Mode webview
+if errorlevel 1 pause
+exit /b %errorlevel%
+:backend_start
 title U-Claw - Portable AI Agent
 
 echo.

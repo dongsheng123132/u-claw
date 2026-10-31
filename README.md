@@ -35,7 +35,7 @@
 2. 或克隆仓库，在 `portable/` 运行 `bash setup.sh`，下载 Node.js 与 OpenClaw。
 3. 启动直接进入 OpenClaw WebUI，在侧栏「设备钱包」领取或恢复虾盘云钱包；默认模型自动配置，可一键充值。
 
-> 想要**独立窗口、无浏览器标签/地址栏**？Windows 双击 `Windows-App.bat`（Edge App 模式）或 `Windows-WebView.bat`（内置 WebView2 壳，需 `app/shell/U-Claw-Shell.exe`）。两种都只是换个窗口，Gateway 和 `data/` 完全共用；默认的 `Windows-Start.bat` 保持打开浏览器。
+> Windows 双击 `Windows-Start.bat` **默认打开独立窗口（WebView2，B）**，带任务栏图标与关闭确认。`Windows-WebView.bat` 是同一窗口的直接入口；`Windows-App.bat` 提供 Edge App 模式（A）备用。它们共用 Gateway 和 `data/`；窗口缓存留在当前电脑，配置和会话随 U 盘携带。源码使用者可运行 `shell/build.sh` 构建独立窗口，发行包已经内置。
 
 | 你得到什么 | 为什么重要 |
 | --- | --- |

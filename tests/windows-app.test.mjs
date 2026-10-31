@@ -10,6 +10,16 @@ function readRepoFile(...parts) {
   return readFileSync(join(repoRoot, ...parts), 'utf8');
 }
 
+test('default launcher routes interactive starts to B and headless starts to backend', () => {
+  const bat = readRepoFile('portable', 'Windows-Start.bat');
+  assert.match(bat, /if "%UCLAW_HEADLESS%"=="1" goto :backend_start/);
+  const route = bat.indexOf('-Mode webview');
+  const backend = bat.indexOf('\n:backend_start');
+  assert.ok(route >= 0 && backend > route);
+  assert.ok(bat.indexOf('exit /b %errorlevel%', route) < backend, 'interactive launch must exit before backend');
+  assert.match(readRepoFile('portable', 'lib', 'open-app.ps1'), /\$env:UCLAW_HEADLESS = '1'/, 'child must bypass UI routing');
+});
+
 test('Windows-App.bat is pure ASCII with CRLF line endings', () => {
   const bytes = readFileSync(join(repoRoot, 'portable', 'Windows-App.bat'));
   const offending = bytes.findIndex((b) => b > 0x7f);
