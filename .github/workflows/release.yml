@@ -22,6 +22,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
 
       - name: Stage portable directory
         run: |
@@ -32,6 +35,14 @@ jobs:
           cp -R portable/. "$stage_dir/"
           cp OPENCLAW_VERSION "$stage_dir/OPENCLAW_VERSION"
           rm -rf "$stage_dir/data/logs" 2>/dev/null || true
+
+      - name: Build optional WebView2 shell
+        run: |
+          tag_name="${GITHUB_REF_NAME:-${{ github.event.inputs.tag }}}"
+          stage_dir="dist/u-claw-portable-windows-${tag_name}"
+          mkdir -p "$stage_dir/app/shell"
+          cd shell
+          GOOS=windows GOARCH=amd64 go build -trimpath -ldflags='-s -w -H windowsgui' -o "../$stage_dir/app/shell/U-Claw-Shell.exe" .
 
       - name: Pre-install Node.js (Windows) and OpenClaw deps
         run: |
