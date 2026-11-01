@@ -476,12 +476,14 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // Serve static files
-  const filePath = req.url === '/'
-    ? path.join(__dirname, 'public/index.html')
-    : path.join(__dirname, 'public', req.url);
+  // Serve static files — resolve inside public/ only; reject `..` escape
+  // (otherwise GET /../../data/.openclaw/openclaw.json leaks API keys).
+  const publicRoot = path.resolve(__dirname, 'public');
+  let filePath = path.join(publicRoot, req.url === '/' ? 'index.html' : decodeURIComponent(req.url.split('?')[0]));
+  filePath = path.resolve(filePath);
+  const withinPublic = filePath === publicRoot || filePath.startsWith(publicRoot + path.sep);
 
-  if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+  if (withinPublic && fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
     const ext = path.extname(filePath);
     const contentType = {
       '.html': 'text/html',
