@@ -178,9 +178,15 @@ input:focus { border-color: #ff6b35; }
     <!-- Step 1: Select Model -->
     <div class="section active" id="step1">
         <h2>选择 AI 模型</h2>
-        <p class="desc">推荐国内用户用 MiniMax / Kimi / DeepSeek</p>
+        <p class="desc">最省心：用「虾盘云」一个 Key 调用国内外全部大模型（中转站）。也可用下面各家自己的官方 Key。</p>
 
         <div class="model-grid">
+            <div class="model-card" data-provider="uclaw-cloud" data-base="https://api.u-claw.org/v1" data-model="deepseek-v4-pro">
+                <span class="check">✓</span>
+                <h4>虾盘云 <span class="tag hot">首选</span><span class="tag">中转站</span></h4>
+                <p>一个 Key 用 DeepSeek / Claude / GPT / 通义 等国内外全部大模型，无需翻墙</p>
+                <a class="buy-link" href="https://u-claw.org/cloud.html" target="_blank">→ 注册并获取 API Key</a>
+            </div>
             <div class="model-card" data-provider="minimax" data-base="https://api.minimax.chat/v1" data-model="MiniMax-Text-01">
                 <span class="check">✓</span>
                 <h4>MiniMax <span class="tag hot">推荐</span><span class="tag cn">国内</span></h4>
@@ -456,7 +462,7 @@ function goStep(n) {
 }
 
 const PROVIDER_NAMES = {
-    minimax: 'MiniMax', kimi: 'Kimi (月之暗面)', deepseek: 'DeepSeek',
+    'uclaw-cloud': '虾盘云', minimax: 'MiniMax', kimi: 'Kimi (月之暗面)', deepseek: 'DeepSeek',
     zai: '智谱 GLM', qwen: '通义千问', doubao: '豆包',
     openai: 'OpenAI', anthropic: 'Anthropic Claude', groq: 'Groq',
     siliconflow: '硅基流动', custom: '自定义'
@@ -492,7 +498,7 @@ function togglePw(id) {
 // --- Build OpenClaw config ---
 function buildConfig(provider, base, model, apiKey) {
     var baseConfig = {
-        gateway: { auth: { mode: 'token', token: 'uclaw' } },
+        gateway: { auth: { mode: 'token', token: 'uclaw' }, remote: { token: 'uclaw' } },
         commands: { native: 'auto', nativeSkills: 'auto', restart: true, ownerDisplay: 'raw' },
         meta: { lastTouchedVersion: '2026.3.13', lastTouchedAt: new Date().toISOString() }
     };
