@@ -114,7 +114,8 @@ jobs:
           node --check "$core_dir/node_modules/openclaw/dist/diagnostic-stability-bundle-DcoVIIR7.mjs"
           # Remove Linux-built .bin shims/symlinks: exFAT cannot create symlinks,
           # and the portable launchers call `node openclaw.mjs` directly.
-          rm -rf "$core_dir/node_modules/.bin"
+          find "$core_dir/node_modules" -type d -name .bin -prune -exec rm -rf {} +
+          find "$core_dir/node_modules" -type l -delete
           printf '%s\n' 'win32-x64' > "$core_dir/.uclaw-runtime-platform"
           # 回到 repo 根：后续步骤（test suite / normalize / zip）都用相对路径，
           # 这个 step 把 cwd 留在 core/ 的话，"cd dist" 会报 No such file or directory
