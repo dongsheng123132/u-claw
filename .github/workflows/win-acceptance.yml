@@ -11,6 +11,13 @@ on:
         description: "release = install from the latest release zip; setup = build the runtime in the runner"
         required: false
         default: "release"
+  pull_request:
+    paths:
+      - "tools/win-accept.ps1"
+      - ".github/workflows/win-acceptance.yml"
+      - "portable/lib/engine-host.ps1"
+      - "portable/lib/engine-host.sh"
+      - "portable/Windows-Start.bat"
   push:
     branches: [main]
     paths:
@@ -57,10 +64,17 @@ jobs:
         shell: pwsh
         env:
           UCLAW_ACCEPT_SOURCE: ${{ github.event.inputs.source }}
+          # The harness stages the skeleton from refs/heads/<ref>; without this it
+          # always pulled main, so a PR touching engine-host.ps1 was validated
+          # against main's copy instead of its own.
+          UCLAW_ACCEPT_REF: ${{ github.event.pull_request.head.ref || github.ref_name }}
         run: |
           [Console]::OutputEncoding = [Text.Encoding]::UTF8
           $source = if ($env:UCLAW_ACCEPT_SOURCE -eq 'setup') { 'D:\src' } else { '' }
-          $args = @('-NoProfile','-ExecutionPolicy','Bypass','-File','tools\win-accept.ps1','-Root','D:\accept')
+          $ref = $env:UCLAW_ACCEPT_REF
+          if (-not $ref) { $ref = 'main' }
+          Write-Host "acceptance ref: $ref"
+          $args = @('-NoProfile','-ExecutionPolicy','Bypass','-File','tools\win-accept.ps1','-Root','D:\accept','-RepoRef',$ref)
           if ($source) { $args += @('-SourceApp', $source) }
           & powershell @args
           if (-not (Test-Path 'D:\accept\accept-summary.json')) { throw 'acceptance produced no summary' }
