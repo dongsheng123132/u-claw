@@ -2,7 +2,7 @@
 // Run after the launcher instance lock, before Config Center or Gateway can write.
 import { DatabaseSync, backup } from 'node:sqlite';
 import { readdir, mkdir, copyFile, rename, open, writeFile } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
+import { existsSync, realpathSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { randomUUID } from 'node:crypto';
@@ -91,7 +91,19 @@ export async function upgradeSessionSchema(root, doctor = runDoctor) {
   return { upgraded: true, backupDir };
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+function isEntryPoint() {
+  // Realpath, not the raw argv: macOS /tmp -> /private/tmp and any symlinked path
+  // otherwise make the CLI print nothing, which callers read as "needs a schema
+  // upgrade" and start a pointless repair.
+  if (!process.argv[1]) return false;
+  try {
+    return import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href;
+  } catch {
+    return false;
+  }
+}
+
+if (isEntryPoint()) {
   try { await upgradeSessionSchema(resolve(process.argv[2])); }
   catch (error) { console.error('[ERROR] ' + error.message); process.exitCode = 1; }
 }

@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, realpathSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -26,6 +26,18 @@ export function needsSetup(root, nodeVersion = process.version, platform = `${pr
   }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+function isEntryPoint() {
+  // Realpath, not the raw argv: macOS /tmp -> /private/tmp and any symlinked path
+  // (some mounts, `ln -s`, sandboxed runners) otherwise make the CLI print nothing,
+  // which callers read as "requirements unmet" and trigger a bogus online setup.
+  if (!process.argv[1]) return false;
+  try {
+    return import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href;
+  } catch {
+    return false;
+  }
+}
+
+if (isEntryPoint()) {
   console.log(`UCLAW_SETUP_NEEDED=${needsSetup(resolve(process.argv[2] || '.')) ? 1 : 0}`);
 }

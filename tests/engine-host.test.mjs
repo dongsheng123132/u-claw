@@ -1,4 +1,6 @@
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, mkdtempSync, symlinkSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -129,4 +131,15 @@ test('release CI packs one engine archive per platform and drops the loose tree'
   assert.match(yml, /rm -rf "\$stage_dir\/app"/);
   // macOS zip self-check no longer expects node inside the zip, but must find the archive.
   assert.match(yml, /zip 里没有 engine-<version>\.tar\.gz/);
+});
+
+test('lib CLI entry guards survive symlinked paths', { skip: process.platform === 'win32' }, () => {
+  // macOS /tmp -> /private/tmp taught us the hard way: a raw-argv guard prints
+  // nothing, the launcher reads that as "needs setup", and the customer is sent
+  // to an online reinstall on first start.
+  const dir = mkdtempSync(join(tmpdir(), 'uclaw-symlink-'));
+  const link = join(dir, 'runtime-requirements.mjs');
+  symlinkSync(join(repoRoot, 'portable', 'lib', 'runtime-requirements.mjs'), link);
+  const out = execFileSync(process.execPath, [link, join(repoRoot, 'portable')], { encoding: 'utf8' });
+  assert.match(out, /UCLAW_SETUP_NEEDED=[01]/);
 });
