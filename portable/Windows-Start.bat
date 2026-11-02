@@ -1,12 +1,14 @@
 @echo off
 setlocal
 chcp 65001 >nul 2>&1
-REM Interactive launches use the independent WebView2 window by default.
-REM open-app.ps1 starts this file with UCLAW_HEADLESS=1 for the backend only.
-if "%UCLAW_HEADLESS%"=="1" goto :backend_start
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0lib\open-app.ps1" -Root "%~dp0." -Mode webview
-if errorlevel 1 pause
-exit /b %errorlevel%
+REM Double-click default = WebUI in the DEFAULT BROWSER (no wrapper shell).
+REM Why: lib/loading.html is the only page that offers the "Config / Change model"
+REM entry; a standalone window that navigated straight into the dashboard hid that
+REM entry (v2.3.8 shell regression, reverted).
+REM Window modes stay opt-in: Windows-WebView.bat (WebView2) and Windows-App.bat
+REM (Edge app) start this file with UCLAW_HEADLESS=1 so the backend does not open
+REM a second UI next to the window they show themselves.
+REM No non-ASCII in this file: GBK cmd.exe would mis-parse it.
 :backend_start
 title U-Claw - Portable AI Agent
 

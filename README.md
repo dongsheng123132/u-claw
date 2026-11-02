@@ -33,9 +33,9 @@
 
 1. 从 [Releases](https://github.com/dongsheng123132/u-claw/releases) 下载 Windows 便携版，解压到 U 盘后双击 `Windows-Start.bat`。
 2. 或克隆仓库，在 `portable/` 运行 `bash setup.sh`，下载 Node.js 与 OpenClaw。
-3. 启动直接进入 OpenClaw WebUI，在侧栏「设备钱包」领取或恢复虾盘云钱包；默认模型自动配置，可一键充值。
+3. 启动先到「启动首屏」：点 **🚀 进入 Dashboard** 开始聊天，或点 **⚙️ 配置 / 改模型** 填 DeepSeek / 虾盘云 Key、充值、连微信。进 Dashboard 后还可在侧栏「设备钱包」领取或恢复虾盘云钱包（默认模型自动配置）。
 
-> Windows 双击 `Windows-Start.bat` **默认打开独立窗口（WebView2，B）**，带任务栏图标与关闭确认。`Windows-WebView.bat` 是同一窗口的直接入口；`Windows-App.bat` 提供 Edge App 模式（A）备用。它们共用 Gateway 和 `data/`；窗口缓存留在当前电脑，配置和会话随 U 盘携带。源码使用者可运行 `shell/build.sh` 构建独立窗口，发行包已经内置。
+> 双击 `Windows-Start.bat` / `Mac-Start.command` 默认在**系统浏览器**里打开 WebUI——配置入口就挂在首屏上，不藏起来。想要独立窗口（可选、非默认）：`Windows-WebView.bat`（内置 WebView2 壳，带任务栏图标与关闭确认）或 `Windows-App.bat`（Edge App 模式）；随时直接进配置中心可双击 `Windows-Config.bat`。三种方式共用 Gateway 和 `data/`，窗口缓存留在当前电脑，配置和会话随 U 盘携带。源码使用者可运行 `shell/build.sh` 自行构建独立窗口。
 
 | 你得到什么 | 为什么重要 |
 | --- | --- |
@@ -47,7 +47,7 @@
 
 ## 真实界面
 
-启动直接进入 OpenClaw WebUI。侧栏「设备钱包」与对话顶部的「设备钱包 · 充值」提供余额、充值、密钥备份和恢复；模型配置与钱包共用本地配置，不需要前置选择。
+双击启动 → 先看到「启动首屏」，就绪后自己选：**🚀 进入 Dashboard**（开始聊天）或 **⚙️ 配置 / 改模型**（DeepSeek / 虾盘云 Key、充值、渠道）。进 Dashboard 后，侧栏「设备钱包」与对话顶部的「设备钱包 · 充值」提供余额、充值、密钥备份和恢复；模型配置与钱包共用本地配置。
 
 **SkillHub 技能市场**：随盘附带的本地页面，浏览 ClawHub 上的技能，按分类找、看安装量。
 

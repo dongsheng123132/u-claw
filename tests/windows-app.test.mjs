@@ -10,14 +10,18 @@ function readRepoFile(...parts) {
   return readFileSync(join(repoRoot, ...parts), 'utf8');
 }
 
-test('default launcher routes interactive starts to B and headless starts to backend', () => {
+test('default launcher opens the WebUI in the default browser (no wrapper shell)', () => {
   const bat = readRepoFile('portable', 'Windows-Start.bat');
-  assert.match(bat, /if "%UCLAW_HEADLESS%"=="1" goto :backend_start/);
-  const route = bat.indexOf('-Mode webview');
-  const backend = bat.indexOf('\n:backend_start');
-  assert.ok(route >= 0 && backend > route);
-  assert.ok(bat.indexOf('exit /b %errorlevel%', route) < backend, 'interactive launch must exit before backend');
-  assert.match(readRepoFile('portable', 'lib', 'open-app.ps1'), /\$env:UCLAW_HEADLESS = '1'/, 'child must bypass UI routing');
+  // v2.3.8 shipped the WebView2 shell as the double-click default; it navigated
+  // straight into the dashboard and hid the 「配置 / 改模型」 entry, so the default
+  // is reverted to the browser + loading.html choice page.
+  assert.doesNotMatch(bat, /open-app\.ps1/, 'double-click must not detour through a wrapper shell');
+  assert.doesNotMatch(bat, /-Mode webview/, 'double-click must not default to the standalone window');
+  // The startup splash (with the config entry) is what a normal double-click opens.
+  assert.match(bat, /start "" "%LOADING_URL%"/, 'normal start must open the splash page');
+  assert.match(bat, /if not "%UCLAW_HEADLESS%"=="1" start "" "%LOADING_URL%"/, 'headless wrapper starts must not open a second UI');
+  // Window modes stay opt-in and still start the backend headless.
+  assert.match(readRepoFile('portable', 'lib', 'open-app.ps1'), /\$env:UCLAW_HEADLESS = '1'/, 'wrapper must stop the backend from opening its own UI');
 });
 
 test('Windows-App.bat is pure ASCII with CRLF line endings', () => {
