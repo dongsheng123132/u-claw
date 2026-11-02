@@ -6,6 +6,11 @@
 #   when it is already live), then open Microsoft Edge with
 #   --app=<loopback dashboard URL> and a per-USB user-data-dir on the host disk.
 #
+# Config mode (-Mode config; consumed by Windows-Config.bat and the menu's
+# "Xiapan Cloud wallet and model settings" entry): open U-Claw's own Config Center
+# (config-server) - the only page with the Xiapan Cloud device wallet, recharge and
+# model key pickers.
+#
 # WebView mode (-Mode webview; consumed by Windows-WebView.bat):
 #   Same readiness gate, then launch app/shell/U-Claw-Shell.exe (the shell is
 #   built separately). Contract (shell/main_windows.go):
@@ -21,7 +26,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Position = 0)]
-    [ValidateSet('edge', 'webview')]
+    [ValidateSet('edge', 'webview', 'config')]
     [string]$Mode = 'edge',
 
     # Optional absolute root (Windows-WebView.bat passes "%~dp0."). When omitted,
@@ -61,6 +66,38 @@ function Get-GatewayPortFromRuntime {
         return $null
     }
     return $null
+}
+
+function Get-ConfigPortFromRuntime {
+    # The Config Center (config-server) publishes configServerPort in the same
+    # runtime.json. Missing/corrupt yields $null - never guess a port.
+    if (-not (Test-Path -LiteralPath $RuntimeJson -PathType Leaf)) { return $null }
+    try {
+        $runtime = Get-Content -LiteralPath $RuntimeJson -Raw | ConvertFrom-Json
+        $port = [int]$runtime.configServerPort
+        if ($port -gt 0 -and $port -le 65535) { return $port }
+    } catch {
+        return $null
+    }
+    return $null
+}
+
+function Test-ModelConfigured {
+    # Single source of truth: lib/check-model-configured.mjs - the same helper the
+    # .bat era used to decide "first run". Runs on the bundled runtime only.
+    $NodeBin = Join-Path $UclawRoot 'app\runtime\node-win-x64\node.exe'
+    $Checker = Join-Path $UclawRoot 'lib\check-model-configured.mjs'
+    if (-not (Test-Path -LiteralPath $NodeBin -PathType Leaf)) { return $false }
+    if (-not (Test-Path -LiteralPath $Checker -PathType Leaf)) { return $false }
+    try {
+        $lines = & $NodeBin $Checker (Join-Path $StateDir 'openclaw.json') 2>$null
+    } catch {
+        return $false
+    }
+    foreach ($line in @($lines)) {
+        if ([string]$line -eq 'UCLAW_MODEL_CONFIGURED=1') { return $true }
+    }
+    return $false
 }
 
 function Test-GatewayReady {
@@ -197,6 +234,23 @@ if (-not $Url) {
     exit 2
 }
 
+# First run / unconfigured: U-Claw's own Config Center is the only page that hosts
+# the Xiapan Cloud device wallet (claim / recharge / rotate) and the model key
+# pickers. The Gateway dashboard lists upstream OpenClaw providers instead, so a
+# launcher that opens the dashboard first leaves the user with no wallet entry
+# (v2.3.8 shell regression). ?embed=1 keeps the hand-off to the dashboard inside
+# the same window, because the standalone shell has no tab strip.
+$ConfigFirst = ($Mode -eq 'config') -or (-not (Test-ModelConfigured))
+if ($ConfigFirst) {
+    $ConfigPort = Get-ConfigPortFromRuntime
+    if ($ConfigPort) {
+        $Url = "http://127.0.0.1:$ConfigPort/?embed=1"
+    } else {
+        # Never open a dead page: keep the dashboard when the port is unknown.
+        Write-Warning 'Config Center port unknown; opening the dashboard instead.'
+    }
+}
+
 if ($Mode -eq 'webview') {
     $ShellExe = Join-Path $UclawRoot 'app\shell\U-Claw-Shell.exe'
     if (Test-Path -LiteralPath $ShellExe -PathType Leaf) {
@@ -207,6 +261,10 @@ if ($Mode -eq 'webview') {
         # Shell not present yet: fall back to the default browser, never fail.
         Start-Process -FilePath $Url
     }
+} elseif ($Mode -eq 'config') {
+    # Config Center in the default browser: a normal tab keeps window.open() working
+    # after the wallet is claimed and the dashboard link is clicked.
+    Start-Process -FilePath $Url
 } else {
     $EdgePath = Get-EdgePath
     if ($EdgePath) {

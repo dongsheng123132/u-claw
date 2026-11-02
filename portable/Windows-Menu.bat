@@ -93,6 +93,9 @@ pause
 goto :menu
 
 :onboard
+call "%UCLAW_DIR%Windows-Config.bat"
+goto :menu
+
 :dashboard
 call "%UCLAW_DIR%Windows-Start.bat"
 goto :menu

@@ -885,7 +885,16 @@ async function saveConfig() {
     } catch (e) { showToast('保存失败: ' + e.message, true); }
 }
 
-function openDashboard() { window.open(gatewayUrl(), '_blank'); }
+function openDashboard() {
+    var url = gatewayUrl();
+    if (!url) return;
+    // Inside the standalone shell (?embed=1) there is no tab strip: navigate the
+    // current window, otherwise the click looks like it does nothing.
+    try {
+        if (new URLSearchParams(location.search).get('embed') === '1') { location.href = url; return; }
+    } catch (e) { /* older engines: fall through to a new tab */ }
+    window.open(url, '_blank');
+}
 
 async function viewConfig() {
     try {

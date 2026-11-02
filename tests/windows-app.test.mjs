@@ -96,7 +96,7 @@ test('open-app.ps1 quotes arguments for spaces and ampersands for CreateProcess'
 
 test('open-app.ps1 supports -Mode webview calling app/shell/U-Claw-Shell.exe with url and cache path', () => {
   const ps = readRepoFile('portable', 'lib', 'open-app.ps1');
-  assert.match(ps, /\[ValidateSet\('edge', 'webview'\)\]/);
+  assert.match(ps, /\[ValidateSet\('edge', 'webview', 'config'\)\]/);
   assert.match(ps, /app\\shell\\U-Claw-Shell\.exe/);
   assert.match(ps, /\(Quote-CliArg \$Url\) \+ ' ' \+ \(Quote-CliArg \$UserDataDir\)/, 'shell takes positional <url> <cache-dir> args');
   assert.match(ps, /'webview'/);
@@ -126,4 +126,35 @@ test('the app launcher performs no auto-downloads and touches no backend', () =>
     );
   }
   assert.doesNotMatch(ps, /setup\.bat|setup\.ps1/, 'must not trigger runtime setup/downloads');
+});
+
+test('open-app.ps1 opens the Config Center when no model is configured yet', () => {
+  const ps = readRepoFile('portable', 'lib', 'open-app.ps1');
+  // v2.3.8 regression: the WebView shell opened the Gateway dashboard, which lists
+  // upstream OpenClaw providers, so the Xiapan Cloud wallet / model page had no entry.
+  assert.match(ps, /check-model-configured\.mjs/, 'reuse the shared first-run probe');
+  assert.match(ps, /Get-ConfigPortFromRuntime/, 'Config Center port comes from runtime.json');
+  assert.match(ps, /\?embed=1/, 'shell needs in-window navigation back to the dashboard');
+  assert.match(ps, /\$ConfigFirst = \(\$Mode -eq 'config'\) -or \(-not \(Test-ModelConfigured\)\)/);
+});
+
+test('Windows-Config.bat is pure ASCII with CRLF and delegates to open-app.ps1 -Mode config', () => {
+  const bat = readRepoFile('portable', 'Windows-Config.bat');
+  const bytes = readFileSync(join(repoRoot, 'portable', 'Windows-Config.bat'));
+  const offending = bytes.findIndex((b) => b > 0x7f);
+  assert.equal(offending, -1, `non-ASCII byte at offset ${offending}`);
+  assert.ok(bytes.includes(0x0d), 'Windows-Config.bat must use CRLF line endings');
+  assert.match(bat, /lib\\open-app\.ps1" -Mode config/);
+});
+
+test('the Windows menu points its wallet/model entry at the Config Center, not the dashboard', () => {
+  const menu = readRepoFile('portable', 'Windows-Menu.bat');
+  assert.match(menu, /:onboard\r?\n(?:[^\r\n]*\r?\n)*?call "%UCLAW_DIR%Windows-Config\.bat"/);
+  assert.match(menu, /:dashboard\r?\ncall "%UCLAW_DIR%Windows-Start\.bat"/);
+});
+
+test('the Config Center dashboard hand-off stays in-window when embedded in the shell', () => {
+  const page = readRepoFile('portable', 'config-server', 'public', 'index.html');
+  assert.match(page, /URLSearchParams\(location\.search\)\.get\('embed'\) === '1'/);
+  assert.match(page, /location\.href = url/);
 });
