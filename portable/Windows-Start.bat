@@ -260,7 +260,7 @@ if exist "%VERSION_FILE%" (
     start /B "" "%NODE_BIN%" "%UCLAW_DIR%lib\check-update.mjs" "%VERSION_FILE%" "%STATE_DIR%" >nul 2>&1
 )
 
-"%NODE_BIN%" "%UCLAW_DIR%lib\prepare-wallet.mjs" "%UCLAW_ENGINE_ROOT%." "%STATE_DIR%"
+"%NODE_BIN%" "%UCLAW_DIR%lib\prepare-wallet.mjs" "%UCLAW_ENGINE_ROOT%" "%STATE_DIR%"
 if errorlevel 1 goto :startup_failed
 
 REM Start Config Server in background
@@ -357,7 +357,7 @@ REM owning process is gone (or corrupt) are removed; a live instance is left alo
 
 REM Upgrade copied legacy agent databases with the official doctor before the
 REM Gateway opens them. A failed migration keeps the backup and stops startup.
-"%NODE_BIN%" "%UCLAW_DIR%lib\upgrade-session-schema.mjs" "%UCLAW_ENGINE_ROOT%."
+"%NODE_BIN%" "%UCLAW_DIR%lib\upgrade-session-schema.mjs" "%UCLAW_ENGINE_ROOT%"
 if errorlevel 1 (
     echo   Legacy session database upgrade failed. Backup retained under data\backups.
     pause
@@ -405,7 +405,7 @@ REM 2^>nul redirect (CI proved PowerShell/node received "2>nul"), the variable s
 REM unset, and the launcher then runs an online setup on every start.
 :uclaw_capture_requirements
 set "UCLAW_REQ_ENV=%TEMP%\uclaw-req-%RANDOM%-%RANDOM%.env"
-"%NODE_BIN%" "%UCLAW_DIR%lib\runtime-requirements.mjs" "%UCLAW_ENGINE_ROOT%." > "%UCLAW_REQ_ENV%" 2>nul
+"%NODE_BIN%" "%UCLAW_DIR%lib\runtime-requirements.mjs" "%UCLAW_ENGINE_ROOT%" > "%UCLAW_REQ_ENV%" 2>nul
 if not exist "%UCLAW_REQ_ENV%" goto :eof
 for /f "usebackq tokens=1,* delims==" %%a in ("%UCLAW_REQ_ENV%") do (
     if "%%a"=="UCLAW_SETUP_NEEDED" set "UCLAW_SETUP_NEEDED=%%b"
