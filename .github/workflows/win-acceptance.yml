@@ -87,6 +87,24 @@ jobs:
           "launcher_exit=$LASTEXITCODE"
           "---- stick layout ----"
           Get-ChildItem $stick | Select-Object Name, Length | Format-Table -AutoSize | Out-String
+          "---- runtime-requirements against the installed engine ----"
+          $engine = Get-ChildItem "$env:LOCALAPPDATA\U-Claw\*\engine\2026.10.9" -Directory -ErrorAction SilentlyContinue |
+            Select-Object -First 1
+          if ($engine) {
+            "engine=$($engine.FullName)"
+            "has_pin=$([bool](Test-Path (Join-Path $engine.FullName 'OPENCLAW_VERSION')))"
+            "has_marker=$([bool](Test-Path (Join-Path $engine.FullName 'app\core\.uclaw-runtime-platform')))"
+            if (Test-Path (Join-Path $engine.FullName 'app\core\.uclaw-runtime-platform')) {
+              "marker=$((Get-Content (Join-Path $engine.FullName 'app\core\.uclaw-runtime-platform') -Raw).Trim())"
+            }
+            if (Test-Path (Join-Path $engine.FullName 'app\core\node_modules\openclaw\package.json')) {
+              "core_version=$((Get-Content (Join-Path $engine.FullName 'app\core\node_modules\openclaw\package.json') -Raw | ConvertFrom-Json).version)"
+            }
+            $node = Join-Path $engine.FullName 'app\runtime\node-win-x64\node.exe'
+            if (Test-Path $node) {
+              "requirements=$(& $node "$stick\lib\runtime-requirements.mjs" $engine.FullName 2>&1)"
+            }
+          }
           "---- engine cache ----"
           Get-ChildItem "$env:LOCALAPPDATA\U-Claw" -Recurse -Depth 3 -ErrorAction SilentlyContinue |
             Select-Object FullName | Format-Table -AutoSize | Out-String
