@@ -240,11 +240,15 @@ if (-not $Url) {
 # launcher that opens the dashboard first leaves the user with no wallet entry
 # (v2.3.8 shell regression). ?embed=1 keeps the hand-off to the dashboard inside
 # the same window, because the standalone shell has no tab strip.
+# Only the single-window modes need the in-place hand-off: a normal browser tab can
+# open the dashboard in a new tab and keep the Config Center open.
+$EmbedSuffix = ''
+if ($Mode -eq 'webview' -or $Mode -eq 'edge') { $EmbedSuffix = '?embed=1' }
 $ConfigFirst = ($Mode -eq 'config') -or (-not (Test-ModelConfigured))
 if ($ConfigFirst) {
     $ConfigPort = Get-ConfigPortFromRuntime
     if ($ConfigPort) {
-        $Url = "http://127.0.0.1:$ConfigPort/?embed=1"
+        $Url = "http://127.0.0.1:$ConfigPort/$EmbedSuffix"
     } else {
         # Never open a dead page: keep the dashboard when the port is unknown.
         Write-Warning 'Config Center port unknown; opening the dashboard instead.'
