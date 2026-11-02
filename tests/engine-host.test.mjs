@@ -114,3 +114,19 @@ test('installed engines carry OPENCLAW_VERSION (runtime-requirements runs agains
   assert.match(ps1, /Set-Content -LiteralPath \(Join-Path \$tmp 'OPENCLAW_VERSION'\)/);
   assert.match(sh, /printf '%s' "\$VERSION" > "\$tmp\/OPENCLAW_VERSION"/);
 });
+
+test('release CI packs one engine archive per platform and drops the loose tree', () => {
+  const yml = read('.github', 'workflows', 'release.yml');
+  const packSteps = yml.match(/Pack engine archive[^\n]*/g) || [];
+  assert.equal(packSteps.length, 2, 'both the Windows and the macOS job must pack an engine archive');
+  // Build junk must never ship inside the engine.
+  assert.equal((yml.match(/--exclude='app\/\.npm-cache'/g) || []).length, 2);
+  // A truncated archive must fail the build, not the customer's first start.
+  assert.match(yml, /engine archive is missing node\.exe/);
+  assert.match(yml, /engine archive is missing the arm64 node binary/);
+  assert.match(yml, /sha256sum "\$archive"/);
+  // The loose app/ tree is removed from the shipped bundle (that was the whole point).
+  assert.match(yml, /rm -rf "\$stage_dir\/app"/);
+  // macOS zip self-check no longer expects node inside the zip, but must find the archive.
+  assert.match(yml, /zip 里没有 engine-<version>\.tar\.gz/);
+});

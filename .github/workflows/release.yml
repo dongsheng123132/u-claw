@@ -221,6 +221,27 @@ jobs:
           tag_name="${GITHUB_REF_NAME:-${{ github.event.inputs.tag }}}"
           UCLAW_TEST_CORE_DIR="$(pwd)/dist/u-claw-portable-windows-${tag_name}/app/core" node --test "tests/*.test.mjs"
 
+      - name: Pack engine archive (v2.5 single-file layout)
+        run: |
+          tag_name="${GITHUB_REF_NAME:-${{ github.event.inputs.tag }}}"
+          stage_dir="dist/u-claw-portable-windows-${tag_name}"
+          ver=$(tr -d '[:space:]' < OPENCLAW_VERSION)
+          archive="$stage_dir/engine-${ver}.tar.gz"
+          # .npm-cache is build junk (hundreds of MB) and must never ship.
+          tar --exclude='app/.npm-cache' -czf "$archive" -C "$stage_dir" app extensions
+          sha256sum "$archive" | awk '{print $1}' > "$archive.sha256"
+          # Verify the archive BEFORE deleting the loose tree: a truncated tar would
+          # otherwise ship as "customer's first start fails after installing".
+          listing=$(tar -tzf "$archive")
+          echo "$listing" | grep -qx 'app/runtime/node-win-x64/node.exe' \
+            || { echo "::error::engine archive is missing node.exe"; exit 1; }
+          echo "$listing" | grep -q 'app/core/node_modules/openclaw/openclaw.mjs' \
+            || { echo "::error::engine archive is missing openclaw.mjs"; exit 1; }
+          echo "$listing" | grep -qx 'app/core/.uclaw-runtime-platform' \
+            || { echo "::error::engine archive is missing the runtime platform marker"; exit 1; }
+          echo "engine archive: $(du -m "$archive" | cut -f1) MB, $(echo "$listing" | wc -l) entries"
+          rm -rf "$stage_dir/app"
+
       - name: Normalize line endings (CRLF for Windows scripts, LF for shell)
         run: |
           tag_name="${GITHUB_REF_NAME:-${{ github.event.inputs.tag }}}"
@@ -503,6 +524,23 @@ jobs:
           tag_name="${GITHUB_REF_NAME:-${{ github.event.inputs.tag }}}"
           UCLAW_TEST_CORE_DIR="$(pwd)/dist/u-claw-portable-mac-arm64-${tag_name}/app/core" node --test "tests/*.test.mjs"
 
+      - name: Pack engine archive (macOS, v2.5 layout)
+        run: |
+          tag_name="${GITHUB_REF_NAME:-${{ github.event.inputs.tag }}}"
+          stage_dir="dist/u-claw-portable-mac-arm64-${tag_name}"
+          ver=$(tr -d '[:space:]' < OPENCLAW_VERSION)
+          archive="$stage_dir/engine-${ver}.tar.gz"
+          tar --exclude='app/.npm-cache' -czf "$archive" -C "$stage_dir" app extensions
+          sha256sum "$archive" | awk '{print $1}' > "$archive.sha256"
+          listing=$(tar -tzf "$archive")
+          echo "$listing" | grep -qx 'app/runtime/node-mac-arm64/bin/node' \
+            || { echo "::error::engine archive is missing the arm64 node binary"; exit 1; }
+          echo "$listing" | grep -q 'app/core/node_modules/openclaw/openclaw.mjs' \
+            || { echo "::error::engine archive is missing openclaw.mjs"; exit 1; }
+          echo "engine archive: $(du -m "$archive" | cut -f1) MB, $(echo "$listing" | wc -l) entries"
+          # Keep the loose tree for the binary self-check below, drop it right before zipping.
+          mv "$stage_dir/app" "dist/_mac-app-check"
+
       - name: Normalize line endings and permissions (macOS bundle)
         run: |
           tag_name="${GITHUB_REF_NAME:-${{ github.event.inputs.tag }}}"
@@ -517,7 +555,7 @@ jobs:
             | xargs -0 -I {} sh -c 'sed -i "s/\r$//" "{}"'
           # Mac 双击必须可执行：入口 .command/.sh + 内置 Node 二进制
           chmod +x "$stage_dir"/*.sh "$stage_dir"/*.command 2>/dev/null || true
-          chmod +x "$stage_dir/app/runtime/node-mac-arm64/bin/"* 2>/dev/null || true
+          chmod +x "dist/_mac-app-check/runtime/node-mac-arm64/bin/"* 2>/dev/null || true
 
       - name: Zip portable bundle (macOS)
         run: |
@@ -542,7 +580,10 @@ jobs:
           if links:
               print(f"::error::zip 里有 {len(links)} 个符号链接条目（如 {links[0]}），Mac 解压到 exFAT/FAT32 会失败")
               sys.exit(1)
-          need_exec = [f"{prefix}/Mac-Start.command", f"{prefix}/app/runtime/node-mac-arm64/bin/node"]
+          # v2.5: the engine lives in engine-<version>.tar.gz on the stick; its exec bits
+          # were verified inside the archive before zipping. The launch entry point still
+          # needs +x, otherwise a double-click does nothing on macOS.
+          need_exec = [f"{prefix}/Mac-Start.command"]
           for name in need_exec:
               if name not in zf.namelist():
                   print(f"::error::zip 里缺少 {name}")
@@ -550,6 +591,14 @@ jobs:
               mode = zf.getinfo(name).external_attr >> 16
               if not mode & 0o111:
                   print(f"::error::{name} 在 zip 里丢了可执行位（Mac 上双击起不来）")
+                  sys.exit(1)
+          engines = [n for n in zf.namelist() if "/engine-" in n and n.endswith(".tar.gz")]
+          if not engines:
+              print("::error::zip 里没有 engine-<version>.tar.gz，客户首启会直接失败")
+              sys.exit(1)
+          for name in engines:
+              if zf.getinfo(name).file_size < 50 * 1024 * 1024:
+                  print(f"::error::{name} 只有 {zf.getinfo(name).file_size // 1048576} MB，归档被截断了")
                   sys.exit(1)
           print(f"✅ zip 自检通过：{len(infos)} 个条目，无 symlink，入口可执行位保留")
           PYEOF
