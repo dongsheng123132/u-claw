@@ -187,7 +187,8 @@ function Run-Launcher([string]$tag, [string]$mode) {
 Log '--- case A: cold first run (host install) ---'
 Reset-Host
 $a = Run-Launcher 'A-cold' ''
-$engineInstalled = [bool](Get-ChildItem (Join-Path $hostRoot '*\engine\' + $Version) -Directory -ErrorAction SilentlyContinue)
+$enginePath = Join-Path $hostRoot ('*\engine\' + $Version)
+$engineInstalled = [bool](Get-ChildItem -Path $enginePath -Directory -ErrorAction SilentlyContinue)
 Record 'A_cold_first_run' @{ ok = ($a.ready -and -not $a.setupRan -and $engineInstalled); readySec = $a.secs; engine = $a.engine; hostInstalled = $engineInstalled; setupRan = $a.setupRan }
 
 # ------------------------------------------------------------------- B warm second run
