@@ -163,6 +163,7 @@ try {
     $null = $holders.Add($h3)
     $r3 = Invoke-Resolver ''
     Check '3 usable tree is reused when manifest.json is gone' ($r3.source -eq 'existing') ('source=' + $r3.source)
+    Check '3 the missing manifest.json is rewritten' (Test-Path -LiteralPath (Join-Path $hostTarget 'manifest.json')) ''
     Say ('   resolver stderr: ' + ($r3.err -replace '\s+', ' ').Trim())
     Stop-Holder $h3
 
@@ -188,10 +189,18 @@ try {
     Remove-Item -LiteralPath (Join-Path $target5 'OPENCLAW_VERSION') -Force -ErrorAction SilentlyContinue
     $h5 = Start-Holder $target5
     $null = $holders.Add($h5)
+    # Ask this Windows for its own error text, so the "original error is preserved"
+    # assertion does not depend on the display language (the runner here is Chinese).
+    $refMsg = ''
+    try {
+        Remove-Item -Recurse -Force -LiteralPath $target5 -ErrorAction Stop
+        $refMsg = 'UNEXPECTED: the busy folder was removable'
+    } catch { $refMsg = $_.Exception.Message }
+    Check '5 Windows refuses to delete the busy folder' (-not $refMsg.StartsWith('UNEXPECTED')) ($refMsg -replace '\s+', ' ')
     $r5 = Invoke-Resolver ''
     $hintOk = ($r5.err -match 'still running') -or ($r5.err -match 'still in use')
     Check '5 locked target explains that a U-Claw engine is running' $hintOk ''
-    Check '5 keeps the original Windows error text' ($r5.err -match 'denied' -or $r5.err -match 'being used by another process') ''
+    Check '5 keeps the original Windows error text' ($r5.err.Contains($refMsg)) ''
     $parent5 = Split-Path -Parent $target5
     $leftover = @(Get-ChildItem -LiteralPath $parent5 -Filter '*.tmp-*' -Force -ErrorAction SilentlyContinue)
     $locks = @(Get-ChildItem -LiteralPath $parent5 -Filter '*.lock' -Force -ErrorAction SilentlyContinue)
