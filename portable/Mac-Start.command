@@ -53,7 +53,12 @@ NODE_BIN="$NODE_DIR/bin/node"
 # an archive keep the legacy loose app/ layout (resolver prints "legacy").
 UCLAW_ENGINE_SOURCE="legacy"
 UCLAW_ENGINE_ROOT="$UCLAW_DIR"
-if [ -x "$UCLAW_DIR/lib/engine-host.sh" ]; then
+if [ -f "$UCLAW_DIR/lib/engine-host.sh" ]; then
+    # Plain file + redirect (not < <(...)): process substitution needs /dev/fd, which
+    # some restricted/sandboxed environments deny -- that would silently skip the
+    # engine and fall back to an online setup on first start.
+    _engine_env="$(mktemp "${TMPDIR:-/tmp}/uclaw-engine-XXXXXX" 2>/dev/null || echo "${TMPDIR:-/tmp}/uclaw-engine.$$")"
+    bash "$UCLAW_DIR/lib/engine-host.sh" "$UCLAW_DIR" > "$_engine_env" 2>/dev/null
     while IFS='=' read -r _k _v; do
         case "$_k" in
             UCLAW_ENGINE_SOURCE) UCLAW_ENGINE_SOURCE="$_v" ;;
@@ -63,7 +68,8 @@ if [ -x "$UCLAW_DIR/lib/engine-host.sh" ]; then
             UCLAW_APP_DIR)       APP_DIR="$_v" ;;
             UCLAW_ENGINE_MODE)   UCLAW_ENGINE_MODE="$_v" ;;
         esac
-    done < <(bash "$UCLAW_DIR/lib/engine-host.sh" "$UCLAW_DIR" 2>/dev/null)
+    done < "$_engine_env"
+    rm -f "$_engine_env" 2>/dev/null
 fi
 if [ "$UCLAW_ENGINE_SOURCE" != "legacy" ]; then
     NODE_DIR="$(dirname "$NODE_BIN")"
