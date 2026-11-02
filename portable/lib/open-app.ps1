@@ -119,6 +119,27 @@ function Test-GatewayReady {
     return ($readyIsBool -and $failingIsArray -and $uptimeIsNumber -and $eventLoopIsObject)
 }
 
+function Get-GatewayToken {
+    # Random per-stick token lives next to the config (see lib/gateway-token.mjs).
+    # Unreadable/missing falls back to the legacy default so old sticks still open.
+    $TokenFile = Join-Path $StateDir 'gateway-token'
+    if (Test-Path -LiteralPath $TokenFile -PathType Leaf) {
+        try {
+            $value = (Get-Content -LiteralPath $TokenFile -Raw).Trim()
+            if ($value) { return $value }
+        } catch { }
+    }
+    try {
+        $ConfigPath = Join-Path $StateDir 'openclaw.json'
+        if (Test-Path -LiteralPath $ConfigPath -PathType Leaf) {
+            $config = Get-Content -LiteralPath $ConfigPath -Raw | ConvertFrom-Json
+            $value = [string]$config.gateway.auth.token
+            if ($value) { return $value }
+        }
+    } catch { }
+    return 'uclaw'
+}
+
 function Get-SlotFromRoot {
     param([string]$AbsoluteRoot)
     # Stable slot from the absolute USB root path (normalized + lower-cased) so
@@ -211,7 +232,7 @@ try {
 $Url = $null
 $Port = Get-GatewayPortFromRuntime
 if ($Port -and (Test-GatewayReady $Port)) {
-    $Url = "http://127.0.0.1:$Port/#token=uclaw"
+    $Url = "http://127.0.0.1:$Port/#token=$(Get-GatewayToken)"
 }
 
 if (-not $Url) {
@@ -223,7 +244,7 @@ if (-not $Url) {
         Start-Sleep -Seconds 1
         $Port = Get-GatewayPortFromRuntime
         if ($Port -and (Test-GatewayReady $Port)) {
-            $Url = "http://127.0.0.1:$Port/#token=uclaw"
+            $Url = "http://127.0.0.1:$Port/#token=$(Get-GatewayToken)"
             break
         }
     }

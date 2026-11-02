@@ -44,6 +44,14 @@ jobs:
           cd shell
           GOOS=windows GOARCH=amd64 go build -trimpath -ldflags='-s -w -H windowsgui' -o "../$stage_dir/app/shell/U-Claw-Shell.exe" .
 
+      - name: Build optional Windows tray
+        run: |
+          tag_name="${GITHUB_REF_NAME:-${{ github.event.inputs.tag }}}"
+          stage_dir="dist/u-claw-portable-windows-${tag_name}"
+          mkdir -p "$stage_dir/app/tray"
+          cd tray
+          GOOS=windows GOARCH=amd64 go build -trimpath -ldflags='-s -w -H windowsgui' -o "../$stage_dir/app/tray/U-Claw-Tray.exe" .
+
       - name: Pre-install Node.js (Windows) and OpenClaw deps
         run: |
           tag_name="${GITHUB_REF_NAME:-${{ github.event.inputs.tag }}}"
@@ -255,9 +263,315 @@ jobs:
           name: portable-windows-full
           path: dist/u-claw-portable-windows-*.zip
 
+  # ── macOS 便携完整包（Apple Silicon）───────────────────────────────────────
+  # 在 ubuntu runner 上交叉打包：Node 二进制按 darwin-arm64 下载，npm 用
+  # --os=darwin --cpu=arm64 选平台依赖（与 Windows job 用 win32/x64 是同一套做法）。
+  # 产出 u-claw-portable-mac-arm64-<tag>.zip：骨架 + 预装 Node + OpenClaw + 平台标记，
+  # Mac 用户解压后双击 Mac-Start.command 即用，不再触发联网 setup。
+  portable-mac-arm64:
+    name: Portable macOS Apple Silicon bundle (Node + OpenClaw pre-installed)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Stage portable directory (macOS)
+        run: |
+          mkdir -p dist
+          tag_name="${GITHUB_REF_NAME:-${{ github.event.inputs.tag }}}"
+          stage_dir="dist/u-claw-portable-mac-arm64-${tag_name}"
+          mkdir -p "$stage_dir"
+          cp -R portable/. "$stage_dir/"
+          cp OPENCLAW_VERSION "$stage_dir/OPENCLAW_VERSION"
+          rm -rf "$stage_dir/data/logs" 2>/dev/null || true
+
+      - name: Pre-install Node.js (macOS arm64) and OpenClaw deps
+        run: |
+          tag_name="${GITHUB_REF_NAME:-${{ github.event.inputs.tag }}}"
+          # Absolute paths so `cd "$core_dir"` later doesn't break `du`/`find`
+          stage_dir="$(pwd)/dist/u-claw-portable-mac-arm64-${tag_name}"
+          openclaw_version=$(tr -d '[:space:]' < OPENCLAW_VERSION)
+          node_version="v24.22.1"
+          mirror_node="https://npmmirror.com/mirrors/node"
+          mirror_npm="https://registry.npmmirror.com"
+
+          app_dir="$stage_dir/app"
+          runtime_dir="$app_dir/runtime"
+          core_dir="$app_dir/core"
+          mkdir -p "$runtime_dir" "$core_dir"
+
+          # 1) Download the macOS Apple Silicon Node runtime (tar.gz keeps bin/node +x)。
+          #    发行包按 Stanley pattern 一个 zip 只带一个平台；Intel Mac 缺
+          #    node-mac-x64，首次启动会走 Mac-Start.command 的联网 setup 自动补齐。
+          mac_node="$runtime_dir/node-mac-arm64"
+          mkdir -p "$mac_node"
+          curl -fSL --connect-timeout 20 --max-time 300 --retry 2 \
+            "$mirror_node/$node_version/node-$node_version-darwin-arm64.tar.gz" -o /tmp/node-mac-arm64.tar.gz
+          tar xzf /tmp/node-mac-arm64.tar.gz -C "$mac_node" --strip-components=1
+          printf '%s\n' "$node_version" > "$mac_node/UCLAW_NODE_VERSION"
+          rm -f /tmp/node-mac-arm64.tar.gz
+          # Windows 官方 zip 里没有 node 头文件；macOS tarball 自带 include/（约 64MB），
+          # 本包用 --ignore-scripts 安装、不需要 node-gyp 编译，剪掉减小体积。
+          rm -rf "$mac_node/include"
+          # exFAT/FAT32 不支持符号链接：macOS tarball 的 bin/npm / bin/npx / bin/corepack
+          # 是符号链接，照原样入 zip 的话 Mac 用户解压到 U 盘会失败。改成两行垫片
+          # （动态 import 真实入口；CJS/ESM 两种加载模式下都合法），这样
+          # `node bin/npm ...`（setup.sh 的调用方式）和直接执行 `bin/npm` 都能用。
+          for link in "$mac_node/bin"/*; do
+            [ -L "$link" ] || continue
+            target="$(readlink "$link")"
+            rm "$link"
+            {
+              printf '#!/usr/bin/env node\n'
+              printf '// symlink-free shim (exFAT/FAT32 cannot store symlinks); loads the real entry via import().\n'
+              printf "import('%s');\n" "$target"
+            } > "$link"
+            chmod +x "$link"
+          done
+          ls -l "$mac_node/bin"
+          [ "$(find "$mac_node" -type l | wc -l)" -eq 0 ] || {
+            echo "::error::node-mac-arm64 里仍有符号链接，exFAT/FAT32 U 盘解压会失败"
+            exit 1
+          }
+          # A Mach-O binary can't be executed on the Linux runner; assert the header
+          # instead (magic cf fa ed fe + CPU_TYPE_ARM64 = 0c 00 00 01) — 比 file 的
+          # 文案稳（GNU/BSD file 的输出顺序不一样）。
+          file "$mac_node/bin/node"
+          macho_magic=$(od -An -tx1 -N8 "$mac_node/bin/node" | tr -d ' \n')
+          [ "$macho_magic" = "cffaedfe0c000001" ] || {
+            echo "::error::node-mac-arm64/bin/node 不是 Mach-O 64-bit arm64（magic=$macho_magic）"
+            exit 1
+          }
+          [ -x "$mac_node/bin/node" ] || { echo "::error::node-mac-arm64/bin/node 丢了可执行位"; exit 1; }
+
+          # 2) Use the linux runner Node to npm-install OpenClaw + runtime deps.
+          #    --os/--cpu 让 npm 按 darwin-arm64 解析可选平台依赖（同 Windows job 反向用法）。
+          curl -fSL --connect-timeout 20 --max-time 300 --retry 2 "$mirror_node/$node_version/node-$node_version-linux-x64.tar.xz" \
+            | tar xJ -C /tmp
+          export PATH="/tmp/node-$node_version-linux-x64/bin:$PATH"
+          node --version
+
+          # 2b) 用 runner 的 linux node 验上面的垫片机制本身（Mach-O 跑不了，但模块
+          #     加载逻辑一样）：真实加载一次 npm-cli.js 并打印版本号。
+          shim_test="$(mktemp -d)"
+          mkdir -p "$shim_test/bin" "$shim_test/lib/node_modules"
+          cp -R "/tmp/node-$node_version-linux-x64/lib/node_modules/npm" "$shim_test/lib/node_modules/npm"
+          cp "$mac_node/bin/npm" "$shim_test/bin/npm"
+          chmod +x "$shim_test/bin/npm"
+          npm_shim_version="$(node "$shim_test/bin/npm" --version)"
+          echo "symlink-free npm shim loads: npm $npm_shim_version"
+          rm -rf "$shim_test"
+
+          cat > "$core_dir/package.json" <<PKGJSON
+          {
+            "name": "u-claw-core",
+            "version": "1.0.0",
+            "private": true,
+            "dependencies": {
+              "openclaw": "$openclaw_version"
+            }
+          }
+          PKGJSON
+
+          # --ignore-scripts: openclaw 的 native postinstall（sharp/playwright/sqlite-vec）
+          # 不在 gateway 核心路径上，且跨平台交叉安装时不能在本机编译。
+          cd "$core_dir"
+          npm install \
+            --registry="$mirror_npm" \
+            --os=darwin --cpu=arm64 \
+            --fetch-retries=2 --fetch-timeout=60000 \
+            --ignore-scripts \
+            --no-audit \
+            --no-fund \
+            --omit=dev
+
+          # Same fail-closed vendor patches as the Windows bundle (hash-anchored,
+          # 只改 openclaw tarball 里的 JS bundle，与目标平台无关).
+          node "$GITHUB_WORKSPACE/portable/lib/patch-managed-browser-root.mjs" "$core_dir"
+          node "$GITHUB_WORKSPACE/portable/lib/patch-device-pairing-retry.mjs" "$core_dir"
+          node "$GITHUB_WORKSPACE/portable/lib/patch-portable-filesystem.mjs" "$core_dir"
+          node --check "$core_dir/node_modules/openclaw/dist/chrome-IDR7c0-o.mjs"
+          node --check "$core_dir/node_modules/@openclaw/fs-safe/dist/replace-file.js"
+          node --check "$core_dir/node_modules/openclaw/dist/openclaw-cli-shim-LRKaYTVB.mjs"
+          node --check "$core_dir/node_modules/openclaw/dist/diagnostic-stability-bundle-DcoVIIR7.mjs"
+          # Remove .bin shims/symlinks: exFAT USB drives cannot store symlinks,
+          # and the launchers call `node openclaw.mjs` directly.
+          find "$core_dir/node_modules" -type d -name .bin -prune -exec rm -rf {} +
+          find "$core_dir/node_modules" -type l -delete
+
+          # Platform marker. runtime-requirements.mjs 把它当「逗号/换行分隔的
+          # 平台列表」读（多平台 U 盘会列多个），所以保留骨架里已有的平台再
+          # 追加 darwin-arm64；干净检出时骨架没有 app/，结果就是 darwin-arm64。
+          marker="$core_dir/.uclaw-runtime-platform"
+          existing=""
+          if [ -f "$marker" ]; then
+            existing=$(tr -s ',[:space:]' '\n' < "$marker" | awk 'NF' | grep -vx 'darwin-arm64' || true)
+          fi
+          printf '%s\n' 'darwin-arm64' > "$marker"
+          if [ -n "$existing" ]; then printf '%s\n' "$existing" >> "$marker"; fi
+          cat "$marker"
+
+          # Skills-cn, same as the Windows bundle.
+          skills_cn="$stage_dir/skills-cn"
+          skills_target="$core_dir/node_modules/openclaw/skills"
+          if [ -d "$skills_cn" ] && [ -d "$skills_target" ]; then
+            for skill_dir in "$skills_cn"/*/; do
+              skill_name=$(basename "$skill_dir")
+              [ ! -d "$skills_target/$skill_name" ] && cp -R "$skill_dir" "$skills_target/$skill_name"
+            done
+          fi
+
+          echo "Before prune: $(du -sm "$core_dir/node_modules" | cut -f1) MB"
+          for big_pat in '@node-llama-cpp' 'node-llama-cpp'; do
+            find "$core_dir/node_modules" -maxdepth 3 -type d -name "$big_pat" -prune -exec rm -rf {} + 2>/dev/null || true
+          done
+          echo "After prune:  $(du -sm "$core_dir/node_modules" | cut -f1) MB"
+
+          cd "$GITHUB_WORKSPACE"
+          du -sh "$stage_dir"
+          echo "macOS portable bundle staged: $stage_dir"
+
+      # ── 发版闸门（macOS）────────────────────────────────────────────────────
+      # 对**打包好的产物本身**验，不通过就不许发：Mac 上解压后必须 needsSetup=0，
+      # 否则用户一启动就要联网，和「解压即用」的承诺不符。
+      - name: Verify macOS bundle can actually run (engines + platform gate)
+        run: |
+          tag_name="${GITHUB_REF_NAME:-${{ github.event.inputs.tag }}}"
+          stage_dir="$(pwd)/dist/u-claw-portable-mac-arm64-${tag_name}"
+          pkg="$stage_dir/app/core/node_modules/openclaw/package.json"
+          bundled_node="$stage_dir/app/runtime/node-mac-arm64/bin/node"
+          marker="$stage_dir/app/core/.uclaw-runtime-platform"
+
+          for f in "$pkg" "$bundled_node" "$stage_dir/OPENCLAW_VERSION" "$marker"; do
+            if [ ! -f "$f" ]; then
+              echo "::error::macOS 产物缺少 $f"
+              exit 1
+            fi
+          done
+
+          bundled_openclaw=$(node -p "JSON.parse(require('fs').readFileSync('$pkg','utf8')).version")
+          pinned_openclaw=$(tr -d '[:space:]' < OPENCLAW_VERSION)
+          [ "$bundled_openclaw" = "$pinned_openclaw" ] || {
+            echo "::error::产物内 openclaw $bundled_openclaw ≠ OPENCLAW_VERSION $pinned_openclaw"
+            exit 1
+          }
+
+          node_version="v24.22.1"   # 与 Pre-install 步骤保持一致
+          engines=$(node -p "JSON.parse(require('fs').readFileSync('$pkg','utf8')).engines.node")
+          echo "产物内 openclaw: $bundled_openclaw"
+          echo "它要求 Node:     $engines"
+          echo "产物内 Node:     $node_version"
+          node -e '
+            const [ver, range] = [process.argv[1], process.argv[2]];
+            const p = v => { const m = String(v).replace(/^v/,"").match(/^(\d+)\.(\d+)\.(\d+)/); return m && {ma:+m[1],mi:+m[2],pa:+m[3]}; };
+            const cmp = (a,b) => a.ma-b.ma || a.mi-b.mi || a.pa-b.pa;
+            const v = p(ver);
+            const ok = String(range).split("||").some(br =>
+              br.trim().split(/\s+/).filter(Boolean).every(c => {
+                const m = c.match(/^(>=|<=|>|<|=)?\s*v?(\d+(?:\.\d+){0,2})$/);
+                if (!m) return false;
+                const t = m[2].split(".").map(Number);
+                const r = cmp(v, {ma:t[0], mi:t[1]??0, pa:t[2]??0});
+                const op = m[1] || "=";
+                return op===">=" ? r>=0 : op===">" ? r>0 : op==="<=" ? r<=0 : op==="<" ? r<0 : r===0;
+              })
+            );
+            if (!ok) {
+              console.error(`::error::内置 Node ${ver} 跑不动这个 openclaw（要求 ${range}）。`);
+              process.exit(1);
+            }
+            console.log(`✅ ${ver} 满足 ${range}`);
+          ' "$node_version" "$engines"
+
+          # 解压即用的判定本身就是 runtime-requirements.mjs：直接拿产物调用它。
+          node --input-type=module - "$stage_dir" "$node_version" <<'NODEEOF'
+          import { pathToFileURL } from 'node:url';
+          const root = process.argv[2];
+          const nodeVersion = process.argv[3];
+          const { needsSetup } = await import(pathToFileURL(root + '/lib/runtime-requirements.mjs').href);
+          if (needsSetup(root, nodeVersion, 'darwin-arm64')) {
+            console.error('::error::产物在 darwin-arm64 上 needsSetup=1——Mac 用户解压后仍会触发联网 setup，不是「解压即用」。');
+            process.exit(1);
+          }
+          console.log('✅ 产物在 darwin-arm64 上 needsSetup=0（解压即用）');
+          NODEEOF
+
+      - name: Run test suite (macOS bundle, 含 Node/engines 一致性守卫)
+        run: |
+          tag_name="${GITHUB_REF_NAME:-${{ github.event.inputs.tag }}}"
+          UCLAW_TEST_CORE_DIR="$(pwd)/dist/u-claw-portable-mac-arm64-${tag_name}/app/core" node --test "tests/*.test.mjs"
+
+      - name: Normalize line endings and permissions (macOS bundle)
+        run: |
+          tag_name="${GITHUB_REF_NAME:-${{ github.event.inputs.tag }}}"
+          stage_dir="dist/u-claw-portable-mac-arm64-${tag_name}"
+          # 骨架里仍带 Windows 启动器（同一只 U 盘可跨系统用），保持它们的 CRLF；
+          # .sh/.command/.mjs/.js 必须是 LF，否则 macOS 双击直接报错。
+          find "$stage_dir" -type f \( -name '*.bat' -o -name '*.cmd' -o -name '*.ps1' \) -print0 \
+            | xargs -0 -I {} sh -c 'sed -i "s/\r$//; s/$/\r/" "{}"'
+          find "$stage_dir" -type f \( -name '*.bat' -o -name '*.cmd' \) -print0 \
+            | xargs -0 -I {} sh -c 'sed -i "1s/^\xef\xbb\xbf//" "{}"'
+          find "$stage_dir" -type f \( -name '*.sh' -o -name '*.command' -o -name '*.mjs' -o -name '*.js' \) -print0 \
+            | xargs -0 -I {} sh -c 'sed -i "s/\r$//" "{}"'
+          # Mac 双击必须可执行：入口 .command/.sh + 内置 Node 二进制
+          chmod +x "$stage_dir"/*.sh "$stage_dir"/*.command 2>/dev/null || true
+          chmod +x "$stage_dir/app/runtime/node-mac-arm64/bin/"* 2>/dev/null || true
+
+      - name: Zip portable bundle (macOS)
+        run: |
+          tag_name="${GITHUB_REF_NAME:-${{ github.event.inputs.tag }}}"
+          cd dist
+          zip_name="u-claw-portable-mac-arm64-${tag_name}.zip"
+          # 不用 -y：让 zip 把符号链接（node 的 bin/npm、bin/npx）存成真实文件。
+          # exFAT/FAT32 U 盘不支持 symlink，带链接条目的 zip 在 Mac 上解压会失败/丢文件。
+          zip -qr "$zip_name" "u-claw-portable-mac-arm64-${tag_name}"
+          ls -lh "$zip_name"
+
+          # 解压即用的两个硬前提，对着 zip 本身验（不是对着 staging 目录）：
+          # ① 整包没有任何 symlink 条目（否则 exFAT/FAT32 解压失败）
+          # ② 入口与内置 Node 保留可执行位（否则 Mac 上双击没反应）
+          # 用 python3 zipfile 读 central directory（runner 自带，不依赖 zipinfo 文案）
+          python3 - "$zip_name" "u-claw-portable-mac-arm64-${tag_name}" <<'PYEOF'
+          import sys, zipfile
+          zip_path, prefix = sys.argv[1], sys.argv[2]
+          zf = zipfile.ZipFile(zip_path)
+          infos = zf.infolist()
+          links = [i.filename for i in infos if (i.external_attr >> 16) & 0o170000 == 0o120000]
+          if links:
+              print(f"::error::zip 里有 {len(links)} 个符号链接条目（如 {links[0]}），Mac 解压到 exFAT/FAT32 会失败")
+              sys.exit(1)
+          need_exec = [f"{prefix}/Mac-Start.command", f"{prefix}/app/runtime/node-mac-arm64/bin/node"]
+          for name in need_exec:
+              if name not in zf.namelist():
+                  print(f"::error::zip 里缺少 {name}")
+                  sys.exit(1)
+              mode = zf.getinfo(name).external_attr >> 16
+              if not mode & 0o111:
+                  print(f"::error::{name} 在 zip 里丢了可执行位（Mac 上双击起不来）")
+                  sys.exit(1)
+          print(f"✅ zip 自检通过：{len(infos)} 个条目，无 symlink，入口可执行位保留")
+          PYEOF
+
+      - name: Size guard (macOS, GitHub 2GB asset cap)
+        run: |
+          tag_name="${GITHUB_REF_NAME:-${{ github.event.inputs.tag }}}"
+          zip_path="dist/u-claw-portable-mac-arm64-${tag_name}.zip"
+          size_bytes=$(stat -c%s "$zip_path")
+          size_mb=$((size_bytes / 1024 / 1024))
+          echo "macOS portable zip size: ${size_mb} MB"
+          if [ "$size_mb" -gt 1500 ]; then
+            echo "::error::macOS portable zip is ${size_mb} MB, exceeds 1500 MB safety cap"
+            exit 1
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: portable-mac-arm64
+          path: dist/u-claw-portable-mac-arm64-*.zip
+
   publish:
     name: Publish GitHub Release
-    needs: [portable-windows-full]
+    # 两个平台的完整包都成功才发布；任一失败都会挡住 release（避免发出半套资产）
+    needs: [portable-windows-full, portable-mac-arm64]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -297,13 +611,27 @@ jobs:
 
             ### 下载
 
-            - **Windows 便携完整版（U 盘版）**：`u-claw-portable-windows-*.zip`，已预装 Node.js + OpenClaw。解压到 U 盘后双击 `Windows-Start.bat` 启动。
+            - **Windows 便携完整版（U 盘版）**：`u-claw-portable-windows-*.zip`，已预装 Node.js + OpenClaw。解压到 U 盘后双击 `Windows-Start.bat` 启动（默认进系统浏览器 WebUI，首屏可选「进入 Dashboard / 配置 · 改模型」）。
+            - **macOS 便携版（Apple Silicon）**：`u-claw-portable-mac-arm64-*.zip`，解压后双击 `Mac-Start.command`。
+
+            ### 本版要点
+
+            - 启动链回到「浏览器 WebUI 为主」：双击即开首屏选择页，配置入口不再被藏；WebView2 壳 / Edge App 降级为可选入口，另附 Windows 托盘 `app/tray/U-Claw-Tray.exe`
+            - 每支盘首启生成**随机 gateway token**（`data/.openclaw/gateway-token`），只监听 127.0.0.1；旧盘的固定 `uclaw` 自动迁移并留 `.bak`
+            - 更新检查支持通道：默认 `stable`，`data/.openclaw/update-channel.json` 写 `{"channel":"extended-stable"}` 跟随上游 LTS
+            - 新增 `Windows-Config.bat`：随时直达配置中心（虾盘云设备钱包 / 模型 Key / 渠道）
+            - 跟版工具：`node tools/patch-baseline.mjs --upstream <core> --print` 检查三方补丁锚点，`--accept` 一键重算（默认闸门不放宽）
               - 包内另附 **`lite-windows-x64/`（虾盘轻量版，约 45MB）**：不依赖 Node/OpenClaw，双击 `虾盘.exe` 即用，可填任意 OpenAI 兼容 Key；适合老电脑、低速 U 盘、只做维护和轻量对话的场景。
-            - **macOS 便携版**：源码在 `portable/` 目录，`bash setup.sh` 自动下载 Node.js + OpenClaw，双击 `Mac-Start.command` 启动。
+            - **macOS 便携完整版（Apple Silicon）**：`u-claw-portable-mac-arm64-*.zip`，已预装 Node.js + OpenClaw。解压到 U 盘或任意文件夹后双击 `Mac-Start.command` 即用（首次启动无需联网 setup）。
+              - U 盘格式：macOS 推荐 **exFAT**（Mac/Windows 通用）或 **APFS**（仅 Mac）；NTFS 在 macOS 上只能读。
+              - 首次启动若提示「未验证的开发者」：右键 `Mac-Start.command` → 打开；仍被拦截时在「终端」执行 `xattr -dr com.apple.quarantine <解压目录>`（详见 README 的 Mac FAQ）。
+              - Intel Mac 也能用同一份包：首次启动会自动联网补齐 `node-mac-x64` 运行时（国内镜像约 1 分钟）。
+            - **macOS 源码运行**：源码在 `portable/` 目录，`bash setup.sh` 自动下载 Node.js + OpenClaw，双击 `Mac-Start.command` 启动。
 
             > **U 盘格式**：**NTFS 或 exFAT 均可**。v2.3.0+ 已内置 exFAT 兼容（原子写入 rename 补丁 + Windows 零 inode 探测），exFAT 可在 Windows/Mac 双系统读写；仅 Windows 使用可选 NTFS。
           files: |
             artifacts/portable-windows-full/*
+            artifacts/portable-mac-arm64/*
           fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

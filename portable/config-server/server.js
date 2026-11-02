@@ -16,6 +16,24 @@ const OPENCLAW_MJS = path.join(__dirname, '../app/core/node_modules/openclaw/ope
 const CONFIG_PATH = OPENCLAW_CONFIG_PATH;
 const RUNTIME_PATH = path.join(OPENCLAW_STATE_DIR, 'runtime.json');
 
+// 随机化后的 gateway token（lib/gateway-token.mjs 写入）：token 文件优先，回退配置，
+// 再回退旧默认值。任何读取失败都退回旧值，保证 config-server 老盘也能工作。
+function readGatewayToken() {
+  try {
+    const tokenFile = path.join(OPENCLAW_STATE_DIR, 'gateway-token');
+    if (fs.existsSync(tokenFile)) {
+      const token = fs.readFileSync(tokenFile, 'utf8').trim();
+      if (token) return token;
+    }
+  } catch (_) { /* 文件缺失/不可读：继续回退 */ }
+  try {
+    const config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
+    const token = config && config.gateway && config.gateway.auth && config.gateway.auth.token;
+    if (typeof token === 'string' && token.trim()) return token.trim();
+  } catch (_) { /* 配置坏：回退旧默认值 */ }
+  return 'uclaw';
+}
+
 // OpenClaw 2026.8.1 会把配置文件里的敏感值改写成掩码；模型 Key 只能保存为
 // SecretRef，明文仅通过 secrets CLI 的 stdin 进入本机 secret store。
 function isMaskedKey(value) {
@@ -146,7 +164,7 @@ async function runSecretsReload() {
   const args = [OPENCLAW_MJS, 'secrets', 'reload', '--json'];
   const gatewayPort = await gatewayPortFromRuntime();
   if (gatewayPort) args.push('--port', String(gatewayPort));
-  args.push('--token', 'uclaw', '--timeout', '8000');
+  args.push('--token', readGatewayToken(), '--timeout', '8000');
 
   return new Promise((resolve) => {
     execFile(process.execPath, args, {
@@ -195,7 +213,7 @@ const server = http.createServer((req, res) => {
       } catch (_) { /* 损坏的 runtime.json：当作没有 configServerPort，继续走 gatewayPort 的三级回退 */ }
       const gatewayPort = await gatewayPortFromRuntime();
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ configServerPort, gatewayPort }));
+      res.end(JSON.stringify({ configServerPort, gatewayPort, gatewayToken: readGatewayToken() }));
     })();
     return;
   }
@@ -348,7 +366,14 @@ const server = http.createServer((req, res) => {
             // Provider guard is advisory: never make a user config save fail.
             console.error('[provider-guard] save-path guard failed:', guardErr && guardErr.message);
           }
-          writeConfigAtomic(CONFIG_PATH, simplifyPortableConfig(merged));
+          const finalConfig = simplifyPortableConfig(merged);
+          // 每支盘的随机 gateway token 是本地凭据：页面保存模型/钱包时不能把它改回旧默认值。
+          finalConfig.gateway = finalConfig.gateway || { mode: 'local', auth: { mode: 'token' } };
+          const authMode = finalConfig.gateway.auth && finalConfig.gateway.auth.mode ? finalConfig.gateway.auth.mode : 'token';
+          if (authMode === 'token') {
+            finalConfig.gateway.auth = Object.assign({}, finalConfig.gateway.auth, { mode: authMode, token: readGatewayToken() });
+          }
+          writeConfigAtomic(CONFIG_PATH, finalConfig);
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ ok: true, ...await runSecretsReload() }));
         } catch (err) {

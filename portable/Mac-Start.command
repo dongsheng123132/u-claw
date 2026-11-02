@@ -131,7 +131,7 @@ if [ ! -f "$CONFIG_FILE" ]; then
 {
   "gateway": {
     "mode": "local",
-    "auth": { "token": "uclaw" }
+    "auth": { "token": "" }
   },
   "update": {
     "checkOnStart": false,
@@ -144,6 +144,16 @@ CFGEOF
     fi
     echo ""
 fi
+
+# ---- 5a. 随机 gateway token（每支盘一把；见 lib/gateway-token.mjs）----
+# 必须早于 instance-lock 的看板链接与 official-provider-guard 的默认值补齐。
+UCLAW_GATEWAY_TOKEN="uclaw"
+while IFS='=' read -r _k _v; do
+    case "$_k" in
+        UCLAW_GATEWAY_TOKEN) UCLAW_GATEWAY_TOKEN="$_v" ;;
+    esac
+done < <("$NODE_BIN" "$UCLAW_DIR/lib/gateway-token.mjs" "$STATE_DIR" 2>/dev/null)
+export UCLAW_GATEWAY_TOKEN
 
 # ---- 5b. 加速：把可重建的高 IO 数据放到本机硬盘 ----
 # 会话、设备身份与授权状态全部留在 U 盘；只有打过补丁的受管 Chromium 目录在本机。
@@ -172,7 +182,7 @@ done < <("$NODE_BIN" "$UCLAW_DIR/lib/portable-instance-lock.mjs" acquire "$INSTA
 if [ "$INSTANCE_STATUS" = "existing" ] || [ "$INSTANCE_STATUS" = "busy" ]; then
     echo -e "  ${YELLOW}U-Claw is already running; reusing the existing instance.${NC}"
     if [ -n "$INSTANCE_PORT" ]; then
-        open "http://127.0.0.1:$INSTANCE_PORT/#token=uclaw" 2>/dev/null || true
+        open "http://127.0.0.1:$INSTANCE_PORT/#token=$UCLAW_GATEWAY_TOKEN" 2>/dev/null || true
     else
         echo "  The existing instance is still starting. Please wait a moment."
     fi
@@ -345,11 +355,11 @@ GW_PID=$!
 # 首屏 loading.html 自己轮询 /ready，就绪后停在选择页，不再自动冲进 Dashboard。
 echo -e "  ${YELLOW}首次启动需准备运行环境，约 30-90 秒，请稍候...${NC}"
 # 用 file:// URL 确保 query string（?port=）能传给浏览器；裸路径 open 会把整串当文件名。
-open "file://$UCLAW_DIR/lib/loading.html?port=$PORT&token=uclaw&configPort=$CONFIG_PORT" 2>/dev/null || true
+open "file://$UCLAW_DIR/lib/loading.html?port=$PORT&token=$UCLAW_GATEWAY_TOKEN&configPort=$CONFIG_PORT" 2>/dev/null || true
 
 # ---- 11b. gateway 首轮预热（后台、静默、非阻塞）----
 # 就绪后先唤醒 config/model 子系统，用户首次点发送时不再等。移植自 4.0 first-turn-prewarm。
-"$NODE_BIN" "$UCLAW_DIR/lib/prewarm.mjs" "$PORT" uclaw >/dev/null 2>&1 &
+"$NODE_BIN" "$UCLAW_DIR/lib/prewarm.mjs" "$PORT" "$UCLAW_GATEWAY_TOKEN" >/dev/null 2>&1 &
 
 # ---- 11c. 兜底：万一首屏页的 file:// fetch 被浏览器拦，仍静默轮询端口 ----
 # 慢盘首启可达 90s+，轮询上限覆盖这段。最多 ~3 分钟（180×1s）。
@@ -364,7 +374,7 @@ open "file://$UCLAW_DIR/lib/loading.html?port=$PORT&token=uclaw&configPort=$CONF
 
 echo -e "  ${GREEN}════════════════════════════════${NC}"
 echo -e "  ${GREEN}🦞 U-Claw is running!${NC}"
-echo -e "  ${GREEN}   Dashboard:     http://127.0.0.1:$PORT/#token=uclaw${NC}"
+echo -e "  ${GREEN}   Dashboard:     http://127.0.0.1:$PORT/#token=$UCLAW_GATEWAY_TOKEN${NC}"
 echo -e "  ${GREEN}   Config Center: http://127.0.0.1:$CONFIG_PORT/${NC}"
 echo ""
 echo -e "  ${YELLOW}Press Ctrl+C to stop${NC}"

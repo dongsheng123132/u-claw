@@ -974,7 +974,7 @@ function buildConfig(provider, base, model, apiKey) {
     var allowedModels = {};
     allowedModels[provider + '/' + model] = {};
     return {
-        gateway: { mode: 'local', auth: { mode: 'token', token: 'uclaw' } },
+        gateway: { mode: 'local', auth: { mode: 'token', token: _gatewayToken } },
         commands: { native: 'auto', nativeSkills: 'auto', restart: true },
         models: { mode: 'replace', providers: providers },
         agents: { defaults: { model: { primary: provider + '/' + model }, models: allowedModels } }
@@ -1102,6 +1102,8 @@ loadCatalog().then(loadConfig);
 // that unknown). config-server does the probe in Node -- no CORS involved -- and this page
 // just asks it same-origin.
 var _gatewayPort = null;
+// 每支盘的随机 token 由 config-server 的 /api/runtime 下发（见 server.js readGatewayToken）。
+var _gatewayToken = 'uclaw';
 async function isOurGateway(port) {
     try {
         var res = await fetch('/api/gateway-check?port=' + encodeURIComponent(port), {
@@ -1120,6 +1122,7 @@ async function findGatewayPort() {
     try {
         var res = await fetch('/api/runtime', { cache: 'no-store' });
         var runtime = await res.json();
+        if (runtime && typeof runtime.gatewayToken === 'string' && runtime.gatewayToken) _gatewayToken = runtime.gatewayToken;
         if (Number.isInteger(runtime.gatewayPort)) candidates.push(runtime.gatewayPort);
     } catch (e) { /* config-server 一时打不通，退回下面的候选 */ }
     if (Number.isInteger(hinted)) candidates.push(hinted);
@@ -1141,7 +1144,7 @@ async function findGatewayPort() {
 
 function gatewayUrl() {
     var p = _gatewayPort || 18789;
-    return 'http://127.0.0.1:' + p + '/#token=uclaw';
+    return 'http://127.0.0.1:' + p + '/#token=' + encodeURIComponent(_gatewayToken);
 }
 
 // --- Check gateway status ---

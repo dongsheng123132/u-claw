@@ -34,9 +34,12 @@ test('startup page wires both entries to loopback URLs from the launcher', () =>
 
 test('both launchers open the startup page with the gateway and config ports', () => {
   const bat = readRepoFile('portable', 'Windows-Start.bat');
-  assert.match(bat, /LOADING_URL=file:\/\/\/.*\?port=%PORT%&token=uclaw&configPort=%CONFIG_PORT%/, 'Windows splash URL carries both ports');
+  assert.match(bat, /LOADING_URL=file:\/\/\/.*\?port=%PORT%&token=%UCLAW_GATEWAY_TOKEN%&configPort=%CONFIG_PORT%/, 'Windows splash URL carries both ports and the per-stick token');
   const mac = readRepoFile('portable', 'Mac-Start.command');
-  assert.match(mac, /lib\/loading\.html\?port=\$PORT&token=uclaw&configPort=\$CONFIG_PORT/, 'macOS splash URL carries both ports');
+  assert.match(mac, /lib\/loading\.html\?port=\$PORT&token=\$UCLAW_GATEWAY_TOKEN&configPort=\$CONFIG_PORT/, 'macOS splash URL carries both ports and the per-stick token');
+  // 首屏页拿到的是随机 token，不能再写死旧默认值（v2.3.9 之前是 #token=uclaw）。
+  assert.doesNotMatch(bat, /token=uclaw/, 'Windows launcher must not hardcode the legacy token');
+  assert.doesNotMatch(mac, /token=uclaw/, 'macOS launcher must not hardcode the legacy token');
 });
 
 test('the Config Center still exposes the model key pickers the entry points at', () => {

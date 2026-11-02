@@ -1,0 +1,3 @@
+# Build output (the repo root .gitignore already ignores *.exe; this keeps the
+# directory itself out of the tree too).
+build/

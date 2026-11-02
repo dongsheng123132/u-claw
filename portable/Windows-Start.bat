@@ -90,6 +90,14 @@ if not exist "%STATE_DIR%\openclaw.json" (
     echo.
 )
 
+REM Random per-stick gateway token (loopback only; see lib/gateway-token.mjs).
+REM Runs before the instance-lock dashboard link and before official-provider-guard
+REM fills defaults, so every link and the gateway itself agree on the same token.
+set "UCLAW_GATEWAY_TOKEN=uclaw"
+for /f "usebackq tokens=1,* delims==" %%a in (`""%NODE_BIN%" "%UCLAW_DIR%lib\gateway-token.mjs" "%STATE_DIR%" 2^>nul"`) do (
+    if "%%a"=="UCLAW_GATEWAY_TOKEN" set "UCLAW_GATEWAY_TOKEN=%%b"
+)
+
 REM Startup cache acceleration. Session/identity/state stay portable on USB;
 REM only the patched OpenClaw managed Chromium directory uses the local disk.
 REM Do not inherit a browser root from the calling shell.
@@ -122,7 +130,7 @@ if "%INSTANCE_STATUS%"=="busy" goto :reuse_existing_instance
 goto :instance_check_done
 :reuse_existing_instance
 echo   U-Claw is already running; reusing the existing instance.
-if not "%UCLAW_HEADLESS%"=="1" if defined INSTANCE_PORT start "" http://127.0.0.1:%INSTANCE_PORT%/#token=uclaw
+if not "%UCLAW_HEADLESS%"=="1" if defined INSTANCE_PORT start "" http://127.0.0.1:%INSTANCE_PORT%/#token=%UCLAW_GATEWAY_TOKEN%
 if not defined INSTANCE_PORT echo   The existing instance is still starting. Please wait a moment.
 exit /b 0
 :instance_check_done
@@ -276,7 +284,7 @@ REM Open the local startup page now; it redirects directly to the dashboard.
 REM Open startup page with the gateway port and token in the query string.
 echo   Opening startup screen...
 set "LOADING_PATH=%UCLAW_DIR%lib\loading.html"
-set "LOADING_URL=file:///%LOADING_PATH:\=/%?port=%PORT%&token=uclaw&configPort=%CONFIG_PORT%"
+set "LOADING_URL=file:///%LOADING_PATH:\=/%?port=%PORT%&token=%UCLAW_GATEWAY_TOKEN%&configPort=%CONFIG_PORT%"
 if not "%UCLAW_HEADLESS%"=="1" start "" "%LOADING_URL%"
 
 echo   Xiapan Cloud wallet and recharge are available inside the WebUI.
@@ -286,7 +294,7 @@ REM keep polling and reopen the dashboard after the gateway is ready.
 if not "%UCLAW_HEADLESS%"=="1" start /B "" cmd /c ""%UCLAW_DIR%lib\wait-gateway.bat" %PORT% %CONFIG_PORT%"
 
 REM Prewarm gateway in the background after it becomes ready.
-start /B "" "%NODE_BIN%" "%UCLAW_DIR%lib\prewarm.mjs" %PORT% uclaw >nul 2>&1
+start /B "" "%NODE_BIN%" "%UCLAW_DIR%lib\prewarm.mjs" %PORT% "%UCLAW_GATEWAY_TOKEN%" >nul 2>&1
 
 echo.
 echo   ========================================

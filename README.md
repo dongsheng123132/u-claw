@@ -31,11 +31,13 @@
 > 📺 图文教程：[docs/快速上手.md](docs/快速上手.md)（从插 U 盘、恢复钱包到开始对话）
 
 
-1. 从 [Releases](https://github.com/dongsheng123132/u-claw/releases) 下载 Windows 便携版，解压到 U 盘后双击 `Windows-Start.bat`。
+1. 从 [Releases](https://github.com/dongsheng123132/u-claw/releases) 下载便携完整版（Windows `u-claw-portable-windows-*.zip` / macOS Apple Silicon `u-claw-portable-mac-arm64-*.zip`），解压到 U 盘后双击 `Windows-Start.bat`（Mac 双击 `Mac-Start.command`），无需再联网 setup。
 2. 或克隆仓库，在 `portable/` 运行 `bash setup.sh`，下载 Node.js 与 OpenClaw。
 3. 启动先到「启动首屏」：点 **🚀 进入 Dashboard** 开始聊天，或点 **⚙️ 配置 / 改模型** 填 DeepSeek / 虾盘云 Key、充值、连微信。进 Dashboard 后还可在侧栏「设备钱包」领取或恢复虾盘云钱包（默认模型自动配置）。
 
-> 双击 `Windows-Start.bat` / `Mac-Start.command` 默认在**系统浏览器**里打开 WebUI——配置入口就挂在首屏上，不藏起来。想要独立窗口（可选、非默认）：`Windows-WebView.bat`（内置 WebView2 壳，带任务栏图标与关闭确认）或 `Windows-App.bat`（Edge App 模式）；随时直接进配置中心可双击 `Windows-Config.bat`。三种方式共用 Gateway 和 `data/`，窗口缓存留在当前电脑，配置和会话随 U 盘携带。源码使用者可运行 `shell/build.sh` 自行构建独立窗口。
+> 双击 `Windows-Start.bat` / `Mac-Start.command` 默认在**系统浏览器**里打开 WebUI——配置入口就挂在首屏上，不藏起来。想要独立窗口（可选、非默认）：`Windows-WebView.bat`（内置 WebView2 壳，带任务栏图标与关闭确认）或 `Windows-App.bat`（Edge App 模式）；想「像 App 一样常驻」可用 `app/tray/U-Claw-Tray.exe`（托盘：打开 Dashboard / 配置中心、拉起后端，零窗口）。随时直接进配置中心可双击 `Windows-Config.bat`。几种方式共用 Gateway 和 `data/`，窗口缓存留在当前电脑，配置和会话随 U 盘携带。源码使用者可运行 `shell/build.sh` / `tray/build.sh` 自行构建。
+>
+> 安全与更新：每支盘首启会生成**独立随机 gateway token**（`data/.openclaw/gateway-token`，只监听 127.0.0.1，tailscale 默认关），旧盘里的固定 `uclaw` 会自动迁移；更新检查支持**通道**——默认 `stable`，把 `data/.openclaw/update-channel.json` 写成 `{"channel":"extended-stable"}` 即跟随上游 LTS。
 
 | 你得到什么 | 为什么重要 |
 | --- | --- |
@@ -43,7 +45,7 @@
 | 本地优先 | 不绑定设备、不打指纹、不上传本地配置。 |
 | 多种使用方式 | 便携 U 盘、在线一键安装、可启动 Linux U 盘各自独立。 |
 
-*平台支持：Windows ✅（免部署完整包）· macOS ✅ · 可启动 Linux U盘 ✅ —— 详见下方平台支持表。*
+*平台支持：Windows ✅（免部署完整包）· macOS ✅（Apple Silicon 免部署完整包）· 可启动 Linux U盘 ✅ —— 详见下方平台支持表。*
 
 ## 真实界面
 
@@ -90,7 +92,7 @@ U-Claw（虾盘）是一个**制作教程 + 全套源代码**，教你把 [OpenC
 
 本版使用 OpenClaw 2026.10.9 和 Node.js 24.22.1。默认走虾盘云 `deepseek-v4-flash`：钱包接入原生 WebUI，领取或恢复密钥后自动配置默认模型；启动不会自动领钱包，已有钱包可以继续使用和一键充值。想用自己的模型也行——首次启动的配置页可以直接选 DeepSeek / Kimi / 智谱 GLM / 通义 / 豆包 / MiniMax / OpenAI / Claude / Groq / 硅基流动，或选「自定义 · OpenAI 兼容」填 API 地址、模型 ID 和 Key。配置与钱包状态保存在 U 盘 `data/.openclaw/`。
 
-首次在 Mac 运行或同盘更换操作系统时，setup 会联网准备当前平台依赖；Windows 完整包已准备好 Windows 依赖。
+官方完整包已预装对应平台依赖（Windows x64 / macOS Apple Silicon），下载解压即用；只有从源码运行、Intel Mac 用 Apple Silicon 包，或同一只盘换操作系统时，setup 才需要联网补齐当前平台依赖。
 
 ### 包内附带的轻量版（虾盘精灵）
 
@@ -118,7 +120,7 @@ irm https://u-claw.org/install.ps1 | iex
 
 **结论：AI 引擎（OpenClaw）装电脑，U 盘负责「随身」。**
 
-U 盘版的价值是「换台电脑，配置、钱包、会话、记忆跟着走」，而不是「把 AI 运行时塞进 U 盘」。完整便携包是约 620 MB、4.4 万个文件；把它放进 U 盘、每次插上启动，都要付出实打实的 IO 成本。同版本、同机器实测（2026-10-21，Windows 11 x64 / i9-12900H / USB 3.0 exFAT U 盘；单机单盘，不同 U 盘主控差异可能很大）：
+U 盘版的价值是「换台电脑，配置、钱包、会话、记忆跟着走」，而不是「把 AI 运行时塞进 U 盘」。完整便携包解压后约 620 MB（Windows）/ 0.8 GB（macOS），4.4–4.5 万个文件；把它放进 U 盘、每次插上启动，都要付出实打实的 IO 成本。同版本、同机器实测（2026-10-21，Windows 11 x64 / i9-12900H / USB 3.0 exFAT U 盘；单机单盘，不同 U 盘主控差异可能很大）：
 
 | 对比项 | 装电脑（同一个包拷到本机 NVMe） | 完整便携包放 U 盘 | AI 优盘精灵（独立产品） |
 | --- | --- | --- | --- |
@@ -225,9 +227,12 @@ U-Claw/                          ← 整个拷到 U 盘
 [GitHub Releases](https://github.com/dongsheng123132/u-claw/releases) 提供便携 U 盘版：
 
 - `u-claw-portable-windows-vX.Y.Z.zip` — Windows 便携完整版（已预装 Node + OpenClaw，**解压到 U 盘双击 `Windows-Start.bat` 即用**）
-- **Mac**：源码在 [`portable/`](portable/) 目录，`bash setup.sh` 自动下载 Node + OpenClaw（国内镜像约 1 分钟），双击 `Mac-Start.command` 启动
+- `u-claw-portable-mac-arm64-vX.Y.Z.zip` — macOS 便携完整版（Apple Silicon；zip 约 260 MB / 解压后约 0.8 GB；已预装 Node + OpenClaw，**解压后双击 `Mac-Start.command` 即用**，首次启动无需联网）
+  - Intel Mac 用同一份包：首次启动会自动联网补齐 `node-mac-x64` 运行时（国内镜像约 1 分钟）。
+  - 首次启动若提示「未验证的开发者」：右键 `Mac-Start.command` → 打开；仍被拦截时在「终端」执行 `xattr -dr com.apple.quarantine <解压目录>`（见下方 FAQ）。
+- 想自己打包：源码在 [`portable/`](portable/) 目录，`bash setup.sh` 自动下载 Node + OpenClaw（国内镜像约 1 分钟），再双击 `Mac-Start.command` 启动
 
-> ⚠️ **完整便携包优先 NTFS，不要 FAT32**：NTFS 走原生路径，最快最稳；exFAT 自 v2.3.0 起会自动启用经版本与 SHA-256 校验的兼容补丁——能正常启动，但目录监听改为轮询、首次启动与重启更慢、个别插件/技能的链接能力受限（Windows + macOS 双系统共用一只盘时用它）；FAT32 不支持。
+> ⚠️ **完整便携包优先 NTFS（Windows）/ exFAT（Mac+Windows），不要 FAT32**：Windows 上 NTFS 走原生路径，最快最稳；macOS 推荐 **exFAT**（Mac/Windows 通用）或 **APFS**（仅 Mac），NTFS 在 macOS 上只能只读。exFAT 自 v2.3.0 起会自动启用经版本与 SHA-256 校验的兼容补丁——能正常启动，但目录监听改为轮询、首次启动与重启更慢、个别插件/技能的链接能力受限；FAT32 不支持。
 >
 > **exFAT/FAT32 首次启动的依赖补全**：v2.3.4 起，启动脚本会探测文件系统的「重命名身份」能力。exFAT/FAT32 没有稳定 inode，OpenClaw 的一次性依赖生命周期补全在这种盘上会写入失败并拒绝启动；脚本会自动跳过这一步并提示 `File system: exFAT/FAT32 - skipped dependency lifecycle completion.`（发行包本身用 `--ignore-scripts` 安装并打了验证补丁，跳过不影响启动）。NTFS 保持完整补全。
 >
@@ -267,8 +272,8 @@ bash Mac-Start.command   # Mac 测试
 
 | 平台 | 状态 | 说明 |
 |------|------|------|
-| Mac Apple Silicon (M1-M4) | ✅ | 便携版 |
-| Mac Intel (x64) | ✅ | 便携版 |
+| Mac Apple Silicon (M1-M4) | ✅ | 便携完整包（解压即用，预装 Node + OpenClaw） |
+| Mac Intel (x64) | ✅ | 便携版（首次启动自动补齐 x64 运行时） |
 | Windows x64 | ✅ | 便携版（含免部署完整包） |
 | Linux x64（可启动 U 盘） | ✅ | [`bootable/`](bootable/) 目录 |
 
@@ -297,13 +302,13 @@ U-Claw 是一个快速成长的开源项目，目前已有不少商业合作机�
 不需要。安装和运行全程使用国内镜像，国产模型 API 直连。
 
 **Q: U 盘需要多大？**
-4GB+ 就够（v2.3.x 完整包约 618 MB / 4.4 万个文件；早期全量包约 2.3 GB）。
+4GB+ 就够（v2.3.x 完整包约 620 MB（Windows）/ 0.8 GB（macOS 解压后）、4.4–4.5 万个文件；早期全量包约 2.3 GB）。
 
 **Q: 能分发吗？**
 MIT 协议，随便复制分发。
 
 **Q: Mac 提示"未验证的开发者"？**
-右键脚本 → 打开。
+官方 macOS 完整包解压后，双击 `Mac-Start.command` 若被系统拦截：右键脚本 → 打开；仍不行就在「终端」执行 `xattr -dr com.apple.quarantine <解压目录>`，然后重新双击。脚本自身也会在启动时清除 Node 二进制的隔离属性。
 
 **Q: setup.bat / setup.sh 执行失败，提示模块找不到？**
 通常是 npm install 过程中网络中断导致 `node_modules` 不完整。解决步骤：
@@ -404,6 +409,8 @@ U-Claw (aka "虾盘" / "Xia Pan" in Chinese, meaning "Claw Drive") is a **tutori
 
 The codebase itself is the USB file skeleton. Run `setup.sh` to download large dependencies, then copy the entire `portable/` directory to a USB drive.
 
+Prebuilt full bundles are published on [Releases](https://github.com/dongsheng123132/u-claw/releases) — `u-claw-portable-windows-*.zip` for Windows x64 and `u-claw-portable-mac-arm64-*.zip` for macOS Apple Silicon. Unzip, then double-click `Windows-Start.bat` or `Mac-Start.command`: the runtime is already inside, so no online setup is needed. On macOS, format the USB drive as exFAT (works on macOS and Windows) or APFS (macOS only); NTFS is read-only on macOS.
+
 > 📖 **[Full Tutorial](https://u-claw.org/tutorial.html)** — Step-by-step manual installation, model setup, chat platform integration.
 
 ### One-Line Install (Recommended)
@@ -428,7 +435,7 @@ See [`install/README.md`](install/README.md) for details.
 
 **Short version: run OpenClaw on the computer; use the USB drive for portability.**
 
-The USB build's value is "your config, wallet, sessions and memory travel with the drive", not "the AI runtime lives on the stick". The full portable package is ~620 MB across ~44,000 small files, and putting it on a USB stick has a real I/O cost. Same build, same machine, one stick (2026-10-21, Windows 11 x64 / i9-12900H / USB 3.0 exFAT; controllers differ, your mileage may vary):
+The USB build's value is "your config, wallet, sessions and memory travel with the drive", not "the AI runtime lives on the stick". The full portable package unpacks to ~620 MB (Windows) / ~0.8 GB (macOS) across ~44k–45k small files, and putting it on a USB stick has a real I/O cost. Same build, same machine, one stick (2026-10-21, Windows 11 x64 / i9-12900H / USB 3.0 exFAT; controllers differ, your mileage may vary):
 
 | | On the PC (same package on NVMe SSD) | Full portable package on USB | AI USB Genie (separate product) |
 | --- | --- | --- | --- |
@@ -523,7 +530,7 @@ Based on Ventoy + Ubuntu 24.04 LTS + persistence. 4-step PowerShell scripts on W
 
 ### Model and interface
 
-This edition uses OpenClaw 2026.10.9 with Node.js 24.22.1 and defaults to the Xiapan Cloud model `deepseek-v4-flash` (device wallet + recharge inside the native WebUI). **Bring your own API key too**: the setup page lists DeepSeek / Kimi / Zhipu GLM / Qwen / Doubao / MiniMax / OpenAI / Claude / Groq / SiliconFlow, plus a "Custom · OpenAI compatible" card for any base URL + model + key. The first launch on another operating system prepares its native dependencies through setup.
+This edition uses OpenClaw 2026.10.9 with Node.js 24.22.1 and defaults to the Xiapan Cloud model `deepseek-v4-flash` (device wallet + recharge inside the native WebUI). **Bring your own API key too**: the setup page lists DeepSeek / Kimi / Zhipu GLM / Qwen / Doubao / MiniMax / OpenAI / Claude / Groq / SiliconFlow, plus a "Custom · OpenAI compatible" card for any base URL + model + key. Official bundles pre-install the matching runtime (Windows x64 / macOS Apple Silicon), so unzipping is enough; only a source checkout, an Intel Mac running the Apple Silicon bundle, or switching OS on the same drive needs the online setup.
 
 A **`lite-windows-x64/`** folder is bundled inside the Windows package: the ~45 MB Go-native Xiapan USB Genie lite build (no Node/OpenClaw needed). Double-click `虾盘.exe`; it supports any OpenAI-compatible key plus local maintenance actions (system check, network check, startup items). Use it on old PCs or slow USB sticks.
 
@@ -549,8 +556,8 @@ bash Mac-Start.command   # Test on Mac
 
 | Platform | Status | Notes |
 |----------|--------|-------|
-| Mac Apple Silicon (M1-M4) | ✅ | Portable |
-| Mac Intel (x64) | ✅ | Portable |
+| Mac Apple Silicon (M1-M4) | ✅ | Portable (full prebuilt bundle, unzip & run) |
+| Mac Intel (x64) | ✅ | Portable (auto-fetches the x64 runtime on first launch) |
 | Windows x64 | ✅ | Portable (full offline bundle) |
 | Linux x64 (Bootable USB) | ✅ | [`bootable/`](bootable/) directory |
 
@@ -605,13 +612,13 @@ If you're interested in AI tooling and commercialization, let's talk:
 No. All downloads use China mirrors. Chinese AI model APIs work directly.
 
 **Q: How big should the USB drive be?**
-4GB+ is enough (~618 MB / 44k files for the v2.3.x package; earlier full builds were ~2.3 GB).
+4GB+ is enough (~620 MB (Windows) / ~0.8 GB (macOS, unpacked), 44k–45k files for the v2.3.x package; earlier full builds were ~2.3 GB).
 
 **Q: Can I redistribute?**
 MIT license — copy and share freely.
 
 **Q: Mac says "unverified developer"?**
-Right-click the script → Open.
+After unzipping the official macOS bundle, double-click `Mac-Start.command`; if macOS blocks it, right-click the script → Open. If it is still blocked, run `xattr -dr com.apple.quarantine <unzipped-folder>` in Terminal and double-click again. The launcher also clears the quarantine flag from the bundled Node binary on startup.
 
 **Q: setup.bat / setup.sh fails with "module not found"?**
 Usually caused by a network interruption during `npm install`, leaving `node_modules` incomplete. Fix:

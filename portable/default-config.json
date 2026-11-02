@@ -1,7 +1,7 @@
 {
   "gateway": {
     "mode": "local",
-    "auth": { "mode": "token", "token": "uclaw" },
+    "auth": { "mode": "token", "token": "" },
     "controlUi": { "experimental": { "customPlugins": true } }
   },
   "plugins": { "allow": ["uclaw-wallet"] },
