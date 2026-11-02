@@ -46,6 +46,30 @@ else
 fi
 
 NODE_BIN="$NODE_DIR/bin/node"
+
+# --- Engine location (v2.5+: one engine-<version>.tar.gz on the stick) ---
+# Default: extract once to ~/Library/Caches/U-Claw/<slot>/engine/<version> and run
+# from there; on failure fall back to <stick>/engine/<version>. Old sticks without
+# an archive keep the legacy loose app/ layout (resolver prints "legacy").
+UCLAW_ENGINE_SOURCE="legacy"
+UCLAW_ENGINE_ROOT="$UCLAW_DIR"
+if [ -x "$UCLAW_DIR/lib/engine-host.sh" ]; then
+    while IFS='=' read -r _k _v; do
+        case "$_k" in
+            UCLAW_ENGINE_SOURCE) UCLAW_ENGINE_SOURCE="$_v" ;;
+            UCLAW_ENGINE_ROOT)   UCLAW_ENGINE_ROOT="$_v" ;;
+            UCLAW_NODE_BIN)      NODE_BIN="$_v" ;;
+            UCLAW_CORE_DIR)      CORE_DIR="$_v" ;;
+            UCLAW_APP_DIR)       APP_DIR="$_v" ;;
+            UCLAW_ENGINE_MODE)   UCLAW_ENGINE_MODE="$_v" ;;
+        esac
+    done < <(bash "$UCLAW_DIR/lib/engine-host.sh" "$UCLAW_DIR" 2>/dev/null)
+fi
+if [ "$UCLAW_ENGINE_SOURCE" != "legacy" ]; then
+    NODE_DIR="$(dirname "$NODE_BIN")"
+    echo -e "  ${GREEN}Engine:${NC} $UCLAW_ENGINE_SOURCE ($UCLAW_ENGINE_ROOT)"
+fi
+
 export PATH="$NODE_DIR/bin:$PATH"
 
 # ---- 2. Remove macOS quarantine ----
@@ -75,7 +99,7 @@ if [ ! -x "$NODE_BIN" ]; then
     echo ""
     if bash "$UCLAW_DIR/setup.sh"; then
         echo ""
-        REQUIREMENTS="$("$NODE_BIN" "$UCLAW_DIR/lib/runtime-requirements.mjs" "$UCLAW_DIR" 2>/dev/null)"
+        REQUIREMENTS="$("$NODE_BIN" "$UCLAW_DIR/lib/runtime-requirements.mjs" "$UCLAW_ENGINE_ROOT" 2>/dev/null)"
         if [ -x "$NODE_BIN" ] && [ "$REQUIREMENTS" = "UCLAW_SETUP_NEEDED=0" ]; then
             echo -e "  ${GREEN}✓ 环境就绪，继续启动${NC}"
         else
@@ -200,14 +224,14 @@ trap release_startup_lock EXIT
 
 # An old drive may have Node 22 or an outdated core. A live instance must be
 # reused above before we replace the runtime or alter its configuration.
-REQUIREMENTS="$("$NODE_BIN" "$UCLAW_DIR/lib/runtime-requirements.mjs" "$UCLAW_DIR" 2>/dev/null)"
+REQUIREMENTS="$("$NODE_BIN" "$UCLAW_DIR/lib/runtime-requirements.mjs" "$UCLAW_ENGINE_ROOT" 2>/dev/null)"
 if [ "$REQUIREMENTS" != "UCLAW_SETUP_NEEDED=0" ]; then
     echo -e "  ${YELLOW}更新 Node.js 和 OpenClaw 到本盘指定版本...${NC}"
     if ! bash "$UCLAW_DIR/setup.sh"; then
         echo -e "  ${RED}运行环境更新失败。完整日志: $START_LOG${NC}"
         exit 1
     fi
-    REQUIREMENTS="$("$NODE_BIN" "$UCLAW_DIR/lib/runtime-requirements.mjs" "$UCLAW_DIR" 2>/dev/null)"
+    REQUIREMENTS="$("$NODE_BIN" "$UCLAW_DIR/lib/runtime-requirements.mjs" "$UCLAW_ENGINE_ROOT" 2>/dev/null)"
     if [ "$REQUIREMENTS" != "UCLAW_SETUP_NEEDED=0" ]; then
         echo -e "  ${RED}更新后运行环境仍不符合要求。完整日志: $START_LOG${NC}"
         exit 1
@@ -217,7 +241,7 @@ fi
 
 # Prepare the built-in wallet feature and converge legacy model/channel config.
 # This helper saves the original config before writing a portable plugin path.
-if ! "$NODE_BIN" "$UCLAW_DIR/lib/prepare-wallet.mjs" "$UCLAW_DIR" "$STATE_DIR"; then
+if ! "$NODE_BIN" "$UCLAW_DIR/lib/prepare-wallet.mjs" "$UCLAW_ENGINE_ROOT" "$STATE_DIR"; then
     echo -e "  ${RED}无法准备内置模型配置，启动中止。请查看 $START_LOG${NC}"
     exit 1
 fi
@@ -335,7 +359,7 @@ echo ""
 
 # 升级老盘时，先让 OpenClaw 官方 doctor 把 agent 数据库迁到当前 schema；
 # 迁不动就停在启动前并保留备份，绝不带着旧库进 Gateway。
-"$NODE_BIN" "$UCLAW_DIR/lib/upgrade-session-schema.mjs" "$UCLAW_DIR"
+"$NODE_BIN" "$UCLAW_DIR/lib/upgrade-session-schema.mjs" "$UCLAW_ENGINE_ROOT"
 if [ $? -ne 0 ]; then
   echo -e "  ${RED}旧会话数据库升级失败，已保留备份。请查看 data/logs/session-upgrade.log。${NC}"
   exit 1

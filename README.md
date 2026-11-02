@@ -37,6 +37,8 @@
 
 > 双击 `Windows-Start.bat` / `Mac-Start.command` 默认在**系统浏览器**里打开 WebUI——配置入口就挂在首屏上，不藏起来。想要独立窗口（可选、非默认）：`Windows-WebView.bat`（内置 WebView2 壳，带任务栏图标与关闭确认）或 `Windows-App.bat`（Edge App 模式）；想「像 App 一样常驻」可用 `app/tray/U-Claw-Tray.exe`（托盘：打开 Dashboard / 配置中心、拉起后端，零窗口）。随时直接进配置中心可双击 `Windows-Config.bat`。几种方式共用 Gateway 和 `data/`，窗口缓存留在当前电脑，配置和会话随 U 盘携带。源码使用者可运行 `shell/build.sh` / `tray/build.sh` 自行构建。
 >
+> 引擎装本机（v2.5 起）：新形态发行包不再在 U 盘上铺 4.5 万个小文件，而是带一个 `engine-<OPENCLAW_VERSION>.tar.gz`。首次在某台电脑启动时自动解到本机缓存（Windows `%LOCALAPPDATA%\U-Claw\<slot>\engine\<版本>`，macOS `~/Library/Caches/U-Claw/<slot>/engine/<版本>`），之后从本机跑；**装不上（空间/权限/校验失败）自动退回 U 盘** `<盘>\engine\<版本>` 解包运行；老盘没有归档则维持原样直接跑。用 `UCLAW_ENGINE_MODE=auto|host|drive|usb` 控制（默认 auto = 先本机后盘）。数据（Key/会话/工作区）始终在 `data/`，随盘走。
+>
 > 安全与更新：每支盘首启会生成**独立随机 gateway token**（`data/.openclaw/gateway-token`，只监听 127.0.0.1，tailscale 默认关），旧盘里的固定 `uclaw` 会自动迁移；更新检查支持**通道**——默认 `stable`，把 `data/.openclaw/update-channel.json` 写成 `{"channel":"extended-stable"}` 即跟随上游 LTS（想尝鲜可写 `{"channel":"beta"}`，仅建议复现上游问题时用）。
 
 | 你得到什么 | 为什么重要 |
@@ -410,6 +412,8 @@ U-Claw (aka "虾盘" / "Xia Pan" in Chinese, meaning "Claw Drive") is a **tutori
 The codebase itself is the USB file skeleton. Run `setup.sh` to download large dependencies, then copy the entire `portable/` directory to a USB drive.
 
 Prebuilt full bundles are published on [Releases](https://github.com/dongsheng123132/u-claw/releases) — `u-claw-portable-windows-*.zip` for Windows x64 and `u-claw-portable-mac-arm64-*.zip` for macOS Apple Silicon. Unzip, then double-click `Windows-Start.bat` or `Mac-Start.command`: the runtime is already inside, so no online setup is needed. On macOS, format the USB drive as exFAT (works on macOS and Windows) or APFS (macOS only); NTFS is read-only on macOS.
+
+> **Engine on host (v2.5+)**: new bundles ship a single `engine-<OPENCLAW_VERSION>.tar.gz` instead of ~45k loose files. On first start per computer the engine is extracted to `%LOCALAPPDATA%\U-Claw\<slot>\engine\<version>` (macOS: `~/Library/Caches/U-Claw/...`) and runs from there; if that install fails (space, permissions, checksum) it falls back to `<stick>\engine\<version>`, and legacy sticks without an archive keep running in place. Control it with `UCLAW_ENGINE_MODE=auto|host|drive|usb`. Your data (keys, sessions, workspace) always stays in `data/` on the stick.
 
 > 📖 **[Full Tutorial](https://u-claw.org/tutorial.html)** — Step-by-step manual installation, model setup, chat platform integration.
 

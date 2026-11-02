@@ -31,6 +31,27 @@ set "NODE_DIR=%APP_DIR%\runtime\node-win-x64"
 set "NODE_BIN=%NODE_DIR%\node.exe"
 set "NPM_BIN=%NODE_DIR%\npm.cmd"
 
+REM --- Engine location (v2.5+: one engine-<version>.tar.gz on the stick) ---
+REM Default: extract once to the host cache and run from there; if that fails,
+REM extract under <stick>\engine\<version> and run from the stick. When no archive
+REM is shipped (old sticks) the resolver reports "legacy" and nothing changes.
+set "UCLAW_ENGINE_SOURCE=legacy"
+set "UCLAW_ENGINE_ROOT=%UCLAW_DIR%."
+if exist "%UCLAW_DIR%lib\engine-host.ps1" (
+    for /f "usebackq tokens=1,* delims==" %%a in (`powershell -NoProfile -ExecutionPolicy Bypass -File "%UCLAW_DIR%lib\engine-host.ps1" "%UCLAW_DIR%." 2^>nul"`) do (
+        if "%%a"=="UCLAW_ENGINE_SOURCE" set "UCLAW_ENGINE_SOURCE=%%b"
+        if "%%a"=="UCLAW_ENGINE_ROOT" set "UCLAW_ENGINE_ROOT=%%b"
+        if "%%a"=="UCLAW_NODE_BIN" set "NODE_BIN=%%b"
+        if "%%a"=="UCLAW_NODE_BIN" set "NODE_DIR=%%~dpb"
+        if "%%a"=="UCLAW_CORE_DIR" set "CORE_DIR=%%b"
+        if "%%a"=="UCLAW_APP_DIR" set "APP_DIR=%%b"
+        if "%%a"=="UCLAW_ENGINE_MODE" set "UCLAW_ENGINE_MODE=%%b"
+    )
+)
+if not "%UCLAW_ENGINE_SOURCE%"=="legacy" if "%NODE_DIR:~-1%"=="\" set "NODE_DIR=%NODE_DIR:~0,-1%"
+if not "%UCLAW_ENGINE_SOURCE%"=="legacy" echo   Engine: %UCLAW_ENGINE_SOURCE% ^(%UCLAW_ENGINE_ROOT%^)
+if not "%UCLAW_ENGINE_SOURCE%"=="legacy" set "NPM_BIN=%NODE_DIR%\npm.cmd"
+
 set "OPENCLAW_HOME=%DATA_DIR%"
 set "OPENCLAW_STATE_DIR=%STATE_DIR%"
 set "OPENCLAW_CONFIG_PATH=%STATE_DIR%\openclaw.json"
@@ -144,7 +165,7 @@ exit /b 0
 REM Upgrade missing or incompatible runtime and stale OpenClaw before startup.
 set "UCLAW_SETUP_NEEDED=1"
 if exist "%NODE_BIN%" (
-    for /f "usebackq tokens=1,* delims==" %%a in (`""%NODE_BIN%" "%UCLAW_DIR%lib\runtime-requirements.mjs" "%UCLAW_DIR%." 2^>nul"`) do (
+    for /f "usebackq tokens=1,* delims==" %%a in (`""%NODE_BIN%" "%UCLAW_DIR%lib\runtime-requirements.mjs" "%UCLAW_ENGINE_ROOT%." 2^>nul"`) do (
         if "%%a"=="UCLAW_SETUP_NEEDED" set "UCLAW_SETUP_NEEDED=%%b"
     )
 )
@@ -161,7 +182,7 @@ if "%UCLAW_SETUP_NEEDED%"=="1" (
 
 REM Validate the actual runtime after setup before loading any user state.
 set "UCLAW_SETUP_NEEDED=1"
-for /f "usebackq tokens=1,* delims==" %%a in (`""%NODE_BIN%" "%UCLAW_DIR%lib\runtime-requirements.mjs" "%UCLAW_DIR%." 2^>nul"`) do (
+for /f "usebackq tokens=1,* delims==" %%a in (`""%NODE_BIN%" "%UCLAW_DIR%lib\runtime-requirements.mjs" "%UCLAW_ENGINE_ROOT%." 2^>nul"`) do (
     if "%%a"=="UCLAW_SETUP_NEEDED" set "UCLAW_SETUP_NEEDED=%%b"
 )
 if "%UCLAW_SETUP_NEEDED%"=="1" (
@@ -226,7 +247,7 @@ if exist "%VERSION_FILE%" (
 )
 
 
-"%NODE_BIN%" "%UCLAW_DIR%lib\prepare-wallet.mjs" "%UCLAW_DIR%." "%STATE_DIR%"
+"%NODE_BIN%" "%UCLAW_DIR%lib\prepare-wallet.mjs" "%UCLAW_ENGINE_ROOT%." "%STATE_DIR%"
 if errorlevel 1 goto :startup_failed
 
 REM Start Config Server in background
@@ -323,7 +344,7 @@ REM owning process is gone (or corrupt) are removed; a live instance is left alo
 
 REM Upgrade copied legacy agent databases with the official doctor before the
 REM Gateway opens them. A failed migration keeps the backup and stops startup.
-"%NODE_BIN%" "%UCLAW_DIR%lib\upgrade-session-schema.mjs" "%UCLAW_DIR%."
+"%NODE_BIN%" "%UCLAW_DIR%lib\upgrade-session-schema.mjs" "%UCLAW_ENGINE_ROOT%."
 if errorlevel 1 (
     echo   Legacy session database upgrade failed. Backup retained under data\backups.
     pause
