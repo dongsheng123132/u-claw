@@ -11,18 +11,18 @@ set -euo pipefail
 NODE_VERSION="v24.22.1"
 
 # --- Pinned install source -------------------------------------------------
-# PINNED_UCLAW_VERSION  released tag the installer downloads.
-# PINNED_UCLAW_SHA256   SHA-256 of the tar.gz behind that tag, i.e. of
-#   https://codeload.github.com/OWNER/u-claw/tar.gz/refs/tags/<version>
-# Both constants are updated together when a release is cut:
-#   scripts/print-install-pins.sh <tag>
-# UCLAW_VERSION may be overridden from the environment, but the digest is
+# PINNED_UCLAW_REF     immutable commit the installer downloads (not a branch).
+# PINNED_UCLAW_SHA256  SHA-256 of the tar.gz behind that commit, i.e. of
+#   https://codeload.github.com/dongsheng123132/u-claw/tar.gz/<commit>
+# Both constants are updated together after a change lands on main:
+#   scripts/print-install-pins.sh
+# UCLAW_REF may be overridden from the environment, but the digest is
 # still enforced: an override without its own UCLAW_SHA256 fails closed below.
-PINNED_UCLAW_VERSION="v2.4.3"
-PINNED_UCLAW_SHA256="794cf4eba79b906564b15bba2de4e55cbe360648f50beb1733ba9f5206f974ed"
-UCLAW_VERSION="${UCLAW_VERSION:-$PINNED_UCLAW_VERSION}"
+PINNED_UCLAW_REF="fde0eb6f35593ffffa247f7236a48708c008144f"
+PINNED_UCLAW_SHA256="b575ceb596708dc3630791648258a2969284ed401630a3bc97da77eced27aa26"
+UCLAW_REF="${UCLAW_REF:-$PINNED_UCLAW_REF}"
 UCLAW_SHA256="${UCLAW_SHA256:-$PINNED_UCLAW_SHA256}"
-SOURCE_URL="https://codeload.github.com/dongsheng123132/u-claw/tar.gz/refs/tags/${UCLAW_VERSION}"
+SOURCE_URL="https://codeload.github.com/dongsheng123132/u-claw/tar.gz/${UCLAW_REF}"
 
 DRY_RUN="${UCLAW_DRY_RUN:-0}"
 for arg in "$@"; do
@@ -50,10 +50,10 @@ done
 
 # A version override must carry its own digest, otherwise a local override
 # would silently install unverified code.
-if [ "$UCLAW_VERSION" != "$PINNED_UCLAW_VERSION" ] && [ "$UCLAW_SHA256" = "$PINNED_UCLAW_SHA256" ]; then
-    echo "UCLAW_VERSION=$UCLAW_VERSION was overridden but UCLAW_SHA256 was not." >&2
+if [ "$UCLAW_REF" != "$PINNED_UCLAW_REF" ] && [ "$UCLAW_SHA256" = "$PINNED_UCLAW_SHA256" ]; then
+    echo "UCLAW_REF=$UCLAW_REF was overridden but UCLAW_SHA256 was not." >&2
     echo "Refusing to install an unverified archive. Print the digest for that tag with:" >&2
-    echo "  scripts/print-install-pins.sh $UCLAW_VERSION" >&2
+    echo "  scripts/print-install-pins.sh $UCLAW_REF" >&2
     exit 1
 fi
 
@@ -87,7 +87,7 @@ trap cleanup_source EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
-echo "Downloading U-Claw portable source $UCLAW_VERSION (Node.js $NODE_VERSION)..."
+echo "Downloading U-Claw portable source $UCLAW_REF (Node.js $NODE_VERSION)..."
 curl -fSL --connect-timeout 20 --max-time 180 --retry 2 --retry-max-time 240 \
     "$SOURCE_URL" -o "$WORK_DIR/source.tar.gz"
 
@@ -108,7 +108,7 @@ fi
 echo "Checksum verified: $UCLAW_SHA256"
 
 # codeload names the archive root after the tag without its leading "v".
-ARCHIVE_ROOT="u-claw-${UCLAW_VERSION#v}"
+ARCHIVE_ROOT="u-claw-${UCLAW_REF}"
 tar tzf "$WORK_DIR/source.tar.gz" > "$WORK_DIR/archive.list"
 [ -s "$WORK_DIR/archive.list" ] || { echo "Empty source archive" >&2; exit 1; }
 while IFS= read -r entry; do
@@ -140,7 +140,7 @@ done
 # Verification path only: used by the release checklist and by CI smoke tests.
 if [ "$DRY_RUN" = "1" ]; then
     echo "Dry run: archive verified and unpacked, nothing installed."
-    echo "  tag:      $UCLAW_VERSION"
+    echo "  ref:      $UCLAW_REF"
     echo "  sha256:   $UCLAW_SHA256"
     echo "  root:     $ARCHIVE_ROOT"
     echo "  portable: $SOURCE_PORTABLE"

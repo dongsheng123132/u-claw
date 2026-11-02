@@ -9,19 +9,19 @@ $ErrorActionPreference = 'Stop'
 $NODE_VERSION = "v24.22.1"
 
 # --- Pinned install source -------------------------------------------------
-# $PinnedUclawVersion  released tag the installer downloads.
-# $PinnedUclawSha256   SHA-256 of the zip behind that tag (not the tar.gz used
-#                      by install.sh), i.e. of
-#   https://codeload.github.com/OWNER/u-claw/zip/refs/tags/<version>
-# Both constants are updated together when a release is cut:
-#   scripts/print-install-pins.sh <tag>
-# $env:UCLAW_VERSION may override the tag, but the digest is still enforced: an
+# $PinnedUclawRef    immutable commit the installer downloads (not a branch).
+# $PinnedUclawSha256 SHA-256 of the zip behind that commit (not the tar.gz used
+#                    by install.sh), i.e. of
+#   https://codeload.github.com/dongsheng123132/u-claw/zip/<commit>
+# Both constants are updated together after a change lands on main:
+#   scripts/print-install-pins.sh
+# $env:UCLAW_REF may override the commit, but the digest is still enforced: an
 # override without its own $env:UCLAW_SHA256 fails closed below.
-$PinnedUclawVersion = 'v2.4.3'
-$PinnedUclawSha256 = '3fd2f0802bd399fb0e3a299511db493fb61939ada9284091d91aa1a0dae419b5'
-$UclawVersion = if ($env:UCLAW_VERSION) { $env:UCLAW_VERSION } else { $PinnedUclawVersion }
+$PinnedUclawRef = 'fde0eb6f35593ffffa247f7236a48708c008144f'
+$PinnedUclawSha256 = '1cdcc42ad3af47d7de1f2d8841668471a3d5b5070ced36ab3c34624eb30435b5'
+$UclawRef = if ($env:UCLAW_REF) { $env:UCLAW_REF } else { $PinnedUclawRef }
 $UclawSha256 = if ($env:UCLAW_SHA256) { $env:UCLAW_SHA256 } else { $PinnedUclawSha256 }
-$SourceUrl = "https://codeload.github.com/dongsheng123132/u-claw/zip/refs/tags/$UclawVersion"
+$SourceUrl = "https://codeload.github.com/dongsheng123132/u-claw/zip/$UclawRef"
 $DryRun = $env:UCLAW_DRY_RUN -eq '1'
 Set-ExecutionPolicy Bypass -Scope Process -Force -ErrorAction SilentlyContinue
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
@@ -30,16 +30,16 @@ if (-not [Environment]::Is64BitOperatingSystem) { throw 'U-Claw requires Windows
 $NativeArch = if ($env:PROCESSOR_ARCHITEW6432) { $env:PROCESSOR_ARCHITEW6432 } else { $env:PROCESSOR_ARCHITECTURE }
 if ($NativeArch -ne 'AMD64') { throw "Unsupported Windows architecture: $NativeArch (x64 required)." }
 
-if ($UclawVersion -ne $PinnedUclawVersion -and $UclawSha256 -eq $PinnedUclawSha256) {
-    throw ("UCLAW_VERSION=$UclawVersion was overridden but UCLAW_SHA256 was not. " +
+if ($UclawRef -ne $PinnedUclawRef -and $UclawSha256 -eq $PinnedUclawSha256) {
+    throw ("UCLAW_REF=$UclawRef was overridden but UCLAW_SHA256 was not. " +
         'Refusing to install an unverified archive; print the digest for that tag with: ' +
-        "scripts/print-install-pins.sh $UclawVersion")
+        "scripts/print-install-pins.sh $UclawRef")
 }
 if (-not (Get-Command Get-FileHash -ErrorAction SilentlyContinue)) {
     throw 'Get-FileHash is required to verify the download (PowerShell 4.0+ on Windows 8.1 or later).'
 }
 # codeload names the archive root after the tag without its leading "v".
-$ArchiveRoot = 'u-claw-' + ($UclawVersion -replace '^v', '')
+$ArchiveRoot = 'u-claw-' + $UclawRef
 
 $TempRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd('\', '/')
 $WorkDir = Join-Path $TempRoot ('uclaw-source-' + [Guid]::NewGuid().ToString('N'))
@@ -50,7 +50,7 @@ if (-not $WorkDir.StartsWith($TempPrefix, [StringComparison]::OrdinalIgnoreCase)
 }
 [IO.Directory]::CreateDirectory($WorkDir) | Out-Null
 try {
-    Write-Host "Downloading U-Claw portable source $UclawVersion (Node.js $NODE_VERSION)..."
+    Write-Host "Downloading U-Claw portable source $UclawRef (Node.js $NODE_VERSION)..."
     $Archive = Join-Path $WorkDir 'source.zip'
     Invoke-WebRequest -Uri $SourceUrl -OutFile $Archive -UseBasicParsing -TimeoutSec 180
 
@@ -103,7 +103,7 @@ try {
     # Verification path only: used by the release checklist and by CI smoke tests.
     if ($DryRun) {
         Write-Host 'Dry run: archive verified and unpacked, nothing installed.'
-        Write-Host "  tag:      $UclawVersion"
+        Write-Host "  ref:      $UclawRef"
         Write-Host "  sha256:   $($UclawSha256.ToLowerInvariant())"
         Write-Host "  root:     $ArchiveRoot"
         Write-Host "  portable: $SourceRoot"

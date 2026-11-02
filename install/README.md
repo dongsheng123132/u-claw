@@ -38,28 +38,33 @@ $env:UCLAW_DRY_RUN='1'; powershell -ExecutionPolicy Bypass -File install/install
 
 ## 版本固定与校验（发版必读）
 
-在线安装不再跟随 `main` 分支。两个脚本都把源码归档固定到某个 tag，并在解压前用 SHA-256 校验：
+在线安装不再跟随 `main` 分支。两个脚本都把源码归档固定到一个**不可变的 commit**，并在解压前用 SHA-256 校验：
 
 | 脚本 | 归档 | 常量 |
 | --- | --- | --- |
-| `install/install.sh` | `tar.gz` | `PINNED_UCLAW_VERSION` / `PINNED_UCLAW_SHA256` |
-| `install/install.ps1` | `zip` | `$PinnedUclawVersion` / `$PinnedUclawSha256` |
+| `install/install.sh` | `tar.gz` | `PINNED_UCLAW_REF` / `PINNED_UCLAW_SHA256` |
+| `install/install.ps1` | `zip` | `$PinnedUclawRef` / `$PinnedUclawSha256` |
 
 两种归档的字节不一样，摘要也就不一样，**不能互相套用**。
 
-发新版时：
+为什么钉 commit 而不是 tag：tag 可以被人删掉再指到别的 commit，commit 不会变；同时钉 commit 能保证在线安装拿到的是**最新已合并的代码**，而不是某个落后若干提交的旧 tag。
 
-1. 打 tag 并推送，例如 `git tag -a v2.4.4 -m "v2.4.4" && git push origin v2.4.4`。
-2. 打印新的两个常量：`bash scripts/print-install-pins.sh v2.4.4`。不带参数时取当前检出里最新的 `v*` tag，脚本会自己算摘要，并提示这两个文件是否还没更新。
-3. 把输出里的四处值分别粘进 `install/install.sh` 和 `install/install.ps1`。
-4. 本地验一遍：`bash install/install.sh --dry-run`。
-5. 提交前跑 `node --test "tests/*.test.mjs"`。
+代价是：**每次 `main` 前进都要重钉一次**（人工一步，见下）。
+
+合并到 `main` 之后：
+
+1. 更新本地 `origin/main`，然后打印新的四处常量：
+   `bash scripts/print-install-pins.sh`
+   不带参数时取 `origin/main` 的当前 commit（没有 git 时取 `HEAD`）；也可以显式给一个 40 位 commit。脚本自己下载两种归档算摘要，并提示这两个文件是否还没更新。它**只接受 40 位 commit SHA**，传分支或 tag 会被拒绝。
+2. 把输出里的四处值分别粘进 `install/install.sh` 与 `install/install.ps1`。
+3. 本地验一遍：`bash install/install.sh --dry-run`（会真的下载、校验、解压到临时目录，然后停下，不安装）。
+4. 提交前跑 `node --test "tests/*.test.mjs"`。
 
 校验不通过时脚本在解压之前 `exit 1`，打印期望值和实际下载到的摘要，并且不安装任何文件。
 
-`UCLAW_VERSION` 可以用环境变量覆盖，方便灰度或回滚，但**必须同时给出配套的 `UCLAW_SHA256`**；只改版本不给摘要时脚本直接拒绝执行，避免"覆盖版本"变成"绕过校验"的开关。
+`UCLAW_REF` 可以用环境变量覆盖，便于灰度或回滚到某个已知 commit，但**必须同时给出配套的 `UCLAW_SHA256`**；只改 ref 不给摘要时脚本直接拒绝执行，避免"覆盖版本"变成"绕过校验"的开关。
 
-固定 tag 之后，`main` 上的新提交不会自动进入在线安装，要发一次 tag 才会生效。
+固定 commit 之后，`main` 上的新提交不会自动进入在线安装，要在下一次合并后按上面的步骤重钉才会生效。
 
 ## 安装与启动
 
