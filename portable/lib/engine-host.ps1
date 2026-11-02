@@ -164,6 +164,8 @@ function Install-Engine([string]$Target) {
             installedAt   = (Get-Date).ToUniversalTime().ToString('o')
         }
         ($meta | ConvertTo-Json) | Set-Content -LiteralPath (Join-Path $tmp 'manifest.json') -Encoding UTF8
+        # runtime-requirements.mjs runs against the engine root and needs the pin file there.
+        Set-Content -LiteralPath (Join-Path $tmp 'OPENCLAW_VERSION') -Value $version -NoNewline -Encoding ASCII
         if (Test-Path -LiteralPath $Target) {
             Remove-Item -Recurse -Force -LiteralPath $Target
         }

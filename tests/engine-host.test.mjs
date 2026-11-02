@@ -107,3 +107,10 @@ test('docs explain the three-level fallback', () => {
   const readme = read('README.md');
   assert.match(readme, /engine-host|引擎|engine-<版本>|engine\.tar\.gz/i, 'README must document the engine layout');
 });
+
+test('installed engines carry OPENCLAW_VERSION (runtime-requirements runs against the engine root)', () => {
+  const ps1 = read('portable', 'lib', 'engine-host.ps1');
+  const sh = read('portable', 'lib', 'engine-host.sh');
+  assert.match(ps1, /Set-Content -LiteralPath \(Join-Path \$tmp 'OPENCLAW_VERSION'\)/);
+  assert.match(sh, /printf '%s' "\$VERSION" > "\$tmp\/OPENCLAW_VERSION"/);
+});

@@ -121,6 +121,7 @@ install_engine() {
   cat > "$tmp/manifest.json" <<JSON
 {"schemaVersion":1,"product":"u-claw","version":"$VERSION","archive":"$(basename "$ARCHIVE")","installedAt":"$(date -u +%Y-%m-%dT%H:%M:%SZ)"}
 JSON
+  printf '%s' "$VERSION" > "$tmp/OPENCLAW_VERSION"
   rm -rf "$target" 2>/dev/null
   if ! mv "$tmp" "$target" 2>/dev/null; then
     note "cannot move engine into place"
