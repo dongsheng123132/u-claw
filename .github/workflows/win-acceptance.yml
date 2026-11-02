@@ -81,10 +81,9 @@ jobs:
           $env:UCLAW_ENGINE_MODE = 'auto'
           "---- resolver (direct) ----"
           & powershell -NoProfile -ExecutionPolicy Bypass -File "$stick\lib\engine-host.ps1" "$stick\." 2>&1 | Out-String
-          "---- launcher, full output ----"
-          $out = & cmd.exe /c "`"$stick\Windows-Start.bat`" 2>&1" | Out-String
-          $out
-          "launcher_exit=$LASTEXITCODE"
+          # Do not run the launcher here: it starts a gateway and would block the job.
+          # The acceptance step already ran it six times with a bounded wait.
+
           "---- stick layout ----"
           Get-ChildItem $stick | Select-Object Name, Length | Format-Table -AutoSize | Out-String
           "---- runtime-requirements against the installed engine ----"
