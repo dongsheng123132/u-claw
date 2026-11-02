@@ -2,11 +2,10 @@
 //
 // 为什么需要它（2026-08-23 真机跑出来的线上故障）：
 //
-//   openclaw 2026.6.34 的 engines 是 >=22.19.0，我们 pin 的 Node v22.22.1 够用。
-//   openclaw 2026.7.1  把 engines 提到 >=22.22.3，我们的 v22.22.1 就**差 2 个补丁号**。
+//   openclaw 2026.6.34 的 engines 是 >=22.19.0，我们当时 pin 的 Node v22.22.1 够用。
+//   openclaw 2026.7.1  把 engines 提到更高的 22.22 补丁号，v22.22.1 就**差 2 个补丁号**。
 //   于是 U 盘一插、双击启动，网关直接退出：
 //
-//     openclaw: Node.js >=22.22.3 <23 ... is required (current: v22.22.1)
 //     OpenClaw exited unexpectedly (code 1)
 //
 //   受影响的已发布版本：v2.1.15 / v2.1.16 / v2.1.17 —— 也就是说仓库里挂着的下载包
@@ -17,9 +16,11 @@
 //
 // 加上这条测试之后，上游再提 engines 要求，这里当场变红，而不是等客户报「打不开」。
 //
-// 附带守住第二件事：Node 版本在这个仓库里被抄了 8 份（setup.bat / setup.sh /
+// 附带守住第二件事：Node 版本在这个仓库里散落在 11 个文件里（setup.bat / setup.sh /
 // setup.ps1 / Windows-Install.bat / Mac-Install.command / install.sh / install.ps1 /
-// release.yml）。同一事实存在几份就会漂几份（开发宪法第 8 条）—— 这里断言它们全部一致。
+// release.yml / setup-openclaw.sh / ci.yml / track-upstream.yml）。同一事实存在几份
+// 就会漂几份（开发宪法第 8 条）—— 这里断言它们全部一致。CI 与出货运行时对齐这件事，
+// 就是靠把 ci.yml 也纳进这份名单来防复发的。
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -41,25 +42,28 @@ const NODE_PIN_FILES = [
   'install/install.sh',
   'install/install.ps1',
   '.github/workflows/release.yml',
+  '.github/workflows/ci.yml',
+  '.github/workflows/track-upstream.yml',
   'bootable/linux-setup/setup-openclaw.sh',
 ];
 
 /**
- * 从脚本里抠出它 pin 的 Node 版本（形如 v22.22.3）。
+ * 从脚本里抠出它 pin 的 Node 版本（统一归一化成 vX.Y.Z 形式）。
  *
  * 只认「Node 版本变量的赋值行」，不能直接全文扫 /v\d+\.\d+\.\d+/ ——
  * 那样会把产品自己的版本号（v2.1.0、v2026.5.2 等）一起抓进来，测试就永远红。
  * 各生态的写法都在这：
- *   set "NODE_VERSION=v22.22.3"      (bat)
- *   NODE_VERSION="v22.22.3"          (sh)
- *   $nodeVersion = "v22.22.3"        (ps1)
- *   node_version="v22.22.3"          (yml)
- *   set "NODE_VER=v22.22.3"          (Windows-Install.bat)
+ *   set "NODE_VERSION=v24.22.1"      (bat)
+ *   NODE_VERSION="v24.22.1"          (sh)
+ *   $nodeVersion = "v24.22.1"        (ps1)
+ *   node_version="v24.22.1"          (yml, release.yml)
+ *   node-version: 24.22.1            (yml, actions/setup-node)
+ *   set "NODE_VER=v24.22.1"          (Windows-Install.bat)
  */
 function pinnedNodeVersions(text) {
-  const re = /(?:NODE_VERSION|NODE_VER|nodeVersion|node_version)\s*=\s*["']?(v\d+\.\d+\.\d+)/gi;
+  const re = /(?:NODE_VERSION|NODE_VER|nodeVersion|node_version|node-version)\s*[=:]\s*["']?v?(\d+\.\d+\.\d+)/gi;
   const out = new Set();
-  for (const m of text.matchAll(re)) out.add(m[1]);
+  for (const m of text.matchAll(re)) out.add(`v${m[1]}`);
   return [...out];
 }
 
@@ -75,7 +79,7 @@ function cmp(a, b) {
 
 /**
  * 判断 version 是否满足 openclaw 那种 engines 串：
- *   ">=22.22.3 <23 || >=24.15.0 <25 || >=25.9.0"
+ *   ">=24.22.1 <25 || >=26.12.1"
  * 只需支持 >= 和 < 两种比较 + || 分支，够覆盖 node engines 的实际写法。
  */
 function satisfies(version, range) {
@@ -106,27 +110,33 @@ function satisfies(version, range) {
 
 // 自检：上面那个 satisfies 自己得是对的，否则它可能永远返回 true，测试就成了摆设。
 test('satisfies() 自身可信（这是本文件其余断言的地基）', () => {
-  const RANGE = '>=22.22.3 <23 || >=24.15.0 <25 || >=25.9.0';
-  assert.equal(satisfies('v22.22.3', RANGE), true, '边界值本身应满足');
-  assert.equal(satisfies('v22.22.1', RANGE), false, '这正是线上坏掉的那个版本');
-  assert.equal(satisfies('v22.16.0', RANGE), false);
-  assert.equal(satisfies('v23.0.0', RANGE), false, '23.x 被 <23 排除');
-  assert.equal(satisfies('v24.15.0', RANGE), true);
-  assert.equal(satisfies('v24.14.9', RANGE), false);
-  assert.equal(satisfies('v22.19.0', '>=22.19.0'), true, '老 openclaw 的宽松写法');
-  const latestRange = '>=24.22.1 <25 || >=26.12.1';
-  assert.equal(satisfies('v24.22.1', latestRange), true);
-  assert.equal(satisfies('v24.22.0', latestRange), false);
-  assert.equal(satisfies('v22.22.3', latestRange), false);
-  assert.equal(satisfies('v25.0.0', latestRange), false);
-  assert.equal(satisfies('v26.12.1', latestRange), true);
+  // 当前 openclaw 声明的 engines 形状：只放行 24.22.1+ 与 26.12.1+。
+  const RANGE = '>=24.22.1 <25 || >=26.12.1';
+  assert.equal(satisfies('v24.22.1', RANGE), true, '边界值本身应满足');
+  assert.equal(satisfies('v24.22.0', RANGE), false, '差一个补丁号也不行');
+  assert.equal(satisfies('v22.22.1', RANGE), false, '这正是 v2.1.15~17 线上坏掉的那个版本');
+  assert.equal(satisfies('v23.0.0', RANGE), false, '23.x 不在任何分支里');
+  assert.equal(satisfies('v24.23.0', RANGE), true);
+  assert.equal(satisfies('v25.0.0', RANGE), false, '25.x 被 <25 排除');
+  assert.equal(satisfies('v26.12.1', RANGE), true);
+  assert.equal(satisfies('v26.12.0', RANGE), false);
+  assert.equal(satisfies('v27.0.0', RANGE), true, '比 26.x 更新的大版本默认放行');
+
+  // 老 openclaw 的宽松写法（>=22.19.0）也要能解析，证明比较器不只认得一种形状。
+  const legacyRange = '>=22.19.0 <23 || >=24.15.0 <25 || >=25.9.0';
+  assert.equal(satisfies('v22.19.0', legacyRange), true, '边界值本身应满足');
+  assert.equal(satisfies('v22.18.9', legacyRange), false);
+  assert.equal(satisfies('v23.0.0', legacyRange), false, '23.x 被 <23 排除');
+  assert.equal(satisfies('v24.15.0', legacyRange), true);
+  assert.equal(satisfies('v24.14.9', legacyRange), false);
 });
 
-test('所有脚本 pin 的 Node 版本必须完全一致（防 8 份副本各漂各的）', () => {
+test('所有脚本 pin 的 Node 版本必须完全一致（防 11 个文件各漂各的）', () => {
   const found = new Map();
   for (const f of NODE_PIN_FILES) {
-    const p = join(repoRoot, f);
-    if (!existsSync(p)) continue; // 文件被挪走时不误报，由下一条断言兜底
+    // 名单里的文件被挪走时必须改这里，不能静默跳过——否则 ci.yml 改名后
+    // 「CI 与出货版本一致」这条守卫会悄悄失效。
+    assert.ok(existsSync(join(repoRoot, f)), `NODE_PIN_FILES 里列的文件不存在：${f}`);
     for (const v of pinnedNodeVersions(read(f))) {
       if (!found.has(v)) found.set(v, []);
       found.get(v).push(f);
@@ -139,6 +149,19 @@ test('所有脚本 pin 的 Node 版本必须完全一致（防 8 份副本各漂
     1,
     `Node 版本在不同脚本里不一致，会导致「某条安装路径能用、另一条开不了机」：\n` +
       [...found.entries()].map(([v, fs]) => `  ${v}  ←  ${fs.join(', ')}`).join('\n')
+  );
+});
+
+test('bootable Linux 安装自检期望的 Node 版本必须与出货 pin 一致', () => {
+  // 这条脚本装对了也会告警，就是因为把旧版本号写死在断言里。
+  const [pin] = pinnedNodeVersions(read('portable/setup.bat'));
+  const script = read('bootable/linux-setup/test-installation.sh');
+  const expected = [...new Set([...script.matchAll(/v\d+\.\d+\.\d+/g)].map((m) => m[0]))];
+  assert.deepEqual(
+    expected,
+    [pin],
+    `test-installation.sh 期望 ${expected.join(', ') || '(无)'}，出货 pin 是 ${pin}；` +
+      `版本不一致时用户装对了也会被 warn。`
   );
 });
 

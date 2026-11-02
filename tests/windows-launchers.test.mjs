@@ -1,6 +1,6 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { join } from 'node:path';
+import { join, relative, sep } from 'node:path';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -161,20 +161,71 @@ test('portable launchers route configured model hosts around the system proxy', 
   );
 });
 
-test('customer-facing .bat launchers are pure ASCII (cmd.exe mis-parses UTF-8 Chinese on GBK Windows)', () => {
+// Walk the repo instead of listing launchers by hand: Windows-Diagnose.bat shipped
+// with a UTF-8 BOM for months because the old guard only knew three file names.
+// Generated/installed trees are not repo content and are skipped.
+function batchFiles(dir = repoRoot, found = []) {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (entry.isDirectory()) {
+      if (entry.name === '.git' || entry.name === 'node_modules' || entry.name === 'dist') continue;
+      // portable/app is the downloaded runtime (Node + OpenClaw), not repository content.
+      if (dir === join(repoRoot, 'portable') && entry.name === 'app') continue;
+      batchFiles(join(dir, entry.name), found);
+    } else if (entry.isFile() && entry.name.toLowerCase().endsWith('.bat')) {
+      found.push(join(dir, entry.name));
+    }
+  }
+  return found;
+}
+
+// Deprecated Electron desktop app (u-claw-app/DEPRECATED.md): not built, not
+// published and not part of the portable bundle, so its legacy Chinese setup text
+// is deliberately left untouched. Every *shipped* .bat must be pure ASCII.
+const DEPRECATED_BATCH_FILES = new Set(['u-claw-app/setup.bat']);
+
+test('every .bat in the repo is BOM-free, pure ASCII and CRLF (cmd.exe mis-parses UTF-8 on GBK Windows)', () => {
   // Non-ASCII bytes in a .bat get read as GBK by Chinese Windows cmd.exe, which
   // garbles parsing ("usebackq is not a command"). Chinese UX must live in the
   // node tools' stdout (rendered fine under chcp 65001), never in the .bat itself.
-  for (const name of [
-    'Windows-Start.bat',
-    'Windows-IntranetFix.bat',
-    'OpenClaw-Doctor.bat',
-  ]) {
-    const bytes = readFileSync(join(repoRoot, 'portable', name));
-    const offending = bytes.findIndex((b) => b > 0x7f);
-    assert.equal(offending, -1, `${name} has a non-ASCII byte at offset ${offending}`);
-    assert.ok(bytes.includes(0x0d), `${name} must use CRLF line endings`);
+  // A leading UTF-8 BOM is worse: cmd.exe then skips the whole first line, so
+  // "@echo off" never runs and every command is echoed back.
+  const files = batchFiles();
+  const names = files.map((file) => relative(repoRoot, file).split(sep).join('/'));
+  assert.ok(files.length >= 10, `expected at least 10 .bat files, walked only ${files.length}: ${names.join(', ')}`);
+  for (const required of ['portable/Windows-Diagnose.bat', 'portable/OpenClaw-CLI.bat', 'portable/lib/wait-gateway.bat']) {
+    assert.ok(names.includes(required), `repo-wide .bat walk missed ${required}`);
   }
+  for (const allowlisted of DEPRECATED_BATCH_FILES) {
+    assert.ok(names.includes(allowlisted), `stale .bat allowlist entry: ${allowlisted}`);
+  }
+  // Regression pin: these exact nine bytes are the fix for the BOM bug.
+  const diagnose = readFileSync(join(repoRoot, 'portable', 'Windows-Diagnose.bat'));
+  assert.equal(
+    diagnose.subarray(0, 9).toString('latin1'),
+    '@echo off',
+    'Windows-Diagnose.bat must start with @echo off (a BOM here silently disables the first command)',
+  );
+
+  const problems = [];
+  for (const file of files) {
+    const rel = relative(repoRoot, file).split(sep).join('/');
+    const bytes = readFileSync(file);
+    if (bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) {
+      problems.push(`${rel}: UTF-8 BOM at offset 0`);
+    }
+    if (/(?<!\r)\n/.test(bytes.toString('latin1'))) {
+      problems.push(`${rel}: LF-only line ending (must be CRLF)`);
+    }
+    if (DEPRECATED_BATCH_FILES.has(rel)) continue;
+    const offending = bytes.findIndex((b) => b > 0x7f);
+    if (offending !== -1) {
+      const line = bytes.subarray(0, offending).toString('latin1').split('\n').length;
+      problems.push(
+        `${rel}: non-ASCII byte 0x${bytes[offending].toString(16)} at offset ${offending} (line ${line})`,
+      );
+    }
+  }
+  assert.deepEqual(problems, [], `batch files must be BOM-free, pure ASCII and CRLF:\n${problems.join('\n')}`);
 });
 
 test('macOS .command launchers are LF-only (CRLF breaks #!/bin/bash on macOS)', () => {

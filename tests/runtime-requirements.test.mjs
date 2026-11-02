@@ -9,7 +9,7 @@ test('runtime gate enforces the complete OpenClaw Node engine boundaries', () =>
   for (const version of ['v24.22.1', '24.23.0', '26.12.1', '27.0.0']) {
     assert.equal(supportsNode(version), true, version);
   }
-  for (const version of ['22.22.3', '23.9.0', '24.22.0', '24.15.9', '25.9.0', '26.12.0', 'unknown']) {
+  for (const version of ['22.22.1', '23.9.0', '24.22.0', '24.15.9', '25.9.0', '26.12.0', 'unknown']) {
     assert.equal(supportsNode(version), false, version);
   }
 });
@@ -28,7 +28,7 @@ test('existing portable folder upgrades missing, stale or incompatible runtime',
     fs.writeFileSync(path.join(root, 'app/core/.uclaw-runtime-platform'), `${process.platform}-${process.arch}`);
     assert.equal(needsSetup(root, '24.22.1'), false);
     assert.equal(needsSetup(root, '24.22.1', 'different-platform'), true);
-    assert.equal(needsSetup(root, '22.22.3'), true);
+    assert.equal(needsSetup(root, '22.22.1'), true);
   } finally {
     assert.ok(path.resolve(root).startsWith(path.resolve(tmpdir()) + path.sep));
     fs.rmSync(root, { recursive: true, force: true });
