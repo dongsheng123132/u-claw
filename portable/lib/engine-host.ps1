@@ -199,8 +199,10 @@ if (-not (Test-EngineInstalled $target)) {
             exit 0
         }
     } else {
-        Emit 'UCLAW_ENGINE_SOURCE' 'usb'
-        Emit 'UCLAW_ENGINE_ROOT' $rootFull
+        # Archive present but unusable (truncated / checksum mismatch): never fall
+        # through to the loose tree, that turns a copy error into an online setup.
+        Emit 'UCLAW_ENGINE_SOURCE' 'broken'
+        Emit 'UCLAW_ENGINE_ARCHIVE' $archive
         exit 0
     }
 }

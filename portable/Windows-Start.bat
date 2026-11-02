@@ -46,6 +46,7 @@ if exist "%UCLAW_DIR%lib\engine-host.ps1" (
         if "%%a"=="UCLAW_CORE_DIR" set "CORE_DIR=%%b"
         if "%%a"=="UCLAW_APP_DIR" set "APP_DIR=%%b"
         if "%%a"=="UCLAW_ENGINE_MODE" set "UCLAW_ENGINE_MODE=%%b"
+        if "%%a"=="UCLAW_ENGINE_ARCHIVE" set "UCLAW_ENGINE_ARCHIVE=%%b"
     )
 )
 if not "%UCLAW_ENGINE_SOURCE%"=="legacy" if "%NODE_DIR:~-1%"=="\" set "NODE_DIR=%NODE_DIR:~0,-1%"
@@ -61,6 +62,20 @@ set "OPENCLAW_DISABLE_BONJOUR=1"
 REM USB installs can't self-update (not a git checkout) and USB I/O makes an
 REM in-place update risky anyway; upgrades ship as a new USB image instead.
 set "OPENCLAW_NO_AUTO_UPDATE=1"
+
+REM A damaged engine archive must not degrade into an online setup: the customer
+REM needs to know the stick (or the download that produced it) is the problem.
+if "%UCLAW_ENGINE_SOURCE%"=="broken" (
+    echo.
+    echo   ========================================
+    echo   [ERROR] The engine archive on this stick is damaged.
+    echo   ========================================
+    echo   File: %UCLAW_ENGINE_ARCHIVE%
+    echo   Please copy the whole U-Claw folder to the stick again, then retry.
+    echo.
+    pause
+    exit /b 1
+)
 
 REM Bootstrap only when Node is missing; existing instances are checked before upgrades.
 if not exist "%NODE_BIN%" (

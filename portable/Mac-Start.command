@@ -67,6 +67,7 @@ if [ -f "$UCLAW_DIR/lib/engine-host.sh" ]; then
             UCLAW_CORE_DIR)      CORE_DIR="$_v" ;;
             UCLAW_APP_DIR)       APP_DIR="$_v" ;;
             UCLAW_ENGINE_MODE)   UCLAW_ENGINE_MODE="$_v" ;;
+            UCLAW_ENGINE_ARCHIVE) UCLAW_ENGINE_ARCHIVE="$_v" ;;
         esac
     done < "$_engine_env"
     rm -f "$_engine_env" 2>/dev/null
@@ -100,6 +101,11 @@ ls -t "$DATA_DIR"/logs/startup-*.log "$DATA_DIR"/logs/bug-report-*.log 2>/dev/nu
 # ---- 3. Bootstrap a missing runtime ----
 # Existing runtimes are upgraded only after the single-instance gate below.
 # setup.sh holds its own setup lock for first-run duplicate clicks.
+if [ "$UCLAW_ENGINE_SOURCE" = "broken" ]; then
+    echo -e "  ${RED}[ERROR] 盘上的引擎归档已损坏（校验失败），请整包重新拷贝到 U 盘。${NC}"
+    echo -e "  ${RED}File: $UCLAW_ENGINE_ARCHIVE${NC}"
+    exit 1
+fi
 if [ ! -x "$NODE_BIN" ]; then
     echo -e "  ${YELLOW}首次在这台 Mac 使用，自动补齐运行环境...${NC}"
     echo ""

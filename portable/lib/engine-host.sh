@@ -144,8 +144,11 @@ if ! engine_ok "$TARGET"; then
     if engine_ok "$TARGET" || install_engine "$TARGET"; then
       SOURCE="drive"
     else
-      emit UCLAW_ENGINE_SOURCE usb
-      emit UCLAW_ENGINE_ROOT "$ROOT"
+      # The archive is right there but unusable (truncated / bad checksum). Falling
+      # back to the loose tree would silently send the customer to an online setup,
+      # so say it plainly and let the launcher stop with a real message.
+      emit UCLAW_ENGINE_SOURCE broken
+      emit UCLAW_ENGINE_ARCHIVE "$ARCHIVE"
       exit 0
     fi
   else

@@ -154,3 +154,22 @@ test('tools/win-accept.ps1 ships pure ASCII + CRLF and covers the six acceptance
     assert.ok(ps1.includes(marker), `acceptance script must run ${marker}`);
   }
 });
+
+test('a damaged archive stops with a clear message instead of an online setup', () => {
+  const ps1 = read('portable', 'lib', 'engine-host.ps1');
+  const sh = read('portable', 'lib', 'engine-host.sh');
+  for (const src of [ps1, sh]) {
+    assert.match(src, /UCLAW_ENGINE_SOURCE' 'broken'|emit UCLAW_ENGINE_SOURCE broken/);
+    assert.match(src, /UCLAW_ENGINE_ARCHIVE/);
+  }
+  const bat = read('portable', 'Windows-Start.bat');
+  const mac = read('portable', 'Mac-Start.command');
+  for (const src of [bat, mac]) {
+    assert.ok(src.includes('UCLAW_ENGINE_SOURCE'), 'launchers must branch on the engine source');
+  }
+  assert.match(bat, /UCLAW_ENGINE_SOURCE%"=="broken"/);
+  assert.match(mac, /UCLAW_ENGINE_SOURCE" = "broken"/);
+  // The archive path has to reach the message, otherwise "File:" prints empty.
+  assert.ok(bat.includes('UCLAW_ENGINE_ARCHIVE=%%b'));
+  assert.ok(mac.includes('UCLAW_ENGINE_ARCHIVE) UCLAW_ENGINE_ARCHIVE='));
+});
