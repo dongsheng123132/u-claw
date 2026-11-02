@@ -2,8 +2,8 @@
 chcp 65001 >nul 2>&1
 title U-Claw Interactive CLI
 
-REM 进阶用户：打开一个已配置好环境变量的命令行，可直接敲 openclaw 命令。
-REM 复用与 Windows-Start.bat 一致的便携环境（盘内 Node + 盘内数据）。
+REM Advanced users: open a console with the portable environment already configured, so the "openclaw" command can be typed directly.
+REM Reuses the same portable environment as Windows-Start.bat (on-drive Node + on-drive data).
 
 set "UCLAW_DIR=%~dp0"
 set "APP_DIR=%UCLAW_DIR%app"
@@ -17,7 +17,7 @@ set "OPENCLAW_STATE_DIR=%DATA_DIR%\.openclaw"
 set "OPENCLAW_CONFIG_PATH=%DATA_DIR%\.openclaw\openclaw.json"
 set "OPENCLAW_DISABLE_BONJOUR=1"
 
-REM 把盘内 node 和 .bin 放到 PATH 最前，让 openclaw 命令可直接调用
+REM Put the on-drive node and .bin first on PATH so the openclaw command resolves directly.
 set "PATH=%NODE_DIR%;%CORE_DIR%\node_modules\.bin;%PATH%"
 
 if not exist "%NODE_BIN%" (
