@@ -143,3 +143,14 @@ test('lib CLI entry guards survive symlinked paths', { skip: process.platform ==
   const out = execFileSync(process.execPath, [link, join(repoRoot, 'portable')], { encoding: 'utf8' });
   assert.match(out, /UCLAW_SETUP_NEEDED=[01]/);
 });
+
+test('tools/win-accept.ps1 ships pure ASCII + CRLF and covers the six acceptance cases', () => {
+  const bytes = readBytes('tools', 'win-accept.ps1');
+  assert.equal(bytes.findIndex((b) => b > 0x7f), -1, 'win-accept.ps1 must stay ASCII (it runs in a GBK console)');
+  assert.ok(bytes.includes(0x0d), 'win-accept.ps1 must use CRLF');
+  const ps1 = bytes.toString('utf8');
+  for (const marker of ['A_cold_first_run', 'B_warm_second_run', 'C_forced_drive',
+                        'D_corrupt_archive', 'E_interrupted_install', 'F_legacy_layout']) {
+    assert.ok(ps1.includes(marker), `acceptance script must run ${marker}`);
+  }
+});
