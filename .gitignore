@@ -56,3 +56,9 @@ usb-release/toolkit/*.zip
 # ── Bundled Go lite version（虾盘精灵轻量版：随 U 盘发布包一起分发，必须入库） ──
 !portable/lite-windows-x64/虾盘.exe
 !portable/lite-windows-x64/app/runtime/picoclaw/windows-x64/picoclaw.exe
+
+# 本地打包产物（publish-latest.mjs / 热修 zip）
+/dist/
+
+# 上游/社区仓库参考副本（只读调研用）
+/_refs/
