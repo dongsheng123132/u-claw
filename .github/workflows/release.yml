@@ -34,6 +34,8 @@ jobs:
           mkdir -p "$stage_dir"
           cp -R portable/. "$stage_dir/"
           cp OPENCLAW_VERSION "$stage_dir/OPENCLAW_VERSION"
+          # 跟版工具随包发：现场修盘/升级时可直接 node tools/patch-baseline.mjs --print
+          if [ -d tools ]; then cp -R tools "$stage_dir/tools"; fi
           rm -rf "$stage_dir/data/logs" 2>/dev/null || true
 
       - name: Build optional WebView2 shell
@@ -281,6 +283,7 @@ jobs:
           stage_dir="dist/u-claw-portable-mac-arm64-${tag_name}"
           mkdir -p "$stage_dir"
           cp -R portable/. "$stage_dir/"
+          if [ -d tools ]; then cp -R tools "$stage_dir/tools"; fi
           cp OPENCLAW_VERSION "$stage_dir/OPENCLAW_VERSION"
           rm -rf "$stage_dir/data/logs" 2>/dev/null || true
 
