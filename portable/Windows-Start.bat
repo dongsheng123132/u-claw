@@ -37,11 +37,13 @@ REM extract under <stick>\engine\<version> and run from the stick. When no archi
 REM is shipped (old sticks) the resolver reports "legacy" and nothing changes.
 set "UCLAW_ENGINE_SOURCE=legacy"
 set "UCLAW_ENGINE_ROOT=%UCLAW_DIR%."
-REM Not nested inside an IF block: cmd re-parses %VAR% at block parse time, and a
-REM nested for/f over a quoted command is where "The syntax of the command is
-REM incorrect" comes from. goto keeps the quoting identical to the other helpers.
+REM Resolve through a temp file, not a backquoted for/f: cmd's quote stripping ate
+REM the 2^>nul redirect and handed "2>nul" to PowerShell as an argument (CI proved it).
 if not exist "%UCLAW_DIR%lib\engine-host.ps1" goto :uclaw_engine_resolved
-for /f "usebackq tokens=1,* delims==" %%a in (`""powershell" -NoProfile -ExecutionPolicy Bypass -File "%UCLAW_DIR%lib\engine-host.ps1" "%UCLAW_DIR%." 2^>nul"`) do (
+set "UCLAW_ENGINE_ENV=%TEMP%\uclaw-engine-%RANDOM%-%RANDOM%.env"
+powershell -NoProfile -ExecutionPolicy Bypass -File "%UCLAW_DIR%lib\engine-host.ps1" "%UCLAW_DIR%." > "%UCLAW_ENGINE_ENV%" 2>nul
+if not exist "%UCLAW_ENGINE_ENV%" goto :uclaw_engine_resolved
+for /f "usebackq tokens=1,* delims==" %%a in ("%UCLAW_ENGINE_ENV%") do (
     if "%%a"=="UCLAW_ENGINE_SOURCE" set "UCLAW_ENGINE_SOURCE=%%b"
     if "%%a"=="UCLAW_ENGINE_ROOT" set "UCLAW_ENGINE_ROOT=%%b"
     if "%%a"=="UCLAW_NODE_BIN" set "NODE_BIN=%%b"
@@ -51,6 +53,7 @@ for /f "usebackq tokens=1,* delims==" %%a in (`""powershell" -NoProfile -Executi
     if "%%a"=="UCLAW_ENGINE_MODE" set "UCLAW_ENGINE_MODE=%%b"
     if "%%a"=="UCLAW_ENGINE_ARCHIVE" set "UCLAW_ENGINE_ARCHIVE=%%b"
 )
+del "%UCLAW_ENGINE_ENV%" >nul 2>&1
 :uclaw_engine_resolved
 if not "%UCLAW_ENGINE_SOURCE%"=="legacy" echo   Engine: %UCLAW_ENGINE_SOURCE% ^(%UCLAW_ENGINE_ROOT%^)
 if not "%UCLAW_ENGINE_SOURCE%"=="legacy" set "NPM_BIN=%NODE_DIR%\npm.cmd"
