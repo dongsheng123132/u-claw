@@ -1,0 +1,80 @@
+name: Windows engine acceptance
+
+# Runs the v2.5 engine-on-host acceptance on a clean Windows Server runner:
+# cold first run, warm reuse, forced drive fallback, damaged archive, interrupted
+# install, legacy loose tree. No USB stick on a runner, so this validates the
+# resolution/install/fallback logic; exFAT behaviour is covered on real hardware.
+on:
+  workflow_dispatch:
+    inputs:
+      source:
+        description: "release = install from the latest release zip; setup = build the runtime in the runner"
+        required: false
+        default: "release"
+  push:
+    branches: [main]
+    paths:
+      - "tools/win-accept.ps1"
+      - ".github/workflows/win-acceptance.yml"
+      - "portable/lib/engine-host.ps1"
+      - "portable/lib/engine-host.sh"
+      - "portable/Windows-Start.bat"
+
+jobs:
+  accept:
+    name: Engine acceptance (windows-latest)
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show runner facts
+        shell: pwsh
+        run: |
+          [Console]::OutputEncoding = [Text.Encoding]::UTF8
+          "PSVersion      : $($PSVersionTable.PSVersion)"
+          "OS             : $((Get-CimInstance Win32_OperatingSystem).Caption)"
+          "FreeOnC_GB     : $([math]::Round((Get-PSDrive C).Free/1GB,1))"
+          "NodeOnRunner   : $(node --version)"
+          "TarOnRunner    : $(tar --version | Select-Object -First 1)"
+
+      - name: Optionally build the runtime locally (setup.ps1)
+        if: ${{ github.event.inputs.source == 'setup' }}
+        shell: pwsh
+        run: |
+          $root = 'D:\src'
+          New-Item -ItemType Directory -Force -Path $root | Out-Null
+          Copy-Item -Recurse -Force .\portable\* $root\
+          Set-Location $root
+          .\setup.ps1 2>&1 | Tee-Object -FilePath D:\setup.log | Select-Object -Last 20
+          "runtime_ready=$([bool](Test-Path "$root\app\core\node_modules\openclaw\openclaw.mjs"))"
+          if (-not (Test-Path "$root\app\core\node_modules\openclaw\openclaw.mjs")) { throw 'setup.ps1 did not produce a runtime' }
+
+      - name: Run the acceptance
+        shell: pwsh
+        env:
+          UCLAW_ACCEPT_SOURCE: ${{ github.event.inputs.source }}
+        run: |
+          [Console]::OutputEncoding = [Text.Encoding]::UTF8
+          $source = if ($env:UCLAW_ACCEPT_SOURCE -eq 'setup') { 'D:\src' } else { '' }
+          $args = @('-NoProfile','-ExecutionPolicy','Bypass','-File','tools\win-accept.ps1','-Root','D:\accept')
+          if ($source) { $args += @('-SourceApp', $source) }
+          & powershell @args
+          if (-not (Test-Path 'D:\accept\accept-summary.json')) { throw 'acceptance produced no summary' }
+          $summary = Get-Content 'D:\accept\accept-summary.json' -Raw -Encoding UTF8 | ConvertFrom-Json
+          "---- SUMMARY ----"
+          $summary | ConvertTo-Json -Depth 6
+          "failures=$($summary.failures)"
+          if ($summary.failures -ne 0) { exit 1 }
+
+      - name: Upload logs and summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: win-acceptance
+          path: |
+            D:\accept\accept-summary.json
+            D:\accept\accept.log
+            D:\accept\run-*.log
+          if-no-files-found: warn

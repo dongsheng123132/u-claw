@@ -83,9 +83,16 @@ if (-not $srcRoot) {
     Log 'no local runtime found; downloading the latest release zip as the engine source'
     $zip = Join-Path $Root 'source.zip'
     if (-not (Test-Path $zip)) {
-        $url = 'https://gh-proxy.com/https://github.com/dongsheng123132/u-claw/releases/latest/download/u-claw-portable-windows-v2.4.3.zip'
-        Log ('download ' + $url)
-        & curl.exe -sL --max-time 1800 -o $zip $url
+        $urls = @(
+            'https://github.com/dongsheng123132/u-claw/releases/latest/download/u-claw-portable-windows-v2.4.3.zip',
+            'https://gh-proxy.com/https://github.com/dongsheng123132/u-claw/releases/latest/download/u-claw-portable-windows-v2.4.3.zip'
+        )
+        foreach ($url in $urls) {
+            Log ('download ' + $url)
+            & curl.exe -sL --max-time 1800 -o $zip $url
+            if ((Test-Path $zip) -and ((Get-Item $zip).Length -gt 50MB)) { break }
+            Remove-Item $zip -Force -ErrorAction SilentlyContinue
+        }
         if (-not (Test-Path $zip)) { Fail 'release zip download failed' }
     }
     Log ('zip ' + [math]::Round((Get-Item $zip).Length / 1MB, 0) + ' MB')
@@ -103,7 +110,16 @@ $skelDir = Join-Path $Root 'skeleton'
 if (-not (Test-Path (Join-Path $skelDir 'lib\engine-host.ps1'))) {
     Log '--- fetching the repo skeleton from the main branch ---'
     $tgz = Join-Path $Root 'repo.tar.gz'
-    & curl.exe -sL --max-time 600 -o $tgz ('https://gh-proxy.com/https://github.com/dongsheng123132/u-claw/archive/refs/heads/' + $RepoRef + '.tar.gz')
+    $skelUrls = @(
+        ('https://codeload.github.com/dongsheng123132/u-claw/tar.gz/refs/heads/' + $RepoRef),
+        ('https://gh-proxy.com/https://github.com/dongsheng123132/u-claw/archive/refs/heads/' + $RepoRef + '.tar.gz')
+    )
+    foreach ($u in $skelUrls) {
+        Log ('skeleton ' + $u)
+        & curl.exe -sL --max-time 600 -o $tgz $u
+        if ((Test-Path $tgz) -and ((Get-Item $tgz).Length -gt 100KB)) { break }
+        Remove-Item $tgz -Force -ErrorAction SilentlyContinue
+    }
     if (-not (Test-Path $tgz)) { Fail 'skeleton download failed' }
     $tmp = Join-Path $Root 'repo-extract'
     New-Item -ItemType Directory -Force -Path $tmp | Out-Null
@@ -154,7 +170,7 @@ function Run-Launcher([string]$tag, [string]$mode) {
     if ($mode) { $env:UCLAW_ENGINE_MODE = $mode } else { Remove-Item Env:UCLAW_ENGINE_MODE -ErrorAction SilentlyContinue }
     $proc = Start-Process -FilePath 'cmd.exe' -ArgumentList '/c', ('"' + (Join-Path $stick 'Windows-Start.bat') + '"') -WorkingDirectory $stick -WindowStyle Hidden -PassThru -RedirectStandardOutput $log -RedirectStandardError ($log + '.err')
     $ready = $false
-    $deadline = (Get-Date).AddSeconds(600)
+    $deadline = (Get-Date).AddSeconds(420)
     while ((Get-Date) -lt $deadline) {
         if ($proc.HasExited) { break }
         if (Wait-Ready 18789 3) { $ready = $true; break }
@@ -224,7 +240,7 @@ $flog = Join-Path $Root 'run-F-legacy.log'
 $t0 = Get-Date
 $fproc = Start-Process -FilePath 'cmd.exe' -ArgumentList '/c', ('"' + (Join-Path $legacy 'Windows-Start.bat') + '"') -WorkingDirectory $legacy -WindowStyle Hidden -PassThru -RedirectStandardOutput $flog -RedirectStandardError ($flog + '.err')
 $fready = $false
-while (((Get-Date) - $t0).TotalSeconds -lt 600 -and -not $fproc.HasExited) { if (Wait-Ready 18789 3) { $fready = $true; break } }
+while (((Get-Date) - $t0).TotalSeconds -lt 420 -and -not $fproc.HasExited) { if (Wait-Ready 18789 3) { $fready = $true; break } }
 $engineLine = (Select-String -Path $flog -Pattern 'Engine:' -ErrorAction SilentlyContinue | Select-Object -First 1).Line
 if (-not $fproc.HasExited) { try { Stop-Process -Id $fproc.Id -Force } catch { } }
 Stop-Gateways
