@@ -24,7 +24,9 @@
 param(
     [string]$Root = "D:\uclaw-accept",
     [string]$SourceApp = "",
-    [string]$RepoRef = "main"
+    [string]$RepoRef = "main",
+    # Subset of cases to run, e.g. -Cases A,B,D. Default: all six.
+    [string[]]$Cases = @('A','B','C','D','E','F')
 )
 
 $ErrorActionPreference = 'Continue'
@@ -184,6 +186,7 @@ function Run-Launcher([string]$tag, [string]$mode) {
 }
 
 # ------------------------------------------------------------------- A cold first run
+if ($Cases -contains 'A') {
 Log '--- case A: cold first run (host install) ---'
 Reset-Host
 $a = Run-Launcher 'A-cold' ''
@@ -192,17 +195,23 @@ $engineInstalled = [bool](Get-ChildItem -Path $enginePath -Directory -ErrorActio
 Record 'A_cold_first_run' @{ ok = ($a.ready -and -not $a.setupRan -and $engineInstalled); readySec = $a.secs; engine = $a.engine; hostInstalled = $engineInstalled; setupRan = $a.setupRan }
 
 # ------------------------------------------------------------------- B warm second run
+if ($Cases -contains 'B') {
+}
 Log '--- case B: warm second run ---'
 $b = Run-Launcher 'B-warm' ''
 Record 'B_warm_second_run' @{ ok = ($b.ready -and -not $b.setupRan); readySec = $b.secs; engine = $b.engine; setupRan = $b.setupRan }
 
 # ------------------------------------------------------------------- C forced drive
+if ($Cases -contains 'C') {
+}
 Log '--- case C: forced drive mode (the "cannot install" fallback) ---'
 $c = Run-Launcher 'C-drive' 'drive'
 $driveEngine = Test-Path (Join-Path $stick ('engine\' + $Version + '\app\core\node_modules\openclaw\openclaw.mjs'))
 Record 'C_forced_drive' @{ ok = ($c.ready -and $driveEngine); readySec = $c.secs; engine = $c.engine; onStick = $driveEngine }
 
 # ------------------------------------------------------------------- D corrupt archive
+if ($Cases -contains 'D') {
+}
 Log '--- case D: corrupt archive must fail cleanly ---'
 Reset-Host
 Stop-Gateways
@@ -215,6 +224,8 @@ Record 'D_corrupt_archive' @{ ok = (-not $installedD -and -not $half); hostInsta
 Set-Content -Path ($archive + '.sha256') -Value $sha -NoNewline -Encoding ASCII
 
 # ------------------------------------------------------------------- E interrupted install
+if ($Cases -contains 'E') {
+}
 Log '--- case E: kill the installer mid-extract, rerun must recover ---'
 Reset-Host
 Stop-Gateways
@@ -227,6 +238,8 @@ $e = Run-Launcher 'E-interrupted' ''
 Record 'E_interrupted_install' @{ ok = $e.ready; readySec = $e.secs; engine = $e.engine }
 
 # ------------------------------------------------------------------- F legacy layout
+if ($Cases -contains 'F') {
+}
 Log '--- case F: legacy layout (no archive -> loose app keeps working) ---'
 Stop-Gateways
 $legacy = Join-Path $Root 'legacy'
@@ -247,6 +260,7 @@ if (-not $fproc.HasExited) { try { Stop-Process -Id $fproc.Id -Force } catch { }
 Stop-Gateways
 Record 'F_legacy_layout' @{ ok = $fready; readySec = [int]((Get-Date) - $t0).TotalSeconds; engine = ($engineLine -replace '\s+', ' ') }
 
+}
 # ------------------------------------------------------------------- summary
 $summary = [ordered]@{
     generatedAt = (Get-Date).ToUniversalTime().ToString('o')
