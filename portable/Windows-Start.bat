@@ -184,11 +184,7 @@ exit /b 0
 
 REM Upgrade missing or incompatible runtime and stale OpenClaw before startup.
 set "UCLAW_SETUP_NEEDED=1"
-if exist "%NODE_BIN%" (
-    for /f "usebackq tokens=1,* delims==" %%a in (`""%NODE_BIN%" "%UCLAW_DIR%lib\runtime-requirements.mjs" "%UCLAW_ENGINE_ROOT%." 2^>nul"`) do (
-        if "%%a"=="UCLAW_SETUP_NEEDED" set "UCLAW_SETUP_NEEDED=%%b"
-    )
-)
+if exist "%NODE_BIN%" call :uclaw_capture_requirements
 if "%UCLAW_SETUP_NEEDED%"=="1" (
     echo   Updating portable runtime to the bundled OpenClaw version...
     call "%UCLAW_DIR%setup.bat"
@@ -202,9 +198,7 @@ if "%UCLAW_SETUP_NEEDED%"=="1" (
 
 REM Validate the actual runtime after setup before loading any user state.
 set "UCLAW_SETUP_NEEDED=1"
-for /f "usebackq tokens=1,* delims==" %%a in (`""%NODE_BIN%" "%UCLAW_DIR%lib\runtime-requirements.mjs" "%UCLAW_ENGINE_ROOT%." 2^>nul"`) do (
-    if "%%a"=="UCLAW_SETUP_NEEDED" set "UCLAW_SETUP_NEEDED=%%b"
-)
+call :uclaw_capture_requirements
 if "%UCLAW_SETUP_NEEDED%"=="1" (
     echo   [ERROR] Portable runtime validation failed after setup.
     goto :startup_failed
@@ -265,7 +259,6 @@ if not exist "%VERSION_FILE%" set "VERSION_FILE=%UCLAW_DIR%..\OPENCLAW_VERSION"
 if exist "%VERSION_FILE%" (
     start /B "" "%NODE_BIN%" "%UCLAW_DIR%lib\check-update.mjs" "%VERSION_FILE%" "%STATE_DIR%" >nul 2>&1
 )
-
 
 "%NODE_BIN%" "%UCLAW_DIR%lib\prepare-wallet.mjs" "%UCLAW_ENGINE_ROOT%." "%STATE_DIR%"
 if errorlevel 1 goto :startup_failed
@@ -406,3 +399,16 @@ exit /b %GW_EXIT%
 :startup_failed
 if defined UCLAW_LAUNCHER_PID "%NODE_BIN%" "%UCLAW_DIR%lib\portable-instance-lock.mjs" release "%INSTANCE_ROOT%" "%STATE_DIR%" "%UCLAW_LAUNCHER_PID%" >nul 2>&1
 exit /b 1
+
+REM Read runtime-requirements.mjs through a temp file: a backquoted for/f loses the
+REM 2^>nul redirect (CI proved PowerShell/node received "2>nul"), the variable stays
+REM unset, and the launcher then runs an online setup on every start.
+:uclaw_capture_requirements
+set "UCLAW_REQ_ENV=%TEMP%\uclaw-req-%RANDOM%-%RANDOM%.env"
+"%NODE_BIN%" "%UCLAW_DIR%lib\runtime-requirements.mjs" "%UCLAW_ENGINE_ROOT%." > "%UCLAW_REQ_ENV%" 2>nul
+if not exist "%UCLAW_REQ_ENV%" goto :eof
+for /f "usebackq tokens=1,* delims==" %%a in ("%UCLAW_REQ_ENV%") do (
+    if "%%a"=="UCLAW_SETUP_NEEDED" set "UCLAW_SETUP_NEEDED=%%b"
+)
+del "%UCLAW_REQ_ENV%" >nul 2>&1
+goto :eof

@@ -86,9 +86,9 @@ test('Windows launcher never compares against a quoted backslash (cmd parse trap
 test('Windows launcher points app-dependent helpers at the resolved engine root', () => {
   const bat = read('portable', 'Windows-Start.bat');
   for (const helper of ['runtime-requirements', 'prepare-wallet', 'upgrade-session-schema']) {
-    const line = bat.split('\n').find((l) => l.includes(helper + '.mjs'));
-    assert.ok(line, `${helper} call must exist`);
-    assert.ok(line.includes('%UCLAW_ENGINE_ROOT%'), `${helper} must use the engine root`);
+    const candidates = bat.split('\n').filter((l) => l.includes(helper + '.mjs') && !l.trimStart().startsWith('REM'));
+    assert.ok(candidates.length, `${helper} call must exist`);
+    assert.ok(candidates.some((l) => l.includes('%UCLAW_ENGINE_ROOT%')), `${helper} must use the engine root`);
   }
   const tokenLine = bat.split('\n').find((l) => l.includes('NODE_BIN') && l.includes('lib\\gateway-token.mjs'));
   assert.ok(tokenLine && tokenLine.includes('%UCLAW_DIR%lib\\'), 'stick-local helpers stay on the stick');
@@ -157,4 +157,17 @@ test('docs explain the three-level fallback', () => {
   const readme = read('README.md');
   assert.match(readme, /UCLAW_ENGINE_MODE/, 'README must document the mode switch');
   assert.match(readme, /engine-<OPENCLAW_VERSION>\.tar\.gz/);
+});
+
+test('requirements capture reads a temp file and the helper sits after the main flow', () => {
+  const bat = read('portable', 'Windows-Start.bat');
+  // Same cmd trap as the engine resolver: a backquoted for/f leaks "2>nul" as an
+  // argument, node ignores it, and the variable is captured -- but PowerShell errors.
+  assert.ok(!bat.includes('runtime-requirements.mjs\" \"%UCLAW_ENGINE_ROOT%.\" 2^>nul\"`)'));
+  assert.match(bat, /call :uclaw_capture_requirements/);
+  assert.match(bat, /> "%UCLAW_REQ_ENV%" 2>nul/);
+  // A label in the middle of the main flow would fall through and hit goto :eof.
+  const labelAt = bat.lastIndexOf('\n:uclaw_capture_requirements');
+  const lastExit = bat.lastIndexOf('exit /b');
+  assert.ok(labelAt > lastExit, 'helper must live after the main flow (call-only)');
 });
