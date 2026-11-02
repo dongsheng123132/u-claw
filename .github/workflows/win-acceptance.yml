@@ -52,6 +52,8 @@ jobs:
           if (-not (Test-Path "$root\app\core\node_modules\openclaw\openclaw.mjs")) { throw 'setup.ps1 did not produce a runtime' }
 
       - name: Run the acceptance
+        id: accept
+        continue-on-error: true
         shell: pwsh
         env:
           UCLAW_ACCEPT_SOURCE: ${{ github.event.inputs.source }}
@@ -68,6 +70,34 @@ jobs:
           "failures=$($summary.failures)"
           if ($summary.failures -ne 0) { exit 1 }
 
+      - name: Diagnose the launcher (why it exits early)
+        if: always()
+        shell: pwsh
+        run: |
+          [Console]::OutputEncoding = [Text.Encoding]::UTF8
+          $stick = 'D:\accept\stick'
+          if (-not (Test-Path $stick)) { "no stick staged, skipping"; exit 0 }
+          $env:UCLAW_HEADLESS = '1'
+          $env:UCLAW_ENGINE_MODE = 'auto'
+          "---- resolver (direct) ----"
+          & powershell -NoProfile -ExecutionPolicy Bypass -File "$stick\lib\engine-host.ps1" "$stick\." 2>&1 | Out-String
+          "---- launcher, full output ----"
+          $out = & cmd.exe /c "`"$stick\Windows-Start.bat`" 2>&1" | Out-String
+          $out
+          "launcher_exit=$LASTEXITCODE"
+          "---- stick layout ----"
+          Get-ChildItem $stick | Select-Object Name, Length | Format-Table -AutoSize | Out-String
+          "---- engine cache ----"
+          Get-ChildItem "$env:LOCALAPPDATA\U-Claw" -Recurse -Depth 3 -ErrorAction SilentlyContinue |
+            Select-Object FullName | Format-Table -AutoSize | Out-String
+
+      - name: Fail if the acceptance reported failures
+        if: ${{ steps.accept.outcome == 'failure' }}
+        shell: pwsh
+        run: |
+          "acceptance step failed (see summary above)"
+          exit 1
+
       - name: Upload logs and summary
         if: always()
         uses: actions/upload-artifact@v4
@@ -77,4 +107,5 @@ jobs:
             D:\accept\accept-summary.json
             D:\accept\accept.log
             D:\accept\run-*.log
+            D:\accept\run-*.log.err
           if-no-files-found: warn
