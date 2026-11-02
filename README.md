@@ -37,7 +37,7 @@
 
 > 双击 `Windows-Start.bat` / `Mac-Start.command` 默认在**系统浏览器**里打开 WebUI——配置入口就挂在首屏上，不藏起来。想要独立窗口（可选、非默认）：`Windows-WebView.bat`（内置 WebView2 壳，带任务栏图标与关闭确认）或 `Windows-App.bat`（Edge App 模式）；想「像 App 一样常驻」可用 `app/tray/U-Claw-Tray.exe`（托盘：打开 Dashboard / 配置中心、拉起后端，零窗口）。随时直接进配置中心可双击 `Windows-Config.bat`。几种方式共用 Gateway 和 `data/`，窗口缓存留在当前电脑，配置和会话随 U 盘携带。源码使用者可运行 `shell/build.sh` / `tray/build.sh` 自行构建。
 >
-> 安全与更新：每支盘首启会生成**独立随机 gateway token**（`data/.openclaw/gateway-token`，只监听 127.0.0.1，tailscale 默认关），旧盘里的固定 `uclaw` 会自动迁移；更新检查支持**通道**——默认 `stable`，把 `data/.openclaw/update-channel.json` 写成 `{"channel":"extended-stable"}` 即跟随上游 LTS。
+> 安全与更新：每支盘首启会生成**独立随机 gateway token**（`data/.openclaw/gateway-token`，只监听 127.0.0.1，tailscale 默认关），旧盘里的固定 `uclaw` 会自动迁移；更新检查支持**通道**——默认 `stable`，把 `data/.openclaw/update-channel.json` 写成 `{"channel":"extended-stable"}` 即跟随上游 LTS（想尝鲜可写 `{"channel":"beta"}`，仅建议复现上游问题时用）。
 
 | 你得到什么 | 为什么重要 |
 | --- | --- |

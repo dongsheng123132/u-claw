@@ -17,7 +17,7 @@ U 盘 = 插上就能用
 The repo is NOT a "build tool" or "generator" — it IS the USB structure. `setup.sh` only fills in large deps that can't go in git. After `setup.sh`, the `portable/` folder is directly copyable to a USB drive.
 
 Distribution forms:
-1. **Portable USB** (`portable/`): Run from USB on existing Mac/Windows, zero install. **This is the only form CI publishes** (Windows full zip; Mac runs `setup.sh` on first launch).
+1. **Portable USB** (`portable/`): Run from USB on existing Mac/Windows, zero install. **This is the only form CI publishes**: Windows full zip + macOS Apple Silicon zip (both pre-install Node + OpenClaw; Intel Macs fall back to `setup.sh` on first launch).
 2. **Bootable Linux USB** (`bootable/`): Ventoy + Ubuntu 24.04 — boots any x86_64 PC from USB, no OS needed. Independent module, user-run scripts (not in CI).
 3. **One-line install** (`install/`): `curl | bash` or `irm | iex` — download and install from network, no USB needed. User-run scripts (not in CI).
 
@@ -63,8 +63,9 @@ discovery. They read repo files as strings; they do **not** spawn OpenClaw. Ther
 `package.json` — tests are not run by the release CI (`.github/workflows/release.yml` only
 builds and publishes). Run them locally before pushing launcher changes.
 
-**CI workflows** (`.github/workflows/`): `release.yml` builds Win/Mac portable + desktop and
-publishes a GitHub Release on tag push. `track-upstream.yml` runs daily (cron) — checks
+**CI workflows** (`.github/workflows/`): `release.yml` builds the Windows portable zip **and** the macOS
+Apple Silicon portable zip (plus the optional WebView2 shell and the Windows tray), then publishes a GitHub
+Release on tag push. `track-upstream.yml` runs daily (cron) — checks
 `npm view openclaw version` against the pinned `OPENCLAW_VERSION`; if upstream is newer it bumps
 both `OPENCLAW_VERSION` files + the desktop shell version (`u-claw-app/package.json` patch),
 commits, and pushes a new `v<shell-version>` tag, which in turn triggers `release.yml`. Supports
@@ -124,7 +125,7 @@ Both portable and desktop versions auto-find a free port in range 18789–18799 
 - **`OPENCLAW_VERSION` file**: single source of truth for the bundled OpenClaw runtime version (e.g. `2026.6.8`). CI reads it to pin the npm install; it's copied into `portable/` so USB users / `check-update.mjs` can compare installed vs latest. Bump this file to upgrade.
 - **Environment variables**: `OPENCLAW_HOME`, `OPENCLAW_STATE_DIR`, `OPENCLAW_CONFIG_PATH` control where OpenClaw reads config
 - **macOS quarantine**: Mac scripts run `xattr -rd com.apple.quarantine` to remove Gatekeeper blocks
-- **Config format**: `{"gateway":{"mode":"local","auth":{"token":"uclaw"}},"models":{"mode":"merge","providers":{"xxx":{...}}},"agents":{"defaults":{"model":{"primary":"provider/model"}}}}`
+- **Config format**: `{"gateway":{"mode":"local","bind":"loopback","auth":{"token":"<per-stick random, see data/.openclaw/gateway-token>"}},"tailscale":{"mode":"off"},"models":{"mode":"merge","providers":{"xxx":{...}}},"agents":{"defaults":{"model":{"primary":"provider/model"}}}}`
 - **Config hot-reload**: OpenClaw watches `openclaw.json` and applies changes without restart
 - **Two local servers on startup**: launchers start the OpenClaw **gateway** (18789–18799) AND
   the **config-server** (`config-server/server.js`, 18788–18798). The config-server backs
@@ -137,7 +138,11 @@ Pure-Node, zero-dependency `.mjs` modules (use `fetch` + `node:zlib` only). All 
 
 | File | Purpose |
 |------|---------|
-| `check-update.mjs` / `publish-latest.mjs` | Portable self-update: check installed vs latest `OPENCLAW_VERSION`; publish helper. |
+| `check-update.mjs` / `publish-latest.mjs` | Portable self-update: check installed vs latest `OPENCLAW_VERSION`; publish helper. 支持通道 `UCLAW_UPDATE_CHANNEL=stable|extended-stable|beta`（见 `update-channel.mjs`）。 |
+| `update-channel.mjs` | 更新通道解析 + npmmirror dist-tags 查询 + 日期式版本比较；无网静默。 |
+| `gateway-token.mjs` | **每支盘随机 gateway token**：首启生成 32 字节 hex 到 `data/.openclaw/gateway-token`，旧盘固定 `uclaw` 自动迁移留 `.bak`；同时显式 `gateway.bind=loopback`、`tailscale.mode=off`。启动器/config-server/配置页统一读同一来源。 |
+| `boot-timing.mjs` | 冷启动耗时埋点：`start/mark/report`，一行一个 JSON（`data/.openclaw/boot-timing.jsonl`，64 KB 上限），诊断用 `node lib/boot-timing.mjs report <stateDir>`。 |
+| `patch-anchors.mjs` + `tools/patch-baseline.mjs` | 三个 sha256 双向白名单补丁的锚点工具：`--print` 报命中/漂移，`--accept` 只重算常量（默认闸门仍 exit 1）。 |
 | `portable-cache.mjs` | **启动加速核心**：把"重 IO、可重建"的缓存从 U 盘搬到本机硬盘。算出本机缓存根（win `%LOCALAPPDATA%\U-Claw\<slot>` / mac `~/Library/Caches/U-Claw` / linux `$XDG_CACHE_HOME`，UUID 隔离让换盘符仍复用），输出 `NODE_COMPILE_CACHE` 路径，并把 `data/.openclaw/browser` 做成 junction(win)/symlink(mac) 指向本机盘——浏览器 user-data 的海量随机小写不再砸 U 盘。CLI 打印 `KEY=VALUE` 供启动脚本 source。静默失败：取不到就缓存留 U 盘照常启动。 |
 | `prewarm.mjs` | gateway 首轮预热：端口就绪后后台静默 GET `/ready`→`/status`→`/models`（带 `x-openclaw-token`），把 config/model 子系统在 runtime 内存里热起来，用户首次点发送不再等。零依赖、短超时、后台 detach。 |
 | `loading.html` | 启动首屏（splash）：双击启动后立刻打开，给即时反馈消除"黑窗假死"。本页每秒 fetch `/ready`，gateway 真就绪后自动 `location.replace` 跳 Dashboard——天然规避"gateway 没起就开 Dashboard 拒连"(issue #46/#48)。端口经 `?port=` 传入。 |

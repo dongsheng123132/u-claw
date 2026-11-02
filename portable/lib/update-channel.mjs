@@ -4,11 +4,12 @@
 //   上游 openclaw 的 npm dist-tags 同时挂着几条线，客户机要的是"保守通道"：
 //     latest          → 最新稳定版（激进，追新版）
 //     extended-stable → 长期支持线（保守，晚一点但少踩坑）
+//     beta            → 上游预发布线（想尝鲜/复现上游 bug 时才用，不作客户默认）
 //   2026-11 实测：latest=2026.10.9、extended-stable=2026.9.36、beta=2026.10.10-beta.5。
 //   U-Claw 默认走 stable（= today 的行为），想稳的机器可以切到 extended-stable。
 //
 // 三条硬约定（全部 fail-soft，绝不上抛）：
-//   1. resolveChannel({ env, stateDir })  → 'stable' | 'extended-stable'
+//   1. resolveChannel({ env, stateDir })  → 'stable' | 'extended-stable' | 'beta'
 //        优先级：环境变量 UCLAW_UPDATE_CHANNEL > <stateDir>/update-channel.json 的 { channel }
 //        > 默认 stable。非法/坏文件/读不到 → 回落 stable，不抛。
 //   2. getChannelVersion(channel, { fetchImpl, timeoutMs }) → { ok, version, checkedAt, channel, error? }
@@ -32,18 +33,20 @@ import { join } from 'node:path';
 
 export const CHANNEL_STABLE = 'stable';
 export const CHANNEL_EXTENDED_STABLE = 'extended-stable';
+export const CHANNEL_BETA = 'beta';
 export const DEFAULT_CHANNEL = CHANNEL_STABLE;
 
 /** 通道清单（顺序即 UI/文档里的推荐顺序：默认 stable 在第一个）。 */
-export const CHANNELS = Object.freeze([CHANNEL_STABLE, CHANNEL_EXTENDED_STABLE]);
+export const CHANNELS = Object.freeze([CHANNEL_STABLE, CHANNEL_EXTENDED_STABLE, CHANNEL_BETA]);
 
 /** 通道 → npm dist-tag。上游新增通道时在这里加一行即可。 */
 export const CHANNEL_DIST_TAGS = Object.freeze({
   [CHANNEL_STABLE]: 'latest',
   [CHANNEL_EXTENDED_STABLE]: 'extended-stable',
+  [CHANNEL_BETA]: 'beta',
 });
 
-/** 环境变量名：UCLAW_UPDATE_CHANNEL=stable|extended-stable */
+/** 环境变量名：UCLAW_UPDATE_CHANNEL=stable|extended-stable|beta */
 export const UPDATE_CHANNEL_ENV = 'UCLAW_UPDATE_CHANNEL';
 /** stateDir 下的覆盖文件名：{ "channel": "extended-stable" } */
 export const UPDATE_CHANNEL_STATE_FILE = 'update-channel.json';

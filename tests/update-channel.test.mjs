@@ -24,6 +24,7 @@ import { promisify } from 'node:util';
 import {
   CHANNEL_DIST_TAGS,
   CHANNEL_EXTENDED_STABLE,
+  CHANNEL_BETA,
   CHANNEL_STABLE,
   CHANNELS,
   DEFAULT_CHANNEL,
@@ -143,10 +144,10 @@ test('resolveChannel: env 值非法 → 回落 stable（不猜别名、不抛）
   });
 });
 
-test('resolveChannel: 允许大小写/空白，但只认两个正式通道名', () => {
+test('resolveChannel: 允许大小写/空白，只认正式通道名（stable / extended-stable / beta）', () => {
   assert.equal(normalizeChannel(' Extended-Stable '), CHANNEL_EXTENDED_STABLE);
   assert.equal(normalizeChannel('STABLE'), CHANNEL_STABLE);
-  assert.equal(normalizeChannel('beta'), null);
+  assert.equal(normalizeChannel('Beta'), CHANNEL_BETA);
   assert.equal(normalizeChannel(''), null);
   assert.equal(normalizeChannel(null), null);
   assert.equal(normalizeChannel(42), null);
@@ -182,12 +183,13 @@ test('resolveChannel: 坏 JSON / 缺 channel / 非法 channel / stateDir 不存�
   });
 });
 
-test('channelToDistTag: stable→latest，extended-stable→extended-stable（非法值按 stable）', () => {
-  assert.deepEqual({ ...CHANNEL_DIST_TAGS }, { stable: 'latest', 'extended-stable': 'extended-stable' });
+test('channelToDistTag: stable→latest，extended-stable→extended-stable，beta→beta（非法值按 stable）', () => {
+  assert.deepEqual({ ...CHANNEL_DIST_TAGS }, { stable: 'latest', 'extended-stable': 'extended-stable', beta: 'beta' });
   assert.equal(channelToDistTag('stable'), 'latest');
   assert.equal(channelToDistTag('extended-stable'), 'extended-stable');
+  assert.equal(channelToDistTag('beta'), 'beta');
   assert.equal(channelToDistTag('bogus'), 'latest');
-  assert.deepEqual([...CHANNELS], ['stable', 'extended-stable']);
+  assert.deepEqual([...CHANNELS], ['stable', 'extended-stable', 'beta']);
 });
 
 // ── compareVersions：日期式版本按数字段比 ────────────────────────────────────
