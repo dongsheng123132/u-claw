@@ -49,7 +49,6 @@ if exist "%UCLAW_DIR%lib\engine-host.ps1" (
         if "%%a"=="UCLAW_ENGINE_ARCHIVE" set "UCLAW_ENGINE_ARCHIVE=%%b"
     )
 )
-if not "%UCLAW_ENGINE_SOURCE%"=="legacy" if "%NODE_DIR:~-1%"=="\" set "NODE_DIR=%NODE_DIR:~0,-1%"
 if not "%UCLAW_ENGINE_SOURCE%"=="legacy" echo   Engine: %UCLAW_ENGINE_SOURCE% ^(%UCLAW_ENGINE_ROOT%^)
 if not "%UCLAW_ENGINE_SOURCE%"=="legacy" set "NPM_BIN=%NODE_DIR%\npm.cmd"
 

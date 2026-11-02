@@ -173,3 +173,10 @@ test('a damaged archive stops with a clear message instead of an online setup', 
   assert.ok(bat.includes('UCLAW_ENGINE_ARCHIVE=%%b'));
   assert.ok(mac.includes('UCLAW_ENGINE_ARCHIVE) UCLAW_ENGINE_ARCHIVE='));
 });
+
+test('Windows launcher never compares against a quoted backslash (cmd parse trap)', () => {
+  // '"%VAR:~-1%"=="\\"' makes cmd report "The syntax of the command is incorrect"
+  // and exits 255 right after the banner -- exactly what the CI run showed.
+  const bat = read('portable', 'Windows-Start.bat');
+  assert.ok(!bat.includes(':~-1%"=="\\"'), 'do not compare the last char with a quoted backslash');
+});
