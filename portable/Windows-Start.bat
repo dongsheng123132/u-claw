@@ -59,6 +59,10 @@ if not exist "%DATA_DIR%\memory" mkdir "%DATA_DIR%\memory"
 if not exist "%DATA_DIR%\backups" mkdir "%DATA_DIR%\backups"
 if not exist "%DATA_DIR%\logs" mkdir "%DATA_DIR%\logs"
 
+REM Cold-start timing (data\.openclaw\boot-timing.jsonl; see lib/boot-timing.mjs).
+REM Silent and cheap; Diagnose reads it with: node lib\boot-timing.mjs report <stateDir>
+"%NODE_BIN%" "%UCLAW_DIR%lib\boot-timing.mjs" start "%STATE_DIR%" >nul 2>&1
+
 REM Strip host-machine provider credential variables before starting the gateway.
 REM If the PC happens to have DASHSCOPE_API_KEY etc. set, OpenClaw treats that
 REM provider as configured, tries to install its plugin during startup migration,
@@ -93,10 +97,12 @@ if not exist "%STATE_DIR%\openclaw.json" (
 REM Random per-stick gateway token (loopback only; see lib/gateway-token.mjs).
 REM Runs before the instance-lock dashboard link and before official-provider-guard
 REM fills defaults, so every link and the gateway itself agree on the same token.
+REM The token CLI writes data\.openclaw\gateway-token (no trailing newline);
+REM reading it with SET /P avoids the fragile FOR /F quoting when the drive path
+REM contains spaces. Gateway auth keeps working because both sides read this value.
+"%NODE_BIN%" "%UCLAW_DIR%lib\gateway-token.mjs" "%STATE_DIR%" >nul 2>&1
 set "UCLAW_GATEWAY_TOKEN=uclaw"
-for /f "usebackq tokens=1,* delims==" %%a in (`""%NODE_BIN%" "%UCLAW_DIR%lib\gateway-token.mjs" "%STATE_DIR%" 2^>nul"`) do (
-    if "%%a"=="UCLAW_GATEWAY_TOKEN" set "UCLAW_GATEWAY_TOKEN=%%b"
-)
+if exist "%STATE_DIR%\gateway-token" set /p UCLAW_GATEWAY_TOKEN=<"%STATE_DIR%\gateway-token"
 
 REM Startup cache acceleration. Session/identity/state stay portable on USB;
 REM only the patched OpenClaw managed Chromium directory uses the local disk.
@@ -162,6 +168,8 @@ if "%UCLAW_SETUP_NEEDED%"=="1" (
     echo   [ERROR] Portable runtime validation failed after setup.
     goto :startup_failed
 )
+
+"%NODE_BIN%" "%UCLAW_DIR%lib\boot-timing.mjs" mark "%STATE_DIR%" node-validated >nul 2>&1
 
 REM Check dependencies
 REM Select an explicit SDK strategy only after a generated-file probe proves
@@ -242,6 +250,7 @@ set "CONFIG_PORT=18788"
 if exist "%RUNTIME_JSON%" (
     for /f "usebackq tokens=*" %%p in (`powershell -NoProfile -Command "try { (Get-Content -Raw '%RUNTIME_JSON%' | ConvertFrom-Json).configServerPort } catch {}" 2^>nul`) do set "CONFIG_PORT=%%p"
 )
+"%NODE_BIN%" "%UCLAW_DIR%lib\boot-timing.mjs" mark "%STATE_DIR%" config-center >nul 2>&1
 echo   Config Center port: %CONFIG_PORT%
 
 REM Find available gateway port after Config Center has bound its port.
@@ -320,6 +329,8 @@ if errorlevel 1 (
     pause
     exit /b 1
 )
+
+"%NODE_BIN%" "%UCLAW_DIR%lib\boot-timing.mjs" mark "%STATE_DIR%" gateway-spawn >nul 2>&1
 
 REM exFAT/FAT32 cannot complete OpenClaw's one-time package-lifecycle publish
 REM (inode identity is unavailable -> EIO), and OpenClaw then refuses to start

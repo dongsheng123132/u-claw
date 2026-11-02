@@ -52,6 +52,17 @@ async function waitReady(base, token, deadline) {
   return false;
 }
 
+// 冷启动耗时埋点：写进 data/.openclaw/boot-timing.jsonl（见 lib/boot-timing.mjs）。
+// 静默失败——埋点永远不能拖慢或拖死预热流程。
+async function markBoot(phase) {
+  try {
+    const stateDir = process.env.OPENCLAW_STATE_DIR;
+    if (!stateDir) return;
+    const { mark } = await import('./boot-timing.mjs');
+    mark(stateDir, phase);
+  } catch { /* 埋点失败无所谓 */ }
+}
+
 export async function prewarm({ port = 18789, token = 'uclaw' } = {}) {
   const base = `http://127.0.0.1:${port}`;
   const deadline = Date.now() + READY_TIMEOUT_MS;
@@ -61,6 +72,7 @@ export async function prewarm({ port = 18789, token = 'uclaw' } = {}) {
     log(`gateway not ready within ${READY_TIMEOUT_MS}ms, skip`);
     return { ok: false, reason: 'not-ready' };
   }
+  await markBoot('gateway-ready');
 
   // 依次唤醒：status（gateway/config）→ models（provider 鉴权 + 模型目录）
   const steps = ['/status', '/models'];
@@ -72,6 +84,7 @@ export async function prewarm({ port = 18789, token = 'uclaw' } = {}) {
     log(`step ${path} ${ok ? 'ok' : 'failed'} ${Date.now() - t0}ms`);
     if (!ok) failed.push(path);
   }
+  await markBoot('prewarm-done');
   log(`done ${Date.now() - started}ms failed=${failed.length ? failed.join(',') : 'none'}`);
   return { ok: true, failed };
 }

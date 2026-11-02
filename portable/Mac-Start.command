@@ -116,6 +116,9 @@ if [ -n "$_UCLAW_STRIP_ENV" ]; then
 fi
 unset _UCLAW_STRIP_ENV
 
+# ---- 4c. 冷启动耗时埋点（<stateDir>/boot-timing.jsonl；诊断用 boot-timing.mjs report）----
+"$NODE_BIN" "$UCLAW_DIR/lib/boot-timing.mjs" start "$STATE_DIR" >/dev/null 2>&1 || true
+
 # ---- 5. Default config ----
 if [ ! -f "$CONFIG_FILE" ]; then
     if [ -f "$DATA_DIR/config.json" ]; then
@@ -296,6 +299,7 @@ while IFS='=' read -r _k _v; do
         UCLAW_CONFIG_PORT) [ -n "$_v" ] && CONFIG_PORT="$_v" ;;
     esac
 done < <("$NODE_BIN" "$UCLAW_DIR/lib/runtime-ports.mjs" read "$STATE_DIR" 2>/dev/null)
+"$NODE_BIN" "$UCLAW_DIR/lib/boot-timing.mjs" mark "$STATE_DIR" config-center >/dev/null 2>&1 || true
 echo -e "  ${CYAN}Config Center port: $CONFIG_PORT${NC}"
 
 # ---- 9. Find available gateway port after Config Center has bound its port ----
@@ -348,6 +352,7 @@ fi
 
 cd "$CORE_DIR"
 OPENCLAW_MJS="$CORE_DIR/node_modules/openclaw/openclaw.mjs"
+"$NODE_BIN" "$UCLAW_DIR/lib/boot-timing.mjs" mark "$STATE_DIR" gateway-spawn >/dev/null 2>&1 || true
 "$NODE_BIN" "$OPENCLAW_MJS" gateway run --allow-unconfigured --port $PORT &
 GW_PID=$!
 
