@@ -309,8 +309,10 @@ export function readGatewayToken(stateDir) {
 /**
  * 显式化 gateway 的网络暴露面，返回新配置（不改入参）：
  *   - gateway.bind 缺省（undefined/null/空串）→ "loopback"；用户显式设置的值不覆盖。
- *   - gateway.tailscale 缺省 → { mode: "off", resetOnExit: false }；
- *     已有对象只补缺失的键，用户显式设置的值不覆盖。
+ *   - gateway.tailscale 缺省 → { mode: "off" }；已有对象只补缺失的 mode。
+ *     `resetOnExit` 在 OpenClaw 2026.10.9 已被上游废弃（config validate 直接报
+ *     "Unrecognized key" 并让 gateway 以 78 退出），这里额外把它从存量配置里剔除，
+ *     免得 v2.4.0/v2.4.1 写坏的盘继续起不来。
  *
  * @param {object} config openclaw.json 解析后的对象
  * @returns {object} 新配置（入参无效时返回 {}）
@@ -326,13 +328,15 @@ export function normalizeGatewayBinding(config) {
   }
 
   if (!isPlainObject(gateway.tailscale)) {
-    gateway.tailscale = { mode: 'off', resetOnExit: false };
+    // 只写上游 2026.10.9 认识的键：resetOnExit 已废弃，写进去 gateway 会 exit 78。
+    gateway.tailscale = { mode: 'off' };
   } else {
     const tailscale = gateway.tailscale;
     if (tailscale.mode === undefined || tailscale.mode === null || tailscale.mode === '') {
       tailscale.mode = 'off';
     }
-    if (tailscale.resetOnExit === undefined) tailscale.resetOnExit = false;
+    // 存量盘兼容：v2.4.0/v2.4.1 曾写入 retired 的 resetOnExit，必须剔除。
+    if (Object.prototype.hasOwnProperty.call(tailscale, 'resetOnExit')) delete tailscale.resetOnExit;
   }
 
   return next;

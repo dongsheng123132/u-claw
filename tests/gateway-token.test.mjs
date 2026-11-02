@@ -78,7 +78,7 @@ test('ensureGatewayToken: 首次启动生成 32 字节随机 hex，写 token 文
     const config = readConfig(dir);
     assert.deepEqual(config.gateway.auth, { mode: 'token', token: result.token });
     assert.equal(config.gateway.bind, 'loopback');
-    assert.deepEqual(config.gateway.tailscale, { mode: 'off', resetOnExit: false });
+    assert.deepEqual(config.gateway.tailscale, { mode: 'off' });
     assert.equal(existsSync(join(dir, GATEWAY_TOKEN_BACKUP)), false, '首次创建没有旧配置，不该有备份');
   });
 });
@@ -262,7 +262,7 @@ test('normalizeGatewayBinding: 缺省补全 loopback + tailscale off，且不改
   const out = normalizeGatewayBinding(input);
 
   assert.equal(out.gateway.bind, 'loopback');
-  assert.deepEqual(out.gateway.tailscale, { mode: 'off', resetOnExit: false });
+  assert.deepEqual(out.gateway.tailscale, { mode: 'off' });
   assert.deepEqual(input, {}, '不得修改入参');
   assert.notEqual(out, input);
 
@@ -272,7 +272,7 @@ test('normalizeGatewayBinding: 缺省补全 loopback + tailscale off，且不改
   // 非法入参不抛，按空配置补默认
   assert.doesNotThrow(() => normalizeGatewayBinding(null));
   assert.deepEqual(normalizeGatewayBinding(null), {
-    gateway: { bind: 'loopback', tailscale: { mode: 'off', resetOnExit: false } },
+    gateway: { bind: 'loopback', tailscale: { mode: 'off' } },
   });
 });
 
@@ -291,20 +291,27 @@ test('normalizeGatewayBinding: 用户显式设置一律不覆盖', () => {
 
   const out = normalizeGatewayBinding(input);
 
-  assert.deepEqual(out, input);
+  // 显式值不覆盖，只剔除上游已废弃的 resetOnExit（保留其它未知键）
+  const expected = JSON.parse(JSON.stringify(input));
+  delete expected.gateway.tailscale.resetOnExit;
+  assert.deepEqual(out, expected);
   assert.equal(input.gateway.bind, 'lan', '输入对象本身不被改动');
+  assert.equal(input.gateway.tailscale.resetOnExit, true, '不得修改入参对象');
 });
 
 test('normalizeGatewayBinding: tailscale 部分显式时只补缺失键', () => {
   const out = normalizeGatewayBinding({ gateway: { tailscale: { mode: 'on' } } });
   assert.equal(out.gateway.tailscale.mode, 'on');
-  assert.equal(out.gateway.tailscale.resetOnExit, false);
+  assert.equal(Object.prototype.hasOwnProperty.call(out.gateway.tailscale, 'resetOnExit'), false, 'retired resetOnExit must be dropped');
+
+  const withExtra = normalizeGatewayBinding({ gateway: { tailscale: { mode: 'on', extra: 'kept' } } });
+  assert.equal(withExtra.gateway.tailscale.extra, 'kept', 'user keys are preserved');
 
   assert.equal(normalizeGatewayBinding({ gateway: { bind: '0.0.0.0' } }).gateway.bind, '0.0.0.0');
   assert.equal(normalizeGatewayBinding({ gateway: { bind: '' } }).gateway.bind, 'loopback');
   assert.deepEqual(
     normalizeGatewayBinding({ gateway: { tailscale: null } }).gateway.tailscale,
-    { mode: 'off', resetOnExit: false },
+    { mode: 'off' },
   );
 });
 

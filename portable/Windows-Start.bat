@@ -354,6 +354,10 @@ echo.
 if not "%GW_EXIT%"=="0" if not "%GW_EXIT%"=="-1073741510" (
     echo   OpenClaw exited unexpectedly ^(code %GW_EXIT%^)
 )
+if "%GW_EXIT%"=="78" (
+    echo   [HINT] The Gateway rejected openclaw.json. Run OpenClaw-CLI.bat and then:
+    echo          openclaw doctor --fix
+)
 echo   OpenClaw stopped.
 if not "%UCLAW_HEADLESS%"=="1" pause
 
