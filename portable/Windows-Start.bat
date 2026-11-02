@@ -37,18 +37,21 @@ REM extract under <stick>\engine\<version> and run from the stick. When no archi
 REM is shipped (old sticks) the resolver reports "legacy" and nothing changes.
 set "UCLAW_ENGINE_SOURCE=legacy"
 set "UCLAW_ENGINE_ROOT=%UCLAW_DIR%."
-if exist "%UCLAW_DIR%lib\engine-host.ps1" (
-    for /f "usebackq tokens=1,* delims==" %%a in (`powershell -NoProfile -ExecutionPolicy Bypass -File "%UCLAW_DIR%lib\engine-host.ps1" "%UCLAW_DIR%." 2^>nul"`) do (
-        if "%%a"=="UCLAW_ENGINE_SOURCE" set "UCLAW_ENGINE_SOURCE=%%b"
-        if "%%a"=="UCLAW_ENGINE_ROOT" set "UCLAW_ENGINE_ROOT=%%b"
-        if "%%a"=="UCLAW_NODE_BIN" set "NODE_BIN=%%b"
-        if "%%a"=="UCLAW_NODE_BIN" set "NODE_DIR=%%~dpb"
-        if "%%a"=="UCLAW_CORE_DIR" set "CORE_DIR=%%b"
-        if "%%a"=="UCLAW_APP_DIR" set "APP_DIR=%%b"
-        if "%%a"=="UCLAW_ENGINE_MODE" set "UCLAW_ENGINE_MODE=%%b"
-        if "%%a"=="UCLAW_ENGINE_ARCHIVE" set "UCLAW_ENGINE_ARCHIVE=%%b"
-    )
+REM Not nested inside an IF block: cmd re-parses %VAR% at block parse time, and a
+REM nested for/f over a quoted command is where "The syntax of the command is
+REM incorrect" comes from. goto keeps the quoting identical to the other helpers.
+if not exist "%UCLAW_DIR%lib\engine-host.ps1" goto :uclaw_engine_resolved
+for /f "usebackq tokens=1,* delims==" %%a in (`""powershell" -NoProfile -ExecutionPolicy Bypass -File "%UCLAW_DIR%lib\engine-host.ps1" "%UCLAW_DIR%." 2^>nul"`) do (
+    if "%%a"=="UCLAW_ENGINE_SOURCE" set "UCLAW_ENGINE_SOURCE=%%b"
+    if "%%a"=="UCLAW_ENGINE_ROOT" set "UCLAW_ENGINE_ROOT=%%b"
+    if "%%a"=="UCLAW_NODE_BIN" set "NODE_BIN=%%b"
+    if "%%a"=="UCLAW_NODE_BIN" set "NODE_DIR=%%~dpb"
+    if "%%a"=="UCLAW_CORE_DIR" set "CORE_DIR=%%b"
+    if "%%a"=="UCLAW_APP_DIR" set "APP_DIR=%%b"
+    if "%%a"=="UCLAW_ENGINE_MODE" set "UCLAW_ENGINE_MODE=%%b"
+    if "%%a"=="UCLAW_ENGINE_ARCHIVE" set "UCLAW_ENGINE_ARCHIVE=%%b"
 )
+:uclaw_engine_resolved
 if not "%UCLAW_ENGINE_SOURCE%"=="legacy" echo   Engine: %UCLAW_ENGINE_SOURCE% ^(%UCLAW_ENGINE_ROOT%^)
 if not "%UCLAW_ENGINE_SOURCE%"=="legacy" set "NPM_BIN=%NODE_DIR%\npm.cmd"
 

@@ -180,3 +180,15 @@ test('Windows launcher never compares against a quoted backslash (cmd parse trap
   const bat = read('portable', 'Windows-Start.bat');
   assert.ok(!bat.includes(':~-1%"=="\\"'), 'do not compare the last char with a quoted backslash');
 });
+
+test('engine resolver call uses the launcher-wide for/f quote convention', () => {
+  const bat = read('portable', 'Windows-Start.bat');
+  const line = bat.split('\n').find((l) => l.includes('engine-host.ps1" "%UCLAW_DIR%."'));
+  assert.ok(line, 'resolver call must exist');
+  assert.ok(line.includes('`""powershell"'), 'for/f over a quoted command needs the outer quote pair');
+  assert.ok(line.trimEnd().endsWith('2^>nul"`) do ('), 'stderr redirect must stay inside the quote pair');
+  // The call must not sit inside an IF block (cmd re-parses %VAR% there).
+  const before = bat.slice(0, bat.indexOf(line));
+  const openIf = (before.match(/^if .*\($/gm) || []).length;
+  assert.equal(openIf, 0, 'resolver must run at top level, guarded by goto');
+});
