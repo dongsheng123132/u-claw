@@ -420,6 +420,20 @@ input::placeholder { color: var(--ink-3); }
 .toast.error { border-left-color: var(--danger); }
 
 /* ---------- 虾盘云 · 设备钱包 ---------- */
+.wallet-steps {
+    display: flex; gap: 10px; list-style: none; margin: 10px 0 14px; padding: 0;
+    font-size: 13px; color: #8a8f98; flex-wrap: wrap;
+}
+.wallet-steps li {
+    padding: 3px 10px; border-radius: 999px; background: #f3f4f6; white-space: nowrap;
+}
+.wallet-steps li.active { background: #fff1ea; color: #e4572e; font-weight: 600; }
+.wallet-balance-main { display: flex; flex-direction: column; gap: 2px; }
+.wallet-balance-num { font-size: 26px; font-weight: 700; color: #1d2129; line-height: 1.15; }
+.wallet-advanced { margin-top: 16px; border-top: 1px dashed #e5e6eb; padding-top: 10px; }
+.wallet-advanced summary { cursor: pointer; font-size: 13px; color: #4e5969; }
+.wallet-advanced[open] summary { margin-bottom: 10px; }
+
 .wallet-card {
     padding: 20px;
     margin-bottom: 20px;
@@ -553,33 +567,56 @@ details#advancedModelsBox[open] summary { border-bottom: 1px solid var(--line); 
     <!-- Step 1: Select Model -->
     <div class="section active" id="step1">
         <h2>选择模型</h2>
-        <p class="desc">内置 11 家国内外模型，选一家填自己的 Key；也可以选『自定义 · OpenAI 兼容』填任意地址。虾盘云设备钱包可选。</p>
+        <p class="desc">内置 11 家国内外模型：用虾盘云钱包的直接选第一个；想用别家就填自己的 Key，或选『自定义』填任意 OpenAI 兼容地址。</p>
 
         <!-- 虾盘云 · 设备钱包 —— 只在用户点击按钮之后才会联网，绝不在打开这个页面时自动请求。 -->
         <div class="wallet-card" id="walletCard">
             <div class="wallet-head">
-                <h3>虾盘云 · 设备钱包</h3>
-                <span class="wallet-key" id="walletKeyDisplay">联网后可一键领取</span>
+                <h3>💰 虾盘云钱包</h3>
+                <span class="wallet-key" id="walletKeyDisplay">未领取</span>
             </div>
-            <div class="wallet-balance" id="walletBalanceRow" style="display:none;">
-                <span id="walletBalanceText">余额 —</span>
-                <button class="btn-mini" id="walletRefreshBtn" onclick="walletRefreshBalance()">刷新余额</button>
-            </div>
-            <p class="hint" id="walletHint">你的密钥就是你的钱包，请自行截图/复制备份——重装、换电脑都要靠它找回余额。也可以直接填入已有虾盘云 API Key。</p>
+            <ol class="wallet-steps" id="walletSteps">
+                <li data-step="claim" class="active">① 领钱包</li>
+                <li data-step="topup">② 充值</li>
+                <li data-step="chat">③ 开始聊天</li>
+            </ol>
 
-            <div class="btn-row btn-row-start" id="walletClaimRow">
-                <button class="btn btn-primary" id="walletClaimBtn" onclick="walletClaim()">🚀 一键领取额度</button>
-            </div>
-
-            <div id="walletManageBox" style="display:none;">
+            <!-- 状态①：这台机器还没有钱包 -->
+            <div id="walletStateClaim">
+                <p class="hint">点一下给这台机器发一个钱包，<b>不用注册、不用信用卡</b>，先送一点额度试用。
+                    换电脑时把同一把密钥填到新机器，余额就能找回来。</p>
                 <div class="btn-row btn-row-start">
-                    <button class="btn btn-primary" onclick="walletRecharge()">💰 一键充值</button>
-                    <button class="btn btn-secondary" onclick="walletCopyKey()">📋 复制密钥</button>
-                    <button class="btn btn-secondary" onclick="walletRotateConfirm()">🔄 换一把</button>
+                    <button class="btn btn-primary" id="walletClaimBtn" onclick="walletClaim()">🚀 领取免费额度并开始</button>
+                    <button class="btn btn-secondary" onclick="walletOpenAdvanced()">我已有一把密钥</button>
                 </div>
+            </div>
 
-                <div class="form-group" style="margin-top:14px;">
-                    <label>填入已有密钥（换电脑 / 这台机器上的另一份安装 / 官网自己生成的那把）</label>
+            <!-- 状态②：已有钱包 -->
+            <div id="walletStateLive" style="display:none;">
+                <div class="wallet-balance" id="walletBalanceRow">
+                    <div class="wallet-balance-main">
+                        <div class="wallet-balance-num" id="walletBalanceNum">—</div>
+                        <div class="hint" id="walletBalanceHint">正在查余额…</div>
+                    </div>
+                    <button class="btn-mini" onclick="walletRefreshBalance()">刷新</button>
+                </div>
+                <div class="btn-row btn-row-start">
+                    <button class="btn btn-primary" id="walletTopupBtn" onclick="walletRecharge()">💰 去充值</button>
+                    <button class="btn btn-secondary" onclick="openDashboard()">💬 去聊天</button>
+                </div>
+                <p class="hint" id="walletTopupHint">充值走微信/支付宝，到账后直接对话，按用量扣费。</p>
+            </div>
+
+            <!-- 高级：备份 / 迁移 / 更换 -->
+            <details class="wallet-advanced" id="walletAdvanced">
+                <summary>高级：备份密钥 · 换一把 · 迁移到别的电脑</summary>
+                <p class="hint">密钥就是钱包。换电脑或重装系统时，把密钥填到新机器即可找回余额。</p>
+                <div class="btn-row btn-row-start">
+                    <button class="btn btn-secondary" onclick="walletCopyKey()">📋 复制密钥（备份）</button>
+                    <button class="btn btn-secondary" onclick="walletRotateConfirm()">🔄 换一把新密钥</button>
+                </div>
+                <div class="form-group" style="margin-top:12px;">
+                    <label>在这台机器启用已有密钥</label>
                     <div class="input-wrap">
                         <input type="text" id="walletAdoptInput" placeholder="sk-...">
                         <button class="toggle-pw" id="walletPasteBtn" onclick="walletPasteKey()">粘贴</button>
@@ -588,18 +625,17 @@ details#advancedModelsBox[open] summary { border-bottom: 1px solid var(--line); 
                         <button class="btn btn-secondary" onclick="walletAdopt()">启用这把密钥</button>
                     </div>
                 </div>
-
                 <div class="wallet-danger">
                     <p class="hint danger-label">危险区</p>
                     <button class="btn btn-secondary btn-danger" onclick="walletResetLocal()">移除本机钱包</button>
-                    <p class="hint">只清本机记录，旧钱包余额不受影响，凭密钥可在任意机器重新启用；执行前请先确认已复制备份密钥——重新领取的新钱包从 0 开始，旧余额不会自动进新钱包。</p>
+                    <p class="hint">只清本机记录，余额仍在（凭密钥可再启用）。</p>
                 </div>
-            </div>
+            </details>
         </div>
 
         <div class="model-grid" id="cloudModelGrid"></div>
         <div class="btn-row">
-            <button class="btn btn-primary" id="nextStep1" disabled>填写已有 Key →</button>
+            <button class="btn btn-primary" id="nextStep1" disabled>下一步 →</button>
             <button class="btn btn-secondary" onclick="openDashboard()">打开对话</button>
         </div>
     </div>
@@ -1060,23 +1096,27 @@ function walletMask(key) {
 
 function walletRenderStatus(status) {
     _walletFullKey = (status && status.apiKey) || '';
-    var keyDisplay = document.getElementById('walletKeyDisplay');
-    var claimRow = document.getElementById('walletClaimRow');
-    var manageBox = document.getElementById('walletManageBox');
-    var balanceRow = document.getElementById('walletBalanceRow');
+    var has = !!(status && status.hasWallet);
+    document.getElementById('walletKeyDisplay').textContent = has ? walletMask(status.apiKey) : '未领取';
+    document.getElementById('walletStateClaim').style.display = has ? 'none' : 'block';
+    document.getElementById('walletStateLive').style.display = has ? 'block' : 'none';
+    window._walletRechargeUrl = has ? (status.rechargeUrl || '') : '';
+    walletMarkStep(has ? 'topup' : 'claim');
+    if (has) walletRefreshBalance();
+}
 
-    if (status && status.hasWallet) {
-        keyDisplay.textContent = walletMask(status.apiKey);
-        claimRow.style.display = 'none';
-        manageBox.style.display = 'block';
-        window._walletRechargeUrl = status.rechargeUrl || '';
-    } else {
-        window._walletRechargeUrl = '';
-        keyDisplay.textContent = '联网后可一键领取';
-        claimRow.style.display = 'flex';
-        manageBox.style.display = 'none';
-        balanceRow.style.display = 'none';
+// 顶部三步条：让用户随时知道自己走到哪一步，而不是对着一堆按钮猜。
+function walletMarkStep(step) {
+    var items = document.querySelectorAll('#walletSteps li');
+    for (var i = 0; i < items.length; i++) {
+        var own = items[i].getAttribute('data-step');
+        items[i].className = own === step ? 'active' : (items[i].className.replace('active', '').trim());
     }
+}
+
+function walletOpenAdvanced() {
+    var box = document.getElementById('walletAdvanced');
+    if (box) { box.open = true; box.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
 }
 
 async function walletLoadStatus() {
@@ -1095,7 +1135,7 @@ async function walletClaim() {
         var res = await fetch('/api/wallet/claim', { method: 'POST' });
         var data = await res.json();
         if (!data.ok) { showToast(data.error || '领取失败', true); return; }
-        showToast(data.alreadyClaimed ? '本机已有钱包' : '领取成功！已自动配置模型');
+        showToast(data.alreadyClaimed ? '这台机器已经有钱包了' : '领好了！可以开始聊天，余额用完再充值');
         await walletLoadStatus();
         await loadConfig();
         goStep(3);
@@ -1103,23 +1143,49 @@ async function walletClaim() {
         showToast('领取失败: ' + e.message, true);
     } finally {
         btn.disabled = false;
-        btn.textContent = '🚀 一键领取额度';
+        btn.textContent = '🚀 领取免费额度并开始';
     }
 }
 
 async function walletRefreshBalance() {
-    var row = document.getElementById('walletBalanceRow');
-    var text = document.getElementById('walletBalanceText');
-    row.style.display = 'flex';
-    text.textContent = '查询中…';
+    var num = document.getElementById('walletBalanceNum');
+    var hint = document.getElementById('walletBalanceHint');
+    var topupHint = document.getElementById('walletTopupHint');
+    var topupBtn = document.getElementById('walletTopupBtn');
+    num.textContent = '…';
+    hint.textContent = '正在查余额…';
     try {
         var res = await fetch('/api/wallet/balance');
         var data = await res.json();
-        if (!data.ok) { text.textContent = '余额查询失败'; return; }
-        var avail = data.remainingUsd != null ? data.remainingUsd : '—';
-        text.textContent = '可用 $' + avail + '（已用 $' + (data.usedUsd != null ? data.usedUsd : '—') + '）';
+        if (!data.ok) {
+            // 查询失败只影响“显示余额”，不影响已经配好的 Key：大字保持占位，别吓人。
+            num.textContent = '¥ —';
+            hint.textContent = '暂时查不到余额（网络或服务未就绪），不影响已配置的 Key';
+            topupHint.textContent = '充值走微信/支付宝；查不到余额时也可以先去聊天试试。';
+            walletMarkStep('topup');
+            return;
+        }
+        // 虾盘云按人民币充值、额度按 1 元 = 500,000 计；接口回的是 USD 口径，1:1 对齐人民币。
+        var left = data.remainingUsd != null ? Number(data.remainingUsd) : null;
+        if (left == null) { num.textContent = '—'; hint.textContent = '暂无余额数据'; return; }
+        var chats = Math.max(0, Math.floor(left / 0.02));   // 一次普通对话约 ¥0.02
+        num.textContent = '¥' + left.toFixed(2);
+        hint.textContent = left <= 0
+            ? '余额不足，先充值再聊天'
+            : ('大约还能聊 ' + chats + ' 次（每次按用量扣，¥0.01–0.05）');
+        if (left <= 0) {
+            topupBtn.textContent = '💰 充值后开始聊天';
+            topupBtn.className = 'btn btn-primary';
+            topupHint.textContent = '余额为 0 时对话会失败。充值走微信/支付宝，一般即时到账。';
+            walletMarkStep('topup');
+        } else {
+            topupBtn.textContent = '💰 去充值';
+            topupHint.textContent = '充值走微信/支付宝，到账后直接对话，按用量扣费。';
+            walletMarkStep('chat');
+        }
     } catch (e) {
-        text.textContent = '余额查询失败';
+        num.textContent = '—';
+        hint.textContent = '查不到余额（网络或服务未就绪），不影响已配置的 Key';
     }
 }
 

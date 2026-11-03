@@ -53,6 +53,7 @@ NODE_BIN="$NODE_DIR/bin/node"
 # an archive keep the legacy loose app/ layout (resolver prints "legacy").
 UCLAW_ENGINE_SOURCE="legacy"
 UCLAW_ENGINE_ROOT="$UCLAW_DIR"
+echo -e "  ${YELLOW}准备运行环境…（首次在这台电脑上约 60 秒，之后就快了）${NC}"
 if [ -f "$UCLAW_DIR/lib/engine-host.sh" ]; then
     # Plain file + redirect (not < <(...)): process substitution needs /dev/fd, which
     # some restricted/sandboxed environments deny -- that would silently skip the

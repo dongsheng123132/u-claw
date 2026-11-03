@@ -39,6 +39,7 @@ set "UCLAW_ENGINE_SOURCE=legacy"
 set "UCLAW_ENGINE_ROOT=%UCLAW_DIR%."
 REM Resolve through a temp file, not a backquoted for/f: cmd's quote stripping ate
 REM the 2^>nul redirect and handed "2>nul" to PowerShell as an argument (CI proved it).
+echo   Preparing the runtime ^(first run on this PC can take ~60s, later starts are fast^)...
 if not exist "%UCLAW_DIR%lib\engine-host.ps1" goto :uclaw_engine_resolved
 set "UCLAW_ENGINE_ENV=%TEMP%\uclaw-engine-%RANDOM%-%RANDOM%.env"
 powershell -NoProfile -ExecutionPolicy Bypass -File "%UCLAW_DIR%lib\engine-host.ps1" "%UCLAW_DIR%." > "%UCLAW_ENGINE_ENV%" 2>nul
@@ -55,6 +56,7 @@ for /f "usebackq tokens=1,* delims==" %%a in ("%UCLAW_ENGINE_ENV%") do (
 )
 del "%UCLAW_ENGINE_ENV%" >nul 2>&1
 :uclaw_engine_resolved
+if "%UCLAW_ENGINE_SOURCE%"=="installed" echo   Engine installed to this PC - next start will be much faster.
 if not "%UCLAW_ENGINE_SOURCE%"=="legacy" echo   Engine: %UCLAW_ENGINE_SOURCE% ^(%UCLAW_ENGINE_ROOT%^)
 if not "%UCLAW_ENGINE_SOURCE%"=="legacy" set "NPM_BIN=%NODE_DIR%\npm.cmd"
 
