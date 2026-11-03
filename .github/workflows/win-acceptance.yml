@@ -8,9 +8,13 @@ on:
   workflow_dispatch:
     inputs:
       source:
-        description: "release = install from the latest release zip; setup = build the runtime in the runner"
+        description: "release = install from a release zip; setup = build the runtime in the runner"
         required: false
         default: "release"
+      release_tag:
+        description: "Release tag to take the runtime from (e.g. v2.5.0-rc1). Empty = v2.4.3"
+        required: false
+        default: ""
   pull_request:
     paths:
       - "tools/win-accept.ps1"
@@ -64,6 +68,7 @@ jobs:
         shell: pwsh
         env:
           UCLAW_ACCEPT_SOURCE: ${{ github.event.inputs.source }}
+          UCLAW_RELEASE_TAG: ${{ github.event.inputs.release_tag }}
           # The harness stages the skeleton from refs/heads/<ref>; without this it
           # always pulled main, so a PR touching engine-host.ps1 was validated
           # against main's copy instead of its own.

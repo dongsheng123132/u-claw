@@ -25,6 +25,8 @@ param(
     [string]$Root = "D:\uclaw-accept",
     [string]$SourceApp = "",
     [string]$RepoRef = "main",
+    # Which GitHub release supplies the runtime when no local one is found.
+    [string]$ReleaseTag = "v2.4.3",
     # Subset of cases to run, e.g. -Cases A,B,D. Default: all six.
     [string[]]$Cases = @('A','B','C','D','E','F')
 )
@@ -85,9 +87,10 @@ if (-not $srcRoot) {
     Log 'no local runtime found; downloading the latest release zip as the engine source'
     $zip = Join-Path $Root 'source.zip'
     if (-not (Test-Path $zip)) {
+        $asset = 'u-claw-portable-windows-' + $ReleaseTag + '.zip'
         $urls = @(
-            'https://github.com/dongsheng123132/u-claw/releases/latest/download/u-claw-portable-windows-v2.4.3.zip',
-            'https://gh-proxy.com/https://github.com/dongsheng123132/u-claw/releases/latest/download/u-claw-portable-windows-v2.4.3.zip'
+            ('https://github.com/dongsheng123132/u-claw/releases/download/' + $ReleaseTag + '/' + $asset),
+            ('https://gh-proxy.com/https://github.com/dongsheng123132/u-claw/releases/download/' + $ReleaseTag + '/' + $asset)
         )
         foreach ($url in $urls) {
             Log ('download ' + $url)
