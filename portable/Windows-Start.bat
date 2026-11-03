@@ -353,7 +353,15 @@ REM Open startup page with the gateway port and token in the query string.
 echo   Opening startup screen...
 set "LOADING_PATH=%UCLAW_DIR%lib\loading.html"
 set "LOADING_URL=file:///%LOADING_PATH:\=/%?port=%PORT%&token=%UCLAW_GATEWAY_TOKEN%&configPort=%CONFIG_PORT%"
-if not "%UCLAW_HEADLESS%"=="1" start "" "%LOADING_URL%"
+REM Default UI: the official Control UI inside the WebView2 shell, which only adds a
+REM persistent Xiapan Cloud balance/recharge chip. UCLAW_SHELL=browser forces the old path.
+set "UCLAW_SHELL_EXE=%UCLAW_DIR%U-Claw-Shell.exe"
+set "UCLAW_UI_MODE=shell"
+if /i "%UCLAW_SHELL%"=="browser" set "UCLAW_UI_MODE=browser"
+if not exist "%UCLAW_SHELL_EXE%" set "UCLAW_UI_MODE=browser"
+if not "%UCLAW_HEADLESS%"=="1" if "%UCLAW_UI_MODE%"=="shell" (
+    start "" "%UCLAW_SHELL_EXE%" "http://127.0.0.1:%PORT%/#token=%UCLAW_GATEWAY_TOKEN%" "%UCLAW_CACHE_ROOT%" "http://127.0.0.1:%CONFIG_PORT%"
+) else if not "%UCLAW_HEADLESS%"=="1" start "" "%LOADING_URL%"
 
 echo   Xiapan Cloud wallet and recharge are available inside the WebUI.
 

@@ -38,21 +38,23 @@ jobs:
           if [ -d tools ]; then cp -R tools "$stage_dir/tools"; fi
           rm -rf "$stage_dir/data/logs" 2>/dev/null || true
 
-      - name: Build optional WebView2 shell
+      - name: Build the WebView2 shell (default UI)
         run: |
           tag_name="${GITHUB_REF_NAME:-${{ github.event.inputs.tag }}}"
           stage_dir="dist/u-claw-portable-windows-${tag_name}"
-          mkdir -p "$stage_dir/app/shell"
+          mkdir -p "$stage_dir"
           cd shell
-          GOOS=windows GOARCH=amd64 go build -trimpath -ldflags='-s -w -H windowsgui' -o "../$stage_dir/app/shell/U-Claw-Shell.exe" .
+          # Built into the package ROOT: v2.5 packs app/ into the engine archive and
+          # then deletes it, so anything left under app/ would never ship.
+          GOOS=windows GOARCH=amd64 go build -trimpath -ldflags='-s -w -H windowsgui' -o "../$stage_dir/U-Claw-Shell.exe" .
 
       - name: Build optional Windows tray
         run: |
           tag_name="${GITHUB_REF_NAME:-${{ github.event.inputs.tag }}}"
           stage_dir="dist/u-claw-portable-windows-${tag_name}"
-          mkdir -p "$stage_dir/app/tray"
+          mkdir -p "$stage_dir"
           cd tray
-          GOOS=windows GOARCH=amd64 go build -trimpath -ldflags='-s -w -H windowsgui' -o "../$stage_dir/app/tray/U-Claw-Tray.exe" .
+          GOOS=windows GOARCH=amd64 go build -trimpath -ldflags='-s -w -H windowsgui' -o "../$stage_dir/U-Claw-Tray.exe" .
 
       - name: Pre-install Node.js (Windows) and OpenClaw deps
         run: |
@@ -262,6 +264,11 @@ jobs:
       - name: Zip portable bundle
         run: |
           tag_name="${GITHUB_REF_NAME:-${{ github.event.inputs.tag }}}"
+          stage_dir="dist/u-claw-portable-windows-${tag_name}"
+          # The shell is the default UI and the only place the 虾盘云 balance/recharge
+          # chip lives, so a package without it is not shippable.
+          [ -f "$stage_dir/U-Claw-Shell.exe" ] || { echo "::error::U-Claw-Shell.exe missing from the package root"; exit 1; }
+          ls "$stage_dir"/engine-*.tar.gz >/dev/null 2>&1 || { echo "::error::engine archive missing"; exit 1; }
           cd dist
           zip -qry "u-claw-portable-windows-${tag_name}.zip" "u-claw-portable-windows-${tag_name}"
           ls -lh "u-claw-portable-windows-${tag_name}.zip"

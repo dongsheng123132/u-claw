@@ -206,3 +206,19 @@ test('exFAT/FAT32 drives fall back to compat mode instead of the supported path'
   assert.match(cache, /mklink', '\/J'/, 'Windows links state/ with a junction');
   assert.match(cache, /UCLAW_STATE_LINKED=/, 'the launcher can log whether the link worked');
 });
+
+test('the official shell carries a persistent wallet chip and the launcher prefers it', () => {
+  const shell = read('shell', 'main_windows.go');
+  assert.match(shell, /walletChipScript/, 'the chip is injected into the official Control UI');
+  assert.match(shell, /config-server-url/, 'the shell receives the local config-server');
+  assert.match(shell, /api\/wallet\/open-recharge/, 'recharge opens the system browser, not the chat page');
+  assert.match(shell, /setInterval\(refresh, 60000\)/, 'the balance refreshes while the user chats');
+
+  const bat = read('portable', 'Windows-Start.bat');
+  assert.match(bat, /set "UCLAW_UI_MODE=shell"/, 'the shell is the default UI');
+  assert.match(bat, /UCLAW_SHELL_EXE/, 'launcher looks for the shell binary');
+  assert.match(bat, /if not exist "%UCLAW_SHELL_EXE%" set "UCLAW_UI_MODE=browser"/, 'missing shell falls back to the browser');
+
+  const server = read('portable', 'config-server', 'server.js');
+  assert.match(server, /api\/wallet\/open-recharge/, 'the endpoint exists');
+});

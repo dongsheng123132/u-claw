@@ -433,6 +433,32 @@ const server = http.createServer((req, res) => {
   }
 
   // API: 查询余额
+  // API: 用系统默认浏览器打开充值页（壳内胶囊的「去充值」走这里，避免把对话页导航走）
+  if (req.url === '/api/wallet/open-recharge' && req.method === 'POST') {
+    (async () => {
+      try {
+        const { getStatus, payBaseUrl } = await import('../lib/wallet-client.mjs');
+        const status = await getStatus(await walletDeps());
+        if (!status.hasWallet || !status.apiKey) {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ ok: false, error: '还没有钱包，请先在配置页领取' }));
+          return;
+        }
+        const url = payBaseUrl() + '/recharge?key=' + encodeURIComponent(status.apiKey);
+        const { spawn } = await import('node:child_process');
+        if (process.platform === 'win32') spawn('cmd', ['/c', 'start', '', url], { detached: true, stdio: 'ignore' }).unref();
+        else if (process.platform === 'darwin') spawn('open', [url], { detached: true, stdio: 'ignore' }).unref();
+        else spawn('xdg-open', [url], { detached: true, stdio: 'ignore' }).unref();
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true, url }));
+      } catch (err) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: false, error: err.message }));
+      }
+    })();
+    return;
+  }
+
   if (req.url === '/api/wallet/balance' && req.method === 'GET') {
     (async () => {
       try {
