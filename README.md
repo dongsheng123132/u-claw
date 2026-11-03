@@ -38,6 +38,13 @@
 > 双击 `Windows-Start.bat` / `Mac-Start.command` 默认在**系统浏览器**里打开 WebUI——配置入口就挂在首屏上，不藏起来。想要独立窗口（可选、非默认）：`Windows-WebView.bat`（内置 WebView2 壳，带任务栏图标与关闭确认）或 `Windows-App.bat`（Edge App 模式）；想「像 App 一样常驻」可用 `app/tray/U-Claw-Tray.exe`（托盘：打开 Dashboard / 配置中心、拉起后端，零窗口）。随时直接进配置中心可双击 `Windows-Config.bat`。几种方式共用 Gateway 和 `data/`，窗口缓存留在当前电脑，配置和会话随 U 盘携带。源码使用者可运行 `shell/build.sh` / `tray/build.sh` 自行构建。
 >
 > 引擎装本机（v2.5 起）：新形态发行包不再在 U 盘上铺 4.5 万个小文件，而是带一个 `engine-<OPENCLAW_VERSION>.tar.gz`。首次在某台电脑启动时自动解到本机缓存（Windows `%LOCALAPPDATA%\U-Claw\<slot>\engine\<版本>`，macOS `~/Library/Caches/U-Claw/<slot>/engine/<版本>`），之后从本机跑；**装不上（空间/权限/校验失败）自动退回 U 盘** `<盘>\engine\<版本>` 解包运行；老盘没有归档则维持原样直接跑。用 `UCLAW_ENGINE_MODE=auto|host|drive|usb` 控制（默认 auto = 先本机后盘）。数据（Key/会话/工作区）始终在 `data/`，随盘走。
+
+
+> **文件系统要求（v2.5 起）**：正式支持 = **NTFS（Windows）/ APFS 或 HFS+（macOS）**。exFAT/FAT32 上 OpenClaw 的 SQLite 状态库会报 `native file copy failed (code=EIO)`，冷启动从 40 秒恶化到 3 分钟以上，强杀进程最容易把库写坏——这是文件系统语义问题，改代码绕不过去。所以：
+>
+> - **NTFS/APFS** → 正常模式，`data/.openclaw`（含会话库）全部随盘走，换电脑带走聊天记录；
+> - **exFAT/FAT32** → 启动器自动进**兼容模式**：只把 `data/.openclaw/state`（SQLite 会话库）挂到本机（Windows junction / macOS symlink），并在窗口里明说"聊天状态存在本机"；钱包、配置、技能、记忆仍随盘；
+> - 不再宣传"一支盘 Mac/Windows 通吃"：Windows 包与 macOS 包分开出，跨系统请用"导出/导入"，而不是把 exFAT 当运行盘。
 >
 > 安全与更新：每支盘首启会生成**独立随机 gateway token**（`data/.openclaw/gateway-token`，只监听 127.0.0.1，tailscale 默认关），旧盘里的固定 `uclaw` 会自动迁移；更新检查支持**通道**——默认 `stable`，把 `data/.openclaw/update-channel.json` 写成 `{"channel":"extended-stable"}` 即跟随上游 LTS（想尝鲜可写 `{"channel":"beta"}`，仅建议复现上游问题时用）。
 
