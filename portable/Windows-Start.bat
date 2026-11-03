@@ -111,9 +111,11 @@ REM and the plugin install needs a node_modules junction that exFAT cannot creat
 REM -- the gateway then never becomes ready ("works on A's PC, dead on B's PC").
 REM Inheriting those vars would also silently spend the host owner's API credits.
 set "UCLAW_STRIP_ENV="
-for /f "usebackq tokens=1,* delims==" %%a in (`""%NODE_BIN%" "%UCLAW_DIR%lib\strip-provider-env.mjs" 2^>nul"`) do (
+"%NODE_BIN%" "%UCLAW_DIR%lib\strip-provider-env.mjs" > "%TEMP%\uclaw-strip.env" 2>nul
+for /f "usebackq tokens=1,* delims==" %%a in ("%TEMP%\uclaw-strip.env") do (
     if "%%a"=="UCLAW_STRIP_ENV" set "UCLAW_STRIP_ENV=%%b"
 )
+del "%TEMP%\uclaw-strip.env" >nul 2>&1
 if defined UCLAW_STRIP_ENV (
     for %%v in (%UCLAW_STRIP_ENV%) do set "%%v="
     echo   Stripped host provider env vars: %UCLAW_STRIP_ENV%
@@ -149,11 +151,13 @@ REM Startup cache acceleration. Session/identity/state stay portable on USB;
 REM only the patched OpenClaw managed Chromium directory uses the local disk.
 REM Do not inherit a browser root from the calling shell.
 set "OPENCLAW_MANAGED_BROWSER_DIR="
-for /f "usebackq tokens=1,* delims==" %%a in (`""%NODE_BIN%" "%UCLAW_DIR%lib\portable-cache.mjs" "%STATE_DIR%" "%UCLAW_DIR%" 2^>nul"`) do (
+"%NODE_BIN%" "%UCLAW_DIR%lib\portable-cache.mjs" "%STATE_DIR%" "%UCLAW_DIR%" > "%TEMP%\uclaw-cache.env" 2>nul
+for /f "usebackq tokens=1,* delims==" %%a in ("%TEMP%\uclaw-cache.env") do (
     if "%%a"=="UCLAW_COMPILE_CACHE_DIR" set "NODE_COMPILE_CACHE=%%b"
     if "%%a"=="UCLAW_CACHE_ROOT" set "UCLAW_CACHE_ROOT=%%b"
     if "%%a"=="UCLAW_MANAGED_BROWSER_DIR" set "OPENCLAW_MANAGED_BROWSER_DIR=%%b"
 )
+del "%TEMP%\uclaw-cache.env" >nul 2>&1
 if defined NODE_COMPILE_CACHE echo   Cache on local disk: %UCLAW_CACHE_ROOT%
 
 REM Launcher-level single-instance guard. OpenClaw's own lock is created too late:
@@ -163,14 +167,18 @@ REM hosting this .bat and remains alive until the gateway exits.
 REM Keep the lock with USB state, never in a reusable host cache shared by cloned drives.
 set "INSTANCE_ROOT=%STATE_DIR%"
 set "UCLAW_LAUNCHER_PID="
-for /f "usebackq tokens=*" %%p in (`powershell -NoProfile -Command "$p=Get-CimInstance Win32_Process -Filter ('ProcessId=' + $PID); $q=Get-CimInstance Win32_Process -Filter ('ProcessId=' + $p.ParentProcessId); $q.ParentProcessId" 2^>nul`) do set "UCLAW_LAUNCHER_PID=%%p"
+powershell -NoProfile -Command "$p=Get-CimInstance Win32_Process -Filter ('ProcessId=' + $PID); $q=Get-CimInstance Win32_Process -Filter ('ProcessId=' + $p.ParentProcessId); $q.ParentProcessId" > "%TEMP%\uclaw-pid.env" 2>nul
+for /f "usebackq tokens=*" %%p in ("%TEMP%\uclaw-pid.env") do set "UCLAW_LAUNCHER_PID=%%p"
+del "%TEMP%\uclaw-pid.env" >nul 2>&1
 set "INSTANCE_STATUS=unavailable"
 set "INSTANCE_PORT="
 if defined UCLAW_LAUNCHER_PID (
-    for /f "usebackq tokens=1,* delims==" %%a in (`""%NODE_BIN%" "%UCLAW_DIR%lib\portable-instance-lock.mjs" acquire "%INSTANCE_ROOT%" "%STATE_DIR%" "%UCLAW_LAUNCHER_PID%" 2^>nul"`) do (
+    "%NODE_BIN%" "%UCLAW_DIR%lib\portable-instance-lock.mjs" acquire "%INSTANCE_ROOT%" "%STATE_DIR%" "%UCLAW_LAUNCHER_PID%" > "%TEMP%\uclaw-lock.env" 2>nul
+    for /f "usebackq tokens=1,* delims==" %%a in ("%TEMP%\uclaw-lock.env") do (
         if "%%a"=="UCLAW_INSTANCE_STATUS" set "INSTANCE_STATUS=%%b"
         if "%%a"=="UCLAW_INSTANCE_PORT" set "INSTANCE_PORT=%%b"
     )
+    del "%TEMP%\uclaw-lock.env" >nul 2>&1
 )
 if "%INSTANCE_STATUS%"=="existing" goto :reuse_existing_instance
 if "%INSTANCE_STATUS%"=="busy" goto :reuse_existing_instance
@@ -210,9 +218,11 @@ REM Check dependencies
 REM Select an explicit SDK strategy only after a generated-file probe proves
 REM this filesystem changes identity on rename. Clear inherited overrides.
 set "OPENCLAW_PORTABLE_RENAME_IDENTITY="
-for /f "usebackq tokens=1,* delims==" %%a in (`""%NODE_BIN%" "%UCLAW_DIR%lib\portable-filesystem.mjs" "%STATE_DIR%" 2^>nul"`) do (
+"%NODE_BIN%" "%UCLAW_DIR%lib\portable-filesystem.mjs" "%STATE_DIR%" > "%TEMP%\uclaw-fs.env" 2>nul
+for /f "usebackq tokens=1,* delims==" %%a in ("%TEMP%\uclaw-fs.env") do (
     if "%%a"=="UCLAW_RENAME_IDENTITY" if "%%b"=="verify-content-with-lock" set "OPENCLAW_PORTABLE_RENAME_IDENTITY=verify-content-with-lock"
 )
+del "%TEMP%\uclaw-fs.env" >nul 2>&1
 
 REM Note: avoid unescaped parens inside this block -- cmd.exe treats ) as block-end.
 if not exist "%CORE_DIR%\node_modules" (
@@ -241,9 +251,11 @@ REM corporate HTTP_PROXY/HTTPS_PROXY. OpenClaw routes ALL fetch through the env
 REM proxy when it is set, which breaks calls to internal model endpoints
 REM (e.g. http://10.x / 192.168.x / a machine-room IP). Add those hosts + loopback
 REM to NO_PROXY so they connect directly. Silent no-op when no proxy/model is set.
-for /f "usebackq tokens=1,* delims==" %%a in (`""%NODE_BIN%" "%UCLAW_DIR%lib\resolve-no-proxy.mjs" "%STATE_DIR%\openclaw.json" 2^>nul"`) do (
+"%NODE_BIN%" "%UCLAW_DIR%lib\resolve-no-proxy.mjs" "%STATE_DIR%\openclaw.json" > "%TEMP%\uclaw-noproxy.env" 2>nul
+for /f "usebackq tokens=1,* delims==" %%a in ("%TEMP%\uclaw-noproxy.env") do (
     if "%%a"=="UCLAW_NO_PROXY" set "NO_PROXY=%%b"
 )
+del "%TEMP%\uclaw-noproxy.env" >nul 2>&1
 if defined NO_PROXY (
     set "no_proxy=%NO_PROXY%"
     REM Note: no unescaped parens in echo inside this IF block - cmd treats ) as block-end.
@@ -282,7 +294,9 @@ goto :wait_config
 :config_ready
 set "CONFIG_PORT=18788"
 if exist "%RUNTIME_JSON%" (
-    for /f "usebackq tokens=*" %%p in (`powershell -NoProfile -Command "try { (Get-Content -Raw '%RUNTIME_JSON%' | ConvertFrom-Json).configServerPort } catch {}" 2^>nul`) do set "CONFIG_PORT=%%p"
+    powershell -NoProfile -Command "try { (Get-Content -Raw '%RUNTIME_JSON%' | ConvertFrom-Json).configServerPort } catch {}" > "%TEMP%\uclaw-cfgport.env" 2>nul
+for /f "usebackq tokens=*" %%p in ("%TEMP%\uclaw-cfgport.env") do set "CONFIG_PORT=%%p"
+del "%TEMP%\uclaw-cfgport.env" >nul 2>&1
 )
 "%NODE_BIN%" "%UCLAW_DIR%lib\boot-timing.mjs" mark "%STATE_DIR%" config-center >nul 2>&1
 echo   Config Center port: %CONFIG_PORT%
@@ -372,9 +386,11 @@ REM with "package lifecycle is incomplete". This release installs with
 REM --ignore-scripts and applies verified patches, so on such drives the pending
 REM marker is cleared instead. NTFS keeps the full lifecycle completion.
 set "UCLAW_LIFECYCLE="
-for /f "usebackq tokens=1,* delims==" %%a in (`""%NODE_BIN%" "%UCLAW_DIR%lib\skip-package-lifecycle.mjs" "%CORE_DIR%" 2^>nul"`) do (
+"%NODE_BIN%" "%UCLAW_DIR%lib\skip-package-lifecycle.mjs" "%CORE_DIR%" > "%TEMP%\uclaw-lifecycle.env" 2>nul
+for /f "usebackq tokens=1,* delims==" %%a in ("%TEMP%\uclaw-lifecycle.env") do (
     if "%%a"=="UCLAW_LIFECYCLE" set "UCLAW_LIFECYCLE=%%b"
 )
+del "%TEMP%\uclaw-lifecycle.env" >nul 2>&1
 if "%UCLAW_LIFECYCLE%"=="skipped-unstable-rename-identity" echo   File system: exFAT/FAT32 - skipped dependency lifecycle completion.
 
 cd /d "%CORE_DIR%"

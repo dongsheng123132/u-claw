@@ -171,3 +171,15 @@ test('requirements capture reads a temp file and the helper sits after the main 
   const lastExit = bat.lastIndexOf('exit /b');
   assert.ok(labelAt > lastExit, 'helper must live after the main flow (call-only)');
 });
+
+test('Windows launcher captures no command output through a backquoted for/f', () => {
+  // cmd strips the quote pair and hands "2>nul" to the program: PowerShell dies on
+  // strict parameter binding, node silently ignores it. Every capture now goes
+  // through %TEMP% files instead.
+  const bat = read('portable', 'Windows-Start.bat');
+  assert.equal((bat.match(/in \(`/g) || []).length, 0, 'no backquoted command captures left');
+  for (const name of ['strip', 'cache', 'lock', 'fs', 'noproxy', 'lifecycle', 'pid', 'cfgport']) {
+    assert.ok(bat.includes(`uclaw-${name}.env`), `capture ${name} must use a temp file`);
+    assert.ok(bat.includes(`del "%TEMP%\\uclaw-${name}.env"`), `capture ${name} must clean up`);
+  }
+});
