@@ -648,10 +648,26 @@ jobs:
           version=$(tr -d '[:space:]' < OPENCLAW_VERSION)
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
+      - name: Decide pre-release
+        id: pre
+        run: |
+          tag="${{ steps.tag.outputs.tag }}"
+          # A tag like v2.5.0-rc1 must never become "latest": customers click
+          # "latest" and would get a build that has not passed the real-hardware gates.
+          if printf '%s' "$tag" | grep -Eiq -- '-(rc|beta|alpha|pre)[0-9.]*$'; then
+            echo "flag=true" >> "$GITHUB_OUTPUT"
+            echo "$tag is a pre-release"
+          else
+            echo "flag=false" >> "$GITHUB_OUTPUT"
+            echo "$tag is a stable release"
+          fi
+
       - name: Create or update release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
+          prerelease: ${{ steps.pre.outputs.flag }}
+          make_latest: ${{ steps.pre.outputs.flag == 'true' && 'false' || 'true' }}
           name: U-Claw ${{ steps.tag.outputs.tag }}
           body: |
             ## U-Claw ${{ steps.tag.outputs.tag }}
