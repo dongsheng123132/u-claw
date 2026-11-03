@@ -75,7 +75,8 @@ test('Windows launcher gates duplicate clicks behind the portable single-instanc
   const winStart = readRepoFile('portable', 'Windows-Start.bat');
   assert.match(winStart, /portable-instance-lock\.mjs" acquire/, 'Windows launcher must acquire the launcher lock before choosing a port');
   assert.match(winStart, /\$q\.ParentProcessId/, 'Windows launcher must keep the batch-host cmd PID, not FOR /F\'s temporary cmd PID');
-  assert.match(winStart, /in \(`""%NODE_BIN%" "%UCLAW_DIR%lib\\portable-instance-lock\.mjs" acquire [^\r\n]+2\^>nul"`\)/, 'FOR /F needs outer command quotes to execute a Node path with spaces');
+  assert.match(winStart, /"%NODE_BIN%" "%UCLAW_DIR%lib\\portable-instance-lock\.mjs" acquire [^\r\n]+> "%TEMP%\\uclaw-lock\.env" 2>nul/, 'capture goes through a temp file, not a backquoted for/f');
+  assert.match(winStart, /for \/f "usebackq tokens=1,\* delims==" %%a in \("%TEMP%\\uclaw-lock\.env"\) do \(/, 'the lock result is read from that file');
   assert.match(winStart, /U-Claw is already running; reusing the existing instance\./, 'second click should reuse instead of starting another gateway');
   assert.match(winStart, /portable-instance-lock\.mjs" publish/, 'selected port must be published for a second click');
   assert.match(winStart, /portable-instance-lock\.mjs" release/, 'launcher must release its lock after the gateway exits');
