@@ -56,6 +56,15 @@ for /f "usebackq tokens=1,* delims==" %%a in ("%UCLAW_ENGINE_ENV%") do (
 )
 del "%UCLAW_ENGINE_ENV%" >nul 2>&1
 :uclaw_engine_resolved
+REM exFAT/FAT32 break OpenClaw's SQLite state (EIO) and make every start 3+ minutes.
+REM Keep the supported path NTFS-only; on other filesystems run in compat mode where
+REM only the state/ database is relocated to this PC (chat history stays here).
+set "UCLAW_FS_COMPAT=0"
+if defined UCLAW_STICK_FS if /i not "%UCLAW_STICK_FS%"=="NTFS" if /i not "%UCLAW_STICK_FS%"=="ReFS" set "UCLAW_FS_COMPAT=1"
+if "%UCLAW_FS_COMPAT%"=="1" (
+    echo   [NOTE] This drive is %UCLAW_STICK_FS% - chat state stays on this PC ^(compat mode^).
+    echo          For the supported experience use an NTFS drive.
+)
 if "%UCLAW_ENGINE_SOURCE%"=="installed" echo   Engine installed to this PC - next start will be much faster.
 if not "%UCLAW_ENGINE_SOURCE%"=="legacy" echo   Engine: %UCLAW_ENGINE_SOURCE% ^(%UCLAW_ENGINE_ROOT%^)
 if not "%UCLAW_ENGINE_SOURCE%"=="legacy" set "NPM_BIN=%NODE_DIR%\npm.cmd"

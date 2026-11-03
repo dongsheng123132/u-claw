@@ -183,3 +183,26 @@ test('Windows launcher captures no command output through a backquoted for/f', (
     assert.ok(bat.includes(`del "%TEMP%\\uclaw-${name}.env"`), `capture ${name} must clean up`);
   }
 });
+
+test('exFAT/FAT32 drives fall back to compat mode instead of the supported path', () => {
+  // Real customer sticks are exFAT: OpenClaw's SQLite state throws EIO there and every
+  // start takes 3+ minutes. NTFS is the supported path; other filesystems relocate only
+  // the state database to this PC.
+  const ps1 = read('portable', 'lib', 'engine-host.ps1');
+  assert.match(ps1, /Emit 'UCLAW_STICK_FS' \$stickFs/, 'resolver reports the stick filesystem');
+
+  const bat = read('portable', 'Windows-Start.bat');
+  assert.match(bat, /set "UCLAW_FS_COMPAT=0"/);
+  assert.match(bat, /if \/i not "%UCLAW_STICK_FS%"=="NTFS"/, 'NTFS stays on the supported path');
+  assert.match(bat, /set "UCLAW_FS_COMPAT=1"/);
+  assert.match(bat, /compat mode/, 'the launcher says so out loud');
+
+  const mac = read('portable', 'Mac-Start.command');
+  assert.match(mac, /UCLAW_FS_COMPAT=1/);
+  assert.match(mac, /exfat\|msdos\|fat32/, 'macOS detects the same filesystems');
+
+  const cache = read('portable', 'lib', 'portable-cache.mjs');
+  assert.match(cache, /UCLAW_FS_COMPAT === '1'/, 'the cache helper honours the flag');
+  assert.match(cache, /mklink', '\/J'/, 'Windows links state/ with a junction');
+  assert.match(cache, /UCLAW_STATE_LINKED=/, 'the launcher can log whether the link worked');
+});

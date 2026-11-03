@@ -47,7 +47,20 @@ if ($version) { $archive = Join-Path $rootFull ('engine-' + $version + '.tar.gz'
 
 # Legacy layout (no engine archive): behave exactly like v2.4.x.
 if (-not $version -or -not (Test-Path -LiteralPath $archive -PathType Leaf)) {
-    Emit 'UCLAW_ENGINE_SOURCE' 'legacy'
+    # Filesystem of the stick: only NTFS is the supported path; the launcher switches
+$stickFs = ''
+try {
+  $rootPath = $rootFull.TrimEnd('\')
+  $letter = $rootPath.Substring(0, 2)
+  try { $stickFs = (Get-Volume -DriveLetter $letter.Substring(0, 1) -ErrorAction Stop).FileSystem } catch {}
+  if (-not $stickFs) {
+    $info = (& fsutil fsinfo volumeinfo $letter 2>$null) -join "`n"
+    if ($info -match 'File System Name\s*:\s*(\S+)') { $stickFs = $matches[1] }
+  }
+} catch { $stickFs = '' }
+Emit 'UCLAW_STICK_FS' $stickFs
+
+Emit 'UCLAW_ENGINE_SOURCE' 'legacy'
     Emit 'UCLAW_ENGINE_ROOT' $rootFull
     exit 0
 }

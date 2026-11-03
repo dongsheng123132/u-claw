@@ -31,10 +31,18 @@
 //   UCLAW_CACHE_ROOT=...
 
 import { createHash, randomUUID } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir, tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
+
+// ---- exFAT/FAT32 兼容模式（逃生门，不是正式支持） ----------------------------
+// 真实客户盘常见 exFAT：OpenClaw 的 SQLite 状态库在上面会出现
+//   `native file copy failed (code=EIO)`、`slow SQLite transaction`
+// 且强杀进程最容易把它写坏。兼容模式把 state/ 目录（只有这个高频小写库）
+// 整体挂到本机磁盘：Windows 用 junction，macOS 用 symlink。
+// 后果如实讲：换电脑不走 state，聊天历史不随盘。config/skills/memory 留在盘上。
+const COMPAT_FILESYSTEMS = new Set(['exfat', 'fat32', 'msdos']);
 
 const CACHE_ID_FILE = 'portable-cache-id';
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -102,7 +110,40 @@ export function resolvePortableCache({
     try { mkdirSync(d, { recursive: true }); } catch { /* 静默 */ }
   }
 
-  return { root, compileCacheDir, managedBrowserDir, browserUserDataDir, localCacheAvailable, cacheId };
+  // state 目录：默认留在 U 盘（便携）。兼容模式/UCLAW_FS_COMPAT=1 时挂到本机。
+  let stateLinkDir = '';
+  let stateLinked = false;
+  const stateDirOnStick = stateDir ? join(stateDir, 'state') : '';
+  try {
+    if (stateDirOnStick && (env.UCLAW_FS_COMPAT === '1' || (env.UCLAW_STICK_FS && COMPAT_FILESYSTEMS.has(env.UCLAW_STICK_FS.toLowerCase())))) {
+      const hostStateDir = join(root, 'state');
+      mkdirSync(root, { recursive: true });
+      let stickStateExists = false;
+      try { stickStateExists = readdirSync(stateDirOnStick).length > 0; } catch { stickStateExists = false; }
+      if (stickStateExists && !existsSync(hostStateDir)) {
+        // 一次性搬迁：盘上的 state 整体移到本机（原子改名失败就照原样留在盘上，不丢数据）
+        try {
+          cpSync(stateDirOnStick, hostStateDir, { recursive: true });
+          const oldDir = stateDirOnStick + `.pre-compat-${Date.now()}`;
+          renameSync(stateDirOnStick, oldDir);
+        } catch { /* 搬不动就先挂空库，盘上数据原样保留 */ }
+      }
+      try {
+        rmSync(stateDirOnStick, { recursive: true, force: true });
+      } catch { /* U 盘只读等场景：放弃链接，回退盘上模式 */ }
+      try {
+        if (platform === 'win32') {
+          execFileSync('cmd.exe', ['/c', 'mklink', '/J', stateDirOnStick, hostStateDir], { stdio: 'ignore' });
+        } else {
+          execFileSync('ln', ['-sfn', hostStateDir, stateDirOnStick], { stdio: 'ignore' });
+        }
+        stateLinked = existsSync(stateDirOnStick);
+        if (stateLinked) stateLinkDir = hostStateDir;
+      } catch { stateLinked = false; }
+    }
+  } catch { /* 兼容模式失败不影响启动 */ }
+
+  return { root, compileCacheDir, managedBrowserDir, browserUserDataDir, localCacheAvailable, cacheId, stateLinkDir, stateLinked };
 }
 
 // CLI：打印 KEY=VALUE，供启动脚本逐行 set / export。
@@ -122,7 +163,9 @@ if (isMain) {
       `UCLAW_COMPILE_CACHE_DIR=${c.compileCacheDir}\n` +
       `UCLAW_MANAGED_BROWSER_DIR=${c.managedBrowserDir}\n` +
       `UCLAW_BROWSER_USER_DATA_DIR=${c.browserUserDataDir}\n` +
-      `UCLAW_LOCAL_CACHE_AVAILABLE=${c.localCacheAvailable ? '1' : '0'}\n`,
+    `UCLAW_LOCAL_CACHE_AVAILABLE=${c.localCacheAvailable ? '1' : '0'}\n` +
+      `UCLAW_STATE_LINK_DIR=${c.stateLinkDir}\n` +
+      `UCLAW_STATE_LINKED=${c.stateLinked ? '1' : '0'}\n`,
     );
     process.exit(0);
   } catch (err) {

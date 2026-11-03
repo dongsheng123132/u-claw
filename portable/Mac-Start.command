@@ -54,6 +54,18 @@ NODE_BIN="$NODE_DIR/bin/node"
 UCLAW_ENGINE_SOURCE="legacy"
 UCLAW_ENGINE_ROOT="$UCLAW_DIR"
 echo -e "  ${YELLOW}准备运行环境…（首次在这台电脑上约 60 秒，之后就快了）${NC}"
+# exFAT/FAT32 会让 OpenClaw 的 SQLite 状态库出错（EIO）并拖慢启动：
+# 正式支持只认 APFS/HFS+，其它文件系统走兼容模式，只把 state/ 数据库放本机。
+UCLAW_FS_COMPAT=0
+_STICK_FS=$(mount | grep " on $(df "$UCLAW_DIR" 2>/dev/null | tail -1 | awk '{print $9}') " | sed -n 's/.*(\([^,)]*\).*/\1/p' | head -1)
+case "$(echo "$_STICK_FS" | tr '[:upper:]' '[:lower:]')" in
+  exfat|msdos|fat32) UCLAW_FS_COMPAT=1 ;;
+esac
+export UCLAW_FS_COMPAT
+if [ "$UCLAW_FS_COMPAT" = "1" ]; then
+  echo -e "  ${YELLOW}提示：这张盘是 ${_STICK_FS}，聊天状态会存在本机（兼容模式），建议用 APFS 盘。${NC}"
+fi
+
 if [ -f "$UCLAW_DIR/lib/engine-host.sh" ]; then
     # Plain file + redirect (not < <(...)): process substitution needs /dev/fd, which
     # some restricted/sandboxed environments deny -- that would silently skip the
