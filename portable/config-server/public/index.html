@@ -1169,10 +1169,12 @@ async function walletRefreshBalance() {
         var left = data.remainingUsd != null ? Number(data.remainingUsd) : null;
         if (left == null) { num.textContent = '—'; hint.textContent = '暂无余额数据'; return; }
         var chats = Math.max(0, Math.floor(left / 0.02));   // 一次普通对话约 ¥0.02
+        var spent = data.usedUsd != null ? Number(data.usedUsd) : null;
         num.textContent = '¥' + left.toFixed(2);
-        hint.textContent = left <= 0
+        hint.textContent = (left <= 0
             ? '余额不足，先充值再聊天'
-            : ('大约还能聊 ' + chats + ' 次（每次按用量扣，¥0.01–0.05）');
+            : ('大约还能聊 ' + chats + ' 次（每次按用量扣，¥0.01–0.05）'))
+            + (spent != null && spent > 0 ? ' · 已用 ¥' + spent.toFixed(2) : '');
         if (left <= 0) {
             topupBtn.textContent = '💰 充值后开始聊天';
             topupBtn.className = 'btn btn-primary';

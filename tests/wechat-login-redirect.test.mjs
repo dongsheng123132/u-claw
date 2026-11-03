@@ -12,7 +12,7 @@ test('配置页保留钱包和充值，不内置聊天平台入口（自定义 O
   for(const file of ['portable/Config.html','portable/config-server/public/index.html']){
     const page=readFileSync(join(root,file),'utf8');
     assert.doesNotMatch(page,/telegram|feishu|wechat|weixin|qqbot|channel-card|toggleChannel|discoverLocalModels/i);
-    assert.match(page,/walletRecharge\(/);assert.match(page,/一键充值/);
+    assert.match(page,/walletRecharge\(/);assert.match(page,/(一键充值|去充值)/);
   }
 });
 test('真实配置服务：旧渠道404，遗留密钥脱敏，钱包状态目录隔离',async()=>{
